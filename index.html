@@ -47,7 +47,7 @@ var assets={upload:async function(f,o){var id=newId()+newId().slice(0,6);var typ
 function save(name,blob){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},2000)}
 var downloads={save:function(o){var d=o.data;var b=d instanceof Blob?d:new Blob([d],{type:o.type||(typeof d==="string"?"text/plain;charset=utf-8":"application/octet-stream")});save(o.filename||"download",b);return Promise.resolve({saved:true})}};
 window.__BLOBP=PUB+"blob/";
-ready=(async function(){if(!team||!(await teamOk())){try{localStorage.removeItem(TK)}catch(_){}await new Promise(function(r){if(document.body)r();else document.addEventListener("DOMContentLoaded",r)});await gate()}await pullAll();startPoll()})();
+ready=(async function(){/* 팀 비밀번호를 끈 뒤에는(team_ok가 늘 true) 바로 열려요 */if(!(await teamOk())){try{localStorage.removeItem(TK)}catch(_){}await new Promise(function(r){if(document.body)r();else document.addEventListener("DOMContentLoaded",r)});await gate()}await pullAll();startPoll()})();
 window.__view={use:function(n){return Promise.resolve(n==="db"?db:n==="user"?user:n==="files"?files:n==="assets"?assets:n==="downloads"?downloads:null)}};
 window.__siteLogout=function(){try{localStorage.removeItem(TK)}catch(_){}location.reload()};
 })();</script>
