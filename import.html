@@ -41,7 +41,7 @@ document.getElementById("f").addEventListener("submit",async function(e){e.preve
   var fail=[],idx=0;
   async function worker(){while(idx<media.length){var n=media[idx++];try{var b=await z.file(n).async("uint8array");
      var ct=n.startsWith("shots/")?"image/jpeg":(b[0]===0x89&&b[1]===0x50?"image/png":"image/jpeg");
-     var r=await fetch(U+"/storage/v1/object/files/"+n,{method:"POST",headers:H({"Content-Type":ct}),body:b});if(!r.ok){var t=await r.text();if(!(r.status===409||/Duplicate|already exists/i.test(t)))throw new Error(r.status+" "+t.slice(0,200))}}catch(err){fail.push(n+": "+err.message)}
+     for(var tr=0;;tr++){var r;try{r=await fetch(U+"/storage/v1/object/files/"+n,{method:"POST",headers:H({"Content-Type":ct}),body:b})}catch(ne){if(tr<5){await new Promise(function(res){setTimeout(res,2000*(tr+1))});continue}throw ne}if(r.ok)break;var t=await r.text();if(r.status===409||/Duplicate|already exists/i.test(t))break;if(r.status>=500&&tr<5){await new Promise(function(res){setTimeout(res,2000*(tr+1))});continue}throw new Error(r.status+" "+t.slice(0,200))}}catch(err){fail.push(n+": "+err.message)}
     step();say("사진·캡처 올리는 중 ("+done+"/"+total+")")}}
   await Promise.all([worker(),worker(),worker(),worker()]);
   if(fail.length)say("자료 "+rows.length+"개는 넣었고, 사진 "+fail.length+"개가 실패했어요. 한 번 더 눌러 주세요.\n"+fail.slice(0,3).join("\n"),"err");
