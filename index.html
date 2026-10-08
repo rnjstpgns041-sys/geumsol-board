@@ -39,7 +39,7 @@ var user={isOwner:function(){return true},canEdit:function(){return Promise.reso
 /* storage: captures + uploaded images */
 var PUB=URL0+"/storage/v1/object/public/"+BUCKET+"/";
 function up(path,blob,type){return fetch(URL0+"/storage/v1/object/"+BUCKET+"/"+path,{method:"POST",headers:{apikey:KEY,"x-team-key":team||"","Content-Type":type||blob.type||"application/octet-stream"},body:blob}).then(function(r){if(!r.ok)return r.text().then(function(t){throw {code:"failed",message:t}})})}
-var files={read:function(p){var nm=p.split("/").pop().replace(/\.[a-z]+$/i,".jpg");return fetch(PUB+"shots/"+encodeURIComponent(nm)).then(function(r){if(!r.ok)throw {code:"not_found"};return r.arrayBuffer()}).then(function(b){return {bytes:new Uint8Array(b)}})},
+var files={read:function(p){var nm=p.split("/").pop().replace(/\.[a-z]+$/i,".jpg"),dm=p.match(/(\d{4}-\d{2}-\d{2})\//);var get=function(u){return fetch(PUB+u).then(function(r){if(!r.ok)throw {code:"not_found"};return r.arrayBuffer()})};return (dm?get("shots/"+dm[1]+"/"+encodeURIComponent(nm)).catch(function(){return get("shots/"+encodeURIComponent(nm))}):get("shots/"+encodeURIComponent(nm))).then(function(b){return {bytes:new Uint8Array(b)}})},
   download:function(p){return files.read(p).then(function(r){save(p.split("/").pop(),new Blob([r.bytes],{type:"image/jpeg"}))})}};
 var assets={upload:async function(f,o){var id=newId()+newId().slice(0,6);var type=(o&&o.type)||f.type||"image/jpeg";await up("blob/"+id,f,type);return {id:id,url:PUB+"blob/"+id,sizeBytes:f.size,contentType:type}},
   delete:function(id){return fetch(URL0+"/storage/v1/object/"+BUCKET+"/blob/"+id,{method:"DELETE",headers:{apikey:KEY,"x-team-key":team||""}}).then(function(){})},
