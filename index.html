@@ -1956,6 +1956,19 @@ function ndHsl(c){const r=c[0]/255,g=c[1]/255,b=c[2]/255,mx=Math.max(r,g,b),mn=M
 function ndRgb(h,s2,l){const f=n=>{const k=(n+h*12)%12,a=s2*Math.min(l,1-l);return 255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)));};return [f(0),f(8),f(4)];}
 /* muddy template colours (greys, browns) make dull designs: keep the hue, lift the saturation and settle the lightness */
 function ndVivid(c){const [h,s2,l]=ndHsl(c);if(s2<.08&&Math.abs(l-.5)<.4)return c;return ndRgb(h,Math.max(s2,.5),Math.min(.46,Math.max(.3,l)));}
+/* auto colours follow the clinic's own uploaded template: its keyword colour is the brand colour, its other strong colour the accent */
+function ndTplPal(t,base){const o=t&&t.made==="new"&&t.from&&S.thumbs.get(t.from)||t||{};const sat=c=>{const [,s2,l]=ndHsl(c);return l>.92||l<.06?0:s2*(1-Math.abs(l-.5)*1.2);};
+  const W=48,H=Math.max(1,Math.round(48*base.height/base.width)),c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(base,0,0,W,H);const d=x.getImageData(0,0,W,H).data;
+  const bins=new Map();for(let q=0;q<d.length;q+=4){const k=(d[q]>>4)<<8|(d[q+1]>>4)<<4|(d[q+2]>>4);let e=bins.get(k);if(!e){e={n:0,s:[0,0,0]};bins.set(k,e);}e.n++;e.s[0]+=d[q];e.s[1]+=d[q+1];e.s[2]+=d[q+2];}
+  const cols=[...bins.values()].map(e=>({c:e.s.map(v=>v/e.n),n:e.n})).filter(e=>sat(e.c)>.18).sort((a,b)=>b.n*sat(b.c)-a.n*sat(a.c));
+  const hd=(a,b)=>{const d2=Math.abs(ndHsl(a)[0]-ndHsl(b)[0]);return Math.min(d2,1-d2);};
+  const tc=[hex2(o.c1),hex2(o.c2),o.sw>0?hex2(o.stroke):null].filter(Boolean);
+  let main=tc.find(v=>sat(v)>.25)||(cols[0]&&cols[0].c);
+  const darkT=tc.find(v=>ndLum(v)<90);
+  if(!main){main=darkT||[40,90,160];}
+  const P=ndPal(main,false);if(darkT&&hd(darkT,main)<.08)P.dark=darkT;
+  const tot=W*H,acc=[...tc,...cols.filter(e=>e.n>=tot*.04).map(e=>e.c)].find(v=>sat(v)>.3&&hd(v,main)>.1&&ndLum(v)>110);if(acc)P.acc=ndLum(acc)<150?ndMix(acc,[255,255,255],.25):acc;
+  return P;}
 function ndPal(main,gold){const dark=ndLum(main)>110?ndMix(main,[0,0,0],.5):ndMix(main,[0,0,0],.25),light=ndMix(main,[255,255,255],.88);
   const [h]=ndHsl(main),warm=h<.17||h>.9;return {main,dark,light,ink:dark,gold:!!gold,acc:gold?[232,196,110]:warm?[255,236,150]:[255,214,64]};}
 function ndHex(c){return "#"+c.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join("");}
@@ -2251,7 +2264,7 @@ async function ndPhoto(cid){if(ND.pick==="none")return null;if(ND.pick==="file"&
   if(!best||(!only&&best.sc<.24)){const np=only?null:ndInfoPhotos(cid)[0];return np?await ndNaverPhoto(np):null;}const im=best.im,nw=im.naturalWidth||im.width,nh=im.naturalHeight||im.height,c=document.createElement("canvas");c.width=nw;c.height=Math.round(nh*best.h);c.getContext("2d").drawImage(im,0,Math.round(best.y*nh),c.width,c.height,0,0,c.width,c.height);return c;}
 async function ndBuild(t,im){const W=im.naturalWidth,H=im.naturalHeight,base=thBase({...t,erase:t.erase!==false},im,W);
   const pk=TH.tid+"|"+ND.pick+"|"+(ND.file?1:0);if(!ND.phc||ND.phc.k!==pk)ND.phc={k:pk,ph:await ndPhoto(t.clientId)};let ph=ND.phc.ph;const bl=null;const myl=ND.pick==="auto"?ndMyPhotos(t.clientId):[];if(myl.length>1&&(!ND.phc.all||ND.phc.allk!==myl.join()))ND.phc.all=(await Promise.all(myl.map(ndNaverPhoto))).filter(Boolean),ND.phc.allk=myl.join();const phs=myl.length>1&&ND.phc.all&&ND.phc.all.length?ND.phc.all:null;
-  const p0=ndPalette(t,base),p=ND.col!=="auto"&&NDC[ND.col]?ndPal(NDC[ND.col],ND.col==="gold"):ndPal(ndVivid(p0.main));const op=ndOpt(t.clientId);p.sub=(op.sub??"").trim();p.tel=(op.tel??"").trim();p.items=ndItems(t.clientId,/[·\/,|]/.test(p.sub)?p.sub:"");p.own=!!p.sub;if(!p.sub){p.sub=ndHook(t.clientId);}p.icon=ndIconFor(t.clientId);p.cid=t.clientId;const nm=(S.clients.get(t.clientId)||{}).name||"",ft="Noto Sans KR";try{await document.fonts.load(`900 40px "${ft}"`,nm||"가");}catch(_){}
+  const p0=ndPalette(t,base),p=ND.col!=="auto"&&NDC[ND.col]?ndPal(NDC[ND.col],ND.col==="gold"):ndTplPal(t,base);const op=ndOpt(t.clientId);p.sub=(op.sub??"").trim();p.tel=(op.tel??"").trim();p.items=ndItems(t.clientId,/[·\/,|]/.test(p.sub)?p.sub:"");p.own=!!p.sub;if(!p.sub){p.sub=ndHook(t.clientId);}p.icon=ndIconFor(t.clientId);p.cid=t.clientId;const nm=(S.clients.get(t.clientId)||{}).name||"",ft="Noto Sans KR";try{await document.fonts.load(`900 40px "${ft}"`,nm||"가");}catch(_){}
   try{await document.fonts.load(`400 80px "Black Han Sans"`,"가나다");}catch(_){}const LL=NDL.filter(L=>!L.ok||L.ok(p)),by=f=>[...LL.filter(L=>f(L)&&L.nw===5),...LL.filter(L=>f(L)&&L.nw===4),...LL.filter(L=>f(L)&&L.nw===3),...LL.filter(L=>f(L)&&L.nw===2),...LL.filter(L=>f(L)&&L.nw===1),...LL.filter(L=>f(L)&&!L.nw)],pl=by(L=>!L.ph),pp=by(L=>L.ph),rot=(A,k)=>A.map((_,i)=>A[(i+k)%A.length]);/* no real photo: the photo layouts would only show an empty backdrop */const order=ph?[...rot(pp,ND.seed),...rot(pl,ND.seed).slice(0,6)]:rot(pl,ND.seed);const out=[];for(let i=0;i<order.length;i++){const L=order[i],c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");const r=L.f(x,W,H,phs&&L.ph?phs[(i+ND.seed)%phs.length]:ph,bl,p,nm,ft);
     const img=new Image();img.src=c.toDataURL("image/png");await img.decode().catch(()=>{});out.push({n:L.n,c,img,box:r.box,look:{font:t.font||ft,spacing:t.spacing??3,sdir:45,...r.look}});}
   return out;}
