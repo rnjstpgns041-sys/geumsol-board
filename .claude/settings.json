@@ -1,0 +1,1 @@
+{"permissions":{"allow":["Bash(python3 /mnt/project-files/site/migrate.py:*)","Bash(TEAM_PW=* python3 /mnt/project-files/site/migrate.py:*)"]}}
