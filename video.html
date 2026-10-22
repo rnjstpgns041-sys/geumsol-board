@@ -1,0 +1,111 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>금솔 영상 만들기</title>
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+h1{font-size:21px;margin:0}h2{font-size:16px;margin:0 0 10px}.muted{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr 150px 130px;gap:10px}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}
+label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600}
+input,select,textarea{font:inherit;color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--card);width:100%}
+textarea{min-height:190px;resize:vertical;line-height:1.6}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:9px 16px;cursor:pointer;font:inherit;font-weight:700;text-decoration:none;color:var(--fg);display:inline-block}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn:disabled{opacity:.5;cursor:default}.btn.small{padding:5px 10px;font-size:13px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:99px;padding:2px 10px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--fg)}.chip[aria-pressed=true]{border-color:var(--accent);color:var(--accent);font-weight:700}
+.msg{border-radius:10px;padding:10px 12px;font-size:14px}.msg.err{background:var(--badbg);color:var(--bad)}.msg.warn{background:var(--warnbg);color:var(--warn)}.msg.ok{background:var(--soft);color:var(--accent)}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.it{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.it video{width:100%;aspect-ratio:9/16;background:#000;border-radius:8px}
+.it .t{font-weight:700}.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:1px 9px;background:var(--soft);color:var(--accent)}
+.pill.run{background:var(--warnbg);color:var(--warn)}.pill.bad{background:var(--badbg);color:var(--bad)}
+.ph{aspect-ratio:9/16;border-radius:8px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 10px,var(--line) 10px,var(--line) 20px);display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
+</style></head><body><div class="wrap">
+<div class="card"><h1>쇼츠 영상 만들기</h1><div class="muted">대본을 넣고 [영상 만들기]를 누르면 슈퍼쇼츠가 사진·영상·목소리를 붙여 쇼츠를 만들어요. 어느 컴퓨터나 휴대폰에서 열어도 돼요. 만든 영상은 팀 모두에게 아래 목록으로 보여요.</div></div>
+<div id="gate"></div>
+<div id="main" hidden>
+<div class="card">
+  <div class="grid">
+    <label>업체<select id="client"></select></label>
+    <label>키워드<input id="kw" placeholder="예: 시흥교통사고한의원"></label>
+    <label>목소리<select id="voice">
+      <option value="doyun">도윤 (남)</option><option value="seojun">서준 (남)</option><option value="hajun">하준 (남)</option><option value="jihoon">지훈 (남)</option><option value="daon">다온</option>
+      <option value="harin">하린 (여)</option><option value="ina">이나 (여)</option><option value="seoa">서아 (여)</option><option value="yuna">유나 (여)</option><option value="dahae">다해 (여)</option><option value="jia">지아 (여)</option>
+    </select></label>
+    <label>길이<select id="length"><option value="shortform">쇼츠 (세로)</option><option value="longform">긴 영상</option></select></label>
+  </div>
+  <div id="kws" class="row" style="margin-top:8px"></div>
+  <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="한 줄에 한 문장씩 적어 주세요. 30초 안팎이면 5~7줄이 알맞아요."></textarea></label>
+  <div class="row" style="margin-top:10px;justify-content:space-between">
+    <div class="row"><button class="btn small" id="sample">예시 대본 넣기</button><span class="muted">크레딧: 30초 이하 1개, 31~60초 2개 · 의료 광고는 '최고·완치·후기' 같은 표현을 빼 주세요</span></div>
+    <button class="btn primary" id="go">영상 만들기</button>
+  </div>
+  <div id="msg" style="margin-top:10px"></div>
+</div>
+<div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
+</div>
+</div>
+<script>
+const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
+const FN=SB+"/functions/v1/video";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ls={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}};
+const P=new URLSearchParams(location.search);
+let PW=ls.get("gs-video-pw"),CL=[],KW=[],LIST=[],busy=false;
+function msg(t,k){$("msg").innerHTML=t?`<div class="msg ${k||"ok"}">${t}</div>`:"";}
+async function rest(p,o){o=o||{};const r=await fetch(SB+"/rest/v1/"+p,{method:o.method||"GET",headers:Object.assign({apikey:KEY,"x-team-key":"","Content-Type":"application/json"},o.headers||{}),body:o.body});if(!r.ok)throw new Error("자료 칸 "+r.status);const t=await r.text();return t?JSON.parse(t):null;}
+async function fn(b){const r=await fetch(FN,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json","x-video-key":PW},body:JSON.stringify(b)});let d={};try{d=await r.json()}catch(e){d={ok:false,error:"영상 함수가 응답하지 않아요 ("+r.status+")"}}if(r.status===401&&d.auth===false){PW="";ls.set("gs-video-pw","");gate(d.error);}return d;}
+async function save(rec){await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videos",id:rec.id,data:rec})});}
+function gate(err){$("main").hidden=true;$("gate").innerHTML=`<div class="card"><h2>영상 비밀번호</h2><div class="muted">팀에서 정한 영상 비밀번호를 넣어 주세요. 이 기기에 기억돼서 다음부터는 묻지 않아요.</div><div class="row" style="margin-top:8px"><input id="pw" type="password" style="max-width:320px"><button class="btn primary" id="pwgo">확인</button></div>${err?`<div class="msg err" style="margin-top:8px">${esc(err)}</div>`:""}</div>`;
+  $("pwgo").onclick=async()=>{PW=$("pw").value.trim();if(!PW)return;const r=await fn({action:"ping"});if(r.ok){ls.set("gs-video-pw",PW);start();}else if(r.auth!==false)gate(r.error||"확인하지 못했어요.");};
+  $("pw").onkeydown=e=>{if(e.key==="Enter")$("pwgo").click()};}
+function cnt(){const n=$("text").value.replace(/\s/g,"").length;$("cnt").textContent=n?`(${n}자)`:"";}
+function cname(){const o=$("client").selectedOptions[0];return o?o.textContent:"";}
+function renderKws(){const cid=$("client").value,ks=KW.filter(k=>k.cid===cid);
+  $("kws").innerHTML=ks.length?`<span class="muted">이 업체 키워드:</span>`+ks.map(k=>`<button class="chip" data-kw="${esc(k.kw)}" aria-pressed="${k.kw===$("kw").value}">${esc(k.kw)}</button>`).join(""):"";}
+function render(){const L=$("list");if(!LIST.length){L.innerHTML='<div class="muted">아직 만든 영상이 없어요.</div>';return;}
+  L.innerHTML=LIST.map(j=>{const st=j.status==="completed"?'<span class="pill">완성</span>':j.status==="failed"?'<span class="pill bad">실패</span>':`<span class="pill run">${j.status==="queued"?"대기 중":"만드는 중"}</span>`;
+    const files=j.files||[];
+    const media=files.length?files.map(f=>`<video controls preload="metadata" playsinline src="${esc(f)}"></video><div class="row"><a class="btn small" href="${esc(f)}" download target="_blank" rel="noopener">내려받기</a></div>`).join("")
+      :`<div class="ph">${j.status==="failed"?esc(j.error||"실패했어요"):"슈퍼쇼츠가 만드는 중이에요.<br>보통 몇 분 걸려요."}</div>`;
+    return `<div class="it"><div class="row" style="justify-content:space-between"><span class="t">${esc(j.client||"")} ${esc(j.kw||"")}</span>${st}</div><div class="muted">${esc(j.at)}${j.credits!=null?` · 크레딧 ${j.credits}개`:""}</div>${media}<details><summary class="muted">대본 보기</summary><div style="white-space:pre-wrap;font-size:13px">${esc(j.text)}</div><button class="btn small" data-reuse="${esc(j.id)}">이 대본 다시 쓰기</button></details></div>`;}).join("");}
+async function loadList(){try{const r=await rest("docs?coll=eq.videos&select=id,data&order=updated_at.desc&limit=40");LIST=(r||[]).map(x=>Object.assign({id:x.id},x.data));render();}catch(e){$("list").innerHTML=`<div class="msg err">목록을 불러오지 못했어요. (${esc(e.message)})</div>`;}}
+async function poll(){let ch=false;for(const j of LIST.filter(x=>x.status!=="completed"&&x.status!=="failed")){try{const r=await fn({action:"job",id:j.id});if(!r.ok){if(r.error)msg(esc(r.error),"err");continue;}
+  if(r.status!==j.status||r.files){j.status=r.status;if(r.files)j.files=r.files;if(r.credits!=null)j.credits=r.credits;if(r.error)j.error=r.error;await save(j);ch=true;if(r.status==="completed")msg(`${esc(j.client)} ${esc(j.kw)} 영상이 완성됐어요.`);}}catch(e){}}if(ch)render();}
+async function start(){$("gate").innerHTML="";$("main").hidden=false;
+  try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");CL=(cs||[]).filter(c=>c.name).map(c=>({id:c.id,name:c.name}));
+    const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}catch(e){msg("업체 목록을 불러오지 못했어요. 업체 이름은 비워도 돼요.","warn");}
+  const want=(P.get("client")||"").replace(/\s/g,"");
+  $("client").innerHTML=`<option value="">(업체 고르기)</option>`+CL.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+  const hit=CL.find(c=>c.id===P.get("cid"))||(want&&CL.find(c=>c.name.replace(/\s/g,"").includes(want)||want.includes(c.name.replace(/\s/g,""))));
+  if(hit)$("client").value=hit.id;
+  $("kw").value=P.get("kw")||"";
+  const v=ls.get("gs-video-voice");if(v)$("voice").value=v;
+  renderKws();await loadList();poll();}
+$("client").onchange=renderKws;
+$("kw").oninput=renderKws;
+$("text").addEventListener("input",cnt);
+$("sample").onclick=()=>{const c=cname()&&$("client").value?cname():"저희",k=$("kw").value.trim()||"이 증상";
+  $("text").value=`${k} 때문에 고민이신가요?\n${c}에서 꼭 알아 두실 내용을 짧게 정리했어요.\n(여기에 핵심 내용 1)\n(여기에 핵심 내용 2)\n(여기에 핵심 내용 3)\n상태는 사람마다 달라서 먼저 정확히 확인하는 것이 중요해요.\n자세한 내용은 ${c}에 문의해 주세요.`;cnt();msg("예시 대본이에요. 괄호 부분을 고쳐서 쓰세요.","warn");};
+$("go").onclick=async()=>{if(busy)return;const text=$("text").value.trim();
+  if(!text){msg("대본을 넣어 주세요.","err");return;}
+  if(text.includes("(여기에")){msg("예시 대본의 괄호 부분을 실제 내용으로 고쳐 주세요. 그대로 보내면 크레딧만 써요.","err");return;}
+  busy=true;$("go").disabled=true;msg("슈퍼쇼츠에 보내는 중이에요…","warn");ls.set("gs-video-voice",$("voice").value);
+  try{const r=await fn({action:"make",text,voice:$("voice").value,length:$("length").value});
+    if(r.ok){const d=new Date(),p=n=>String(n).padStart(2,"0");
+      const rec={id:r.id,cid:$("client").value,client:$("client").value?cname():"",kw:$("kw").value.trim(),text,voice:$("voice").value,length:$("length").value,status:"queued",files:[],at:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,reserved:r.reserved,credits:null,error:""};
+      LIST.unshift(rec);render();try{await save(rec);}catch(e){}
+      msg(`접수됐어요. 다 되면 아래에 영상이 나와요. (예약 크레딧 ${r.reserved??"-"}개) 창을 닫아도 다시 열면 이어서 확인해요.`);}
+    else if(r.auth!==false)msg(esc(r.error||"보내지 못했어요."),"err");}
+  catch(e){msg("영상 함수에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.","err");}
+  busy=false;$("go").disabled=false;};
+$("logout").onclick=()=>{PW="";ls.set("gs-video-pw","");gate();};
+document.addEventListener("click",e=>{const t=e.target;
+  if(t.dataset.kw){$("kw").value=t.dataset.kw;renderKws();}
+  if(t.dataset.reuse){const j=LIST.find(x=>x.id===t.dataset.reuse);if(j){$("text").value=j.text;if(j.cid)$("client").value=j.cid;$("kw").value=j.kw||"";renderKws();cnt();window.scrollTo({top:0,behavior:"smooth"});}}});
+if(PW)start();else gate();
+setInterval(()=>{if(PW&&!$("main").hidden)poll()},10000);
+</script></body></html>
