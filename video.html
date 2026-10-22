@@ -10,7 +10,7 @@ h1{font-size:21px;margin:0}h2{font-size:16px;margin:0 0 10px}.muted{color:var(--
 .grid{display:grid;grid-template-columns:1fr 1fr 150px 130px;gap:10px}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}
 label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600}
 input,select,textarea{font:inherit;color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--card);width:100%}
-textarea{min-height:190px;resize:vertical;line-height:1.6}
+textarea{min-height:340px;resize:vertical;line-height:1.6}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:9px 16px;cursor:pointer;font:inherit;font-weight:700;text-decoration:none;color:var(--fg);display:inline-block}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn:disabled{opacity:.5;cursor:default}.btn.small{padding:5px 10px;font-size:13px}
@@ -37,9 +37,13 @@ textarea{min-height:190px;resize:vertical;line-height:1.6}
     <label>길이<select id="length"><option value="shortform">쇼츠 (세로)</option><option value="longform">긴 영상</option></select></label>
   </div>
   <div id="kws" class="row" style="margin-top:8px"></div>
-  <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="한 줄에 한 문장씩 적어 주세요. 30초 안팎이면 5~7줄이 알맞아요."></textarea></label>
+  <details id="fbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">업체 특징 보기·고치기 (대본에 들어가요)</summary>
+    <div class="grid" style="grid-template-columns:200px 1fr;margin-top:8px"><label>지역<input id="farea" placeholder="예: 부산 동래"></label><label>특징 (한 줄에 하나, 위에서부터 3~4개가 들어가요)<textarea id="ffeat" style="min-height:110px"></textarea></label></div>
+    <div class="row" style="margin-top:8px"><button class="btn small" id="fsave">특징 저장 (팀 모두에게 적용)</button><span class="muted" id="fmsg"></span></div>
+  </details>
+  <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
   <div class="row" style="margin-top:10px;justify-content:space-between">
-    <div class="row"><button class="btn small" id="sample">예시 대본 넣기</button><span class="muted">크레딧: 30초 이하 1개, 31~60초 2개 · 의료 광고는 '최고·완치·후기' 같은 표현을 빼 주세요</span></div>
+    <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 1분 대본은 크레딧 2개 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
     <button class="btn primary" id="go">영상 만들기</button>
   </div>
   <div id="msg" style="margin-top:10px"></div>
@@ -47,6 +51,7 @@ textarea{min-height:190px;resize:vertical;line-height:1.6}
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
 </div>
 </div>
+<script src="script-gen.js"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video";
@@ -65,6 +70,14 @@ function gate(err){$("main").hidden=true;$("gate").innerHTML=`<div class="card">
 function cnt(){const n=$("text").value.replace(/\s/g,"").length;$("cnt").textContent=n?`(${n}자)`:"";}
 /* 영상 만들기 업체는 이 세 곳만: [보이는 이름, 순위판 업체를 찾을 단서] */
 const VDCL=[["유당한의원","유당"],["수월한의원","수월"],["정용균변호사","정용균"]];
+let PROF={},LAST="",SEED=Date.now()%100000,AT=0;
+function ckey(){const n=cname();const v=VDCL.find(x=>x[0]===n);return v?v[1]:"";}
+function prof(){const k=ckey();return ScriptGen.profileOf(cname(),PROF[k]);}
+function fill(){const p=prof();$("farea").value=p.area||"";$("ffeat").value=(p.feats||[]).join("\n");$("fmsg").textContent="";}
+/* 키워드·업체가 바뀌면 대본 칸이 비었거나 아직 자동으로 쓴 그대로일 때만 새로 쓴다 (직접 고친 대본은 건드리지 않음) */
+function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$("text").value.trim();if(!force&&cur&&cur!==LAST)return;if(!$("client").value&&!$("kw").value.trim())return;
+  const r=ScriptGen.make($("kw").value,$("client").value?cname():"",prof(),++SEED);$("text").value=LAST=r.text;cnt();
+  msg(`1분 분량(${r.chars}자) 대본을 자동으로 썼어요. 읽어 보고 고칠 곳만 고쳐 주세요.`+(force?" 다시 누르면 다른 버전이 나와요.":""),"ok");}
 function cname(){const o=$("client").selectedOptions[0];return o?o.textContent:"";}
 function renderKws(){const cid=$("client").value,ks=KW.filter(k=>k.cid===cid);
   $("kws").innerHTML=ks.length?`<span class="muted">이 업체 키워드:</span>`+ks.map(k=>`<button class="chip" data-kw="${esc(k.kw)}" aria-pressed="${k.kw===$("kw").value}">${esc(k.kw)}</button>`).join(""):"";}
@@ -79,6 +92,7 @@ async function poll(){let ch=false;for(const j of LIST.filter(x=>x.status!=="com
   if(r.status!==j.status||r.files){j.status=r.status;if(r.files)j.files=r.files;if(r.credits!=null)j.credits=r.credits;if(r.error)j.error=r.error;await save(j);ch=true;if(r.status==="completed")msg(`${esc(j.client)} ${esc(j.kw)} 영상이 완성됐어요.`);}}catch(e){}}if(ch)render();}
 async function start(){$("gate").innerHTML="";$("main").hidden=false;
   try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");const all=(cs||[]).filter(c=>c.name);CL=VDCL.map(([n,k])=>{const h=all.find(c=>c.name.replace(/\s/g,"").includes(k));return {id:h?h.id:"n:"+k,name:n};});
+    try{const fs=await rest("docs?coll=eq.videocfg&select=id,data");(fs||[]).forEach(x=>{PROF[x.id]=x.data;});}catch(e){}
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}catch(e){msg("업체 목록을 불러오지 못했어요. 업체 이름은 비워도 돼요.","warn");}
   const want=(P.get("client")||"").replace(/\s/g,"");
   $("client").innerHTML=`<option value="">(업체 고르기)</option>`+CL.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
@@ -86,12 +100,15 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   if(hit)$("client").value=hit.id;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v)$("voice").value=v;
-  renderKws();await loadList();poll();}
-$("client").onchange=renderKws;
-$("kw").oninput=renderKws;
+  renderKws();fill();auto();await loadList();poll();}
+$("client").onchange=()=>{renderKws();fill();auto();};
+$("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
 $("text").addEventListener("input",cnt);
-$("sample").onclick=()=>{const c=cname()&&$("client").value?cname():"저희",k=$("kw").value.trim()||"이 증상";
-  $("text").value=`${k} 때문에 고민이신가요?\n${c}에서 꼭 알아 두실 내용을 짧게 정리했어요.\n(여기에 핵심 내용 1)\n(여기에 핵심 내용 2)\n(여기에 핵심 내용 3)\n상태는 사람마다 달라서 먼저 정확히 확인하는 것이 중요해요.\n자세한 내용은 ${c}에 문의해 주세요.`;cnt();msg("예시 대본이에요. 괄호 부분을 고쳐서 쓰세요.","warn");};
+$("sample").onclick=()=>{if(!$("kw").value.trim()&&!$("client").value){msg("업체와 키워드를 먼저 골라 주세요.","warn");return;}auto(true);};
+$("fsave").onclick=async()=>{const k=ckey();if(!k){$("fmsg").textContent="업체를 먼저 골라 주세요.";return;}
+  const p=prof(),d={type:p.type,area:$("farea").value.trim(),feats:$("ffeat").value.split("\n").map(s=>s.trim()).filter(Boolean)};
+  try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:k,data:d})});PROF[k]=d;$("fmsg").textContent="저장했어요. 다음 대본부터 들어가요.";auto();}
+  catch(e){$("fmsg").textContent="저장하지 못했어요. ("+e.message+")";}};
 $("go").onclick=async()=>{if(busy)return;const text=$("text").value.trim();
   if(!text){msg("대본을 넣어 주세요.","err");return;}
   if(text.includes("(여기에")){msg("예시 대본의 괄호 부분을 실제 내용으로 고쳐 주세요. 그대로 보내면 크레딧만 써요.","err");return;}
@@ -106,8 +123,8 @@ $("go").onclick=async()=>{if(busy)return;const text=$("text").value.trim();
   busy=false;$("go").disabled=false;};
 $("logout").onclick=()=>{PW="";ls.set("gs-video-pw","");gate();};
 document.addEventListener("click",e=>{const t=e.target;
-  if(t.dataset.kw){$("kw").value=t.dataset.kw;renderKws();}
-  if(t.dataset.reuse){const j=LIST.find(x=>x.id===t.dataset.reuse);if(j){$("text").value=j.text;if(j.cid)$("client").value=j.cid;$("kw").value=j.kw||"";renderKws();cnt();window.scrollTo({top:0,behavior:"smooth"});}}});
+  if(t.dataset.kw){$("kw").value=t.dataset.kw;renderKws();auto();}
+  if(t.dataset.reuse){const j=LIST.find(x=>x.id===t.dataset.reuse);if(j){$("text").value=j.text;if(j.cid)$("client").value=j.cid;$("kw").value=j.kw||"";LAST="";renderKws();fill();cnt();window.scrollTo({top:0,behavior:"smooth"});}}});
 if(PW)start();else gate();
 setInterval(()=>{if(PW&&!$("main").hidden)poll()},10000);
 </script></body></html>
