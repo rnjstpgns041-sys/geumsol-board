@@ -46,7 +46,17 @@ Deno.serve(async (req) => {
     if (!text) return j({ ok: false, error: "대본을 넣어 주세요." }, 400);
     const voice = VOICES.includes(String(b.voice)) ? String(b.voice) : "doyun";
     const lengthMode = b.length === "longform" ? "longform" : "shortform";
-    const r = await call("POST", "/jobs", { sourceText: text, planningMode: "auto", variantCount: 1, lengthMode, voice });
+    // 업체별 슈퍼쇼츠 디자인·제목 (사이트의 업체 설정에서 넘어옴). 정해진 모양만 통과시킴
+    const o = (b.opts && typeof b.opts === "object") ? b.opts as Record<string, unknown> : {};
+    const id = (v: unknown) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) ? v : undefined;
+    const body: Record<string, unknown> = { sourceText: text, planningMode: o.planningMode === "auto" ? "auto" : "direct", variantCount: 1, lengthMode, voice };
+    if (id(o.contentTemplateId)) body.contentTemplateId = o.contentTemplateId;
+    if (id(o.template)) body.template = o.template;
+    if (typeof o.introEnabled === "boolean") body.introEnabled = o.introEnabled;
+    if (id(o.introTemplateId)) body.introTemplateId = o.introTemplateId;
+    if (typeof o.introDisplayOnly === "boolean") body.introDisplayOnly = o.introDisplayOnly;
+    if (typeof o.title === "string" && o.title.trim()) body.title = o.title.trim().slice(0, 80);
+    const r = await call("POST", "/jobs", body);
     if (r.status >= 300) return j({ ok: false, error: `${why(r.status)} (${r.status})` });
     return j({ ok: true, id: String(r.d.job_id), reserved: r.d.reserved_credits ?? null });
   }
@@ -89,5 +99,22 @@ Deno.serve(async (req) => {
   }
 
   if (b.action === "ping") return j({ ok: true });
+
+  // 디자인 목록 찾기: 슈퍼쇼츠에 저장된 업체별 디자인 번호를 알아내려고 후보 주소를 차례로 물어봄 (읽기만 함, 크레딧 안 씀)
+  if (b.action === "options") {
+    const out: unknown[] = [];
+    for (const p of ["/me", "/options", "/creation-options", "/templates", "/content-templates", "/presets", "/automation", "/automation-preset", "/settings"]) {
+      try { const r = await call("GET", p); out.push({ path: p, status: r.status, body: JSON.stringify(r.d).slice(0, 8000) }); } catch (e) { out.push({ path: p, error: String(e) }); }
+    }
+    for (const u of ["https://www.supershorts.co.kr/api/mcp", "https://www.supershorts.co.kr/api/business/mcp", "https://www.supershorts.co.kr/mcp"]) {
+      try {
+        const r = await fetch(u, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_creation_options", arguments: {} } }) });
+        out.push({ path: u.replace("https://www.supershorts.co.kr", ""), status: r.status, body: (await r.text()).slice(0, 12000) });
+      } catch (e) { out.push({ path: u, error: String(e) }); }
+    }
+    // 키가 섞여 나오지 않게 지움
+    return j({ ok: true, probes: JSON.parse(JSON.stringify(out).split(key).join("[키]")) });
+  }
   return j({ ok: false, error: "모르는 요청이에요." }, 400);
 });
