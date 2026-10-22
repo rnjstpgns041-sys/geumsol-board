@@ -56,8 +56,14 @@ Deno.serve(async (req) => {
     if (id(o.introTemplateId)) body.introTemplateId = o.introTemplateId;
     if (typeof o.introDisplayOnly === "boolean") body.introDisplayOnly = o.introDisplayOnly;
     if (typeof o.title === "string" && o.title.trim()) body.title = o.title.trim().slice(0, 80);
-    const r = await call("POST", "/jobs", body);
-    if (r.status >= 300) return j({ ok: false, error: `${why(r.status)} (${r.status})` });
+    let r = await call("POST", "/jobs", body);
+    // 제목·디자인 칸을 슈퍼쇼츠가 안 받으면 그 칸을 빼고 한 번 더 보냄
+    if (r.status === 400 && body.title) { delete body.title; r = await call("POST", "/jobs", body); }
+    if (r.status >= 300) {
+      const e = r.d?.error ?? r.d?.message ?? r.d?.detail ?? r.d?.raw ?? "";
+      const msg = (typeof e === "string" ? e : JSON.stringify(e)).split(key).join("[키]").slice(0, 300);
+      return j({ ok: false, error: `${why(r.status)} (${r.status})${msg ? " · 슈퍼쇼츠: " + msg : ""}` });
+    }
     return j({ ok: true, id: String(r.d.job_id), reserved: r.d.reserved_credits ?? null });
   }
 
