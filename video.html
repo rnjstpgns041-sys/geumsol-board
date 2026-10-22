@@ -63,6 +63,8 @@ function gate(err){$("main").hidden=true;$("gate").innerHTML=`<div class="card">
   $("pwgo").onclick=async()=>{PW=$("pw").value.trim();if(!PW)return;const r=await fn({action:"ping"});if(r.ok){ls.set("gs-video-pw",PW);start();}else if(r.auth!==false)gate(r.error||"확인하지 못했어요.");};
   $("pw").onkeydown=e=>{if(e.key==="Enter")$("pwgo").click()};}
 function cnt(){const n=$("text").value.replace(/\s/g,"").length;$("cnt").textContent=n?`(${n}자)`:"";}
+/* 영상 만들기 업체는 이 세 곳만: [보이는 이름, 순위판 업체를 찾을 단서] */
+const VDCL=[["유당한의원","유당"],["수월한의원","수월"],["정용균변호사","정용균"]];
 function cname(){const o=$("client").selectedOptions[0];return o?o.textContent:"";}
 function renderKws(){const cid=$("client").value,ks=KW.filter(k=>k.cid===cid);
   $("kws").innerHTML=ks.length?`<span class="muted">이 업체 키워드:</span>`+ks.map(k=>`<button class="chip" data-kw="${esc(k.kw)}" aria-pressed="${k.kw===$("kw").value}">${esc(k.kw)}</button>`).join(""):"";}
@@ -76,7 +78,7 @@ async function loadList(){try{const r=await rest("docs?coll=eq.videos&select=id,
 async function poll(){let ch=false;for(const j of LIST.filter(x=>x.status!=="completed"&&x.status!=="failed")){try{const r=await fn({action:"job",id:j.id});if(!r.ok){if(r.error)msg(esc(r.error),"err");continue;}
   if(r.status!==j.status||r.files){j.status=r.status;if(r.files)j.files=r.files;if(r.credits!=null)j.credits=r.credits;if(r.error)j.error=r.error;await save(j);ch=true;if(r.status==="completed")msg(`${esc(j.client)} ${esc(j.kw)} 영상이 완성됐어요.`);}}catch(e){}}if(ch)render();}
 async function start(){$("gate").innerHTML="";$("main").hidden=false;
-  try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");CL=(cs||[]).filter(c=>c.name).map(c=>({id:c.id,name:c.name}));
+  try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");const all=(cs||[]).filter(c=>c.name);CL=VDCL.map(([n,k])=>{const h=all.find(c=>c.name.replace(/\s/g,"").includes(k));return {id:h?h.id:"n:"+k,name:n};});
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}catch(e){msg("업체 목록을 불러오지 못했어요. 업체 이름은 비워도 돼요.","warn");}
   const want=(P.get("client")||"").replace(/\s/g,"");
   $("client").innerHTML=`<option value="">(업체 고르기)</option>`+CL.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
