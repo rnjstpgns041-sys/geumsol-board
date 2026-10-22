@@ -39,7 +39,11 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
   <div id="kws" class="row" style="margin-top:8px"></div>
   <details id="fbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">업체 특징 보기·고치기 (대본에 들어가요)</summary>
     <div class="grid" style="grid-template-columns:200px 1fr;margin-top:8px"><label>지역<input id="farea" placeholder="예: 부산 동래"></label><label>특징 (한 줄에 하나, 위에서부터 3~4개가 들어가요)<textarea id="ffeat" style="min-height:110px"></textarea></label></div>
+    <div class="grid" style="grid-template-columns:1fr auto;margin-top:8px;align-items:end"><label>슈퍼쇼츠 디자인 (업체 전용 템플릿)<select id="ftpl"><option value="">슈퍼쇼츠 기본값 그대로</option></select></label><button class="btn small" id="ffind" style="height:38px">디자인 목록 불러오기</button></div>
+    <label style="margin-top:8px">디자인 번호 직접 넣기 (목록에 없을 때)<input id="ftplid" placeholder="예: 슈퍼쇼츠에서 알려 준 디자인 ID"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px;margin-top:8px"><input type="checkbox" id="ftitle" style="width:auto" checked> 대본 첫 문장을 영상 위 제목(두 줄)으로 넣기</label>
     <div class="row" style="margin-top:8px"><button class="btn small" id="fsave">특징 저장 (팀 모두에게 적용)</button><span class="muted" id="fmsg"></span></div>
+    <details id="fprobe" hidden style="margin-top:8px"><summary class="muted">슈퍼쇼츠 응답 원문 (문제 생기면 이 화면을 찍어 보내 주세요)</summary><pre id="fraw" style="white-space:pre-wrap;font-size:11px;max-height:260px;overflow:auto"></pre></details>
   </details>
   <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
   <div class="row" style="margin-top:10px;justify-content:space-between">
@@ -73,7 +77,26 @@ const VDCL=[["유당한의원","유당"],["수월한의원","수월"],["정용�
 let PROF={},LAST="",SEED=Date.now()%100000,AT=0;
 function ckey(){const n=cname();const v=VDCL.find(x=>x[0]===n);return v?v[1]:"";}
 function prof(){const k=ckey();return ScriptGen.profileOf(cname(),PROF[k]);}
-function fill(){const p=prof();$("farea").value=p.area||"";$("ffeat").value=(p.feats||[]).join("\n");$("fmsg").textContent="";}
+let TPLS=[];
+function fill(){const p=prof(),ss=p.ss||{};$("farea").value=p.area||"";$("ffeat").value=(p.feats||[]).join("\n");$("fmsg").textContent="";
+  tplOpts(ss.contentTemplateId||"");$("ftplid").value=ss.contentTemplateId&&!TPLS.some(x=>x.id===ss.contentTemplateId)?ss.contentTemplateId:"";$("ftitle").checked=ss.title!==false;}
+function tplOpts(sel){const n=cname().replace(/\s/g,""),k=ckey();
+  const ls=TPLS.slice().sort((a,b)=>((b.name.replace(/\s/g,"").includes(k)&&k)?1:0)-((a.name.replace(/\s/g,"").includes(k)&&k)?1:0));
+  $("ftpl").innerHTML='<option value="">슈퍼쇼츠 기본값 그대로</option>'+ls.map(x=>`<option value="${esc(x.id)}" ${x.id===sel?"selected":""}>${esc(x.name)} (${esc(x.id)})</option>`).join("");
+  if(sel&&!ls.some(x=>x.id===sel))$("ftpl").insertAdjacentHTML("beforeend",`<option value="${esc(sel)}" selected>저장된 번호 ${esc(sel)}</option>`);}
+/* 슈퍼쇼츠 응답 어디에 있든 {id, name} 모양의 디자인을 모은다 */
+const VOICE_IDS=["seoa","hajun","taeo","ina","doyun","jihoon","yuna","minjae","luna","harin","seojun","daon","chaea","dahae","jia","mio","haru","ren","oliver","noah","emma","liam","ava","chloe","adam","jay"];
+function findTpls(probes){const out=[],seen=new Set();
+  const walk=v=>{if(!v||typeof v!=="object")return;if(Array.isArray(v)){v.forEach(walk);return;}
+    const id=v.contentTemplateId||v.templateId||v.id,name=v.name||v.title||v.label||v.displayName;
+    if(typeof id==="string"&&typeof name==="string"&&!seen.has(id)&&!/^(cmn|cmp)/.test(id)&&!VOICE_IDS.includes(id)){seen.add(id);out.push({id,name});}
+    Object.values(v).forEach(walk);};
+  const parse=s=>{try{return JSON.parse(s)}catch(e){return null}};
+  for(const p of probes||[]){if(!p.body||p.status>=300)continue;const texts=[p.body];
+    String(p.body).split("\n").forEach(l=>{if(l.startsWith("data:"))texts.push(l.slice(5));});
+    for(const s of texts){let d=parse(s);if(typeof d==="string")d=parse(d);if(!d)continue;walk(d);
+      const c=d.result&&d.result.content;if(Array.isArray(c))c.forEach(x=>{if(x&&typeof x.text==="string"){const e=parse(x.text);if(e)walk(e);}});}}
+  return out;}
 /* 키워드·업체가 바뀌면 대본 칸이 비었거나 아직 자동으로 쓴 그대로일 때만 새로 쓴다 (직접 고친 대본은 건드리지 않음) */
 function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$("text").value.trim();if(!force&&cur&&cur!==LAST)return;if(!$("client").value&&!$("kw").value.trim())return;
   const r=ScriptGen.make($("kw").value,$("client").value?cname():"",prof(),++SEED);$("text").value=LAST=r.text;cnt();
@@ -106,14 +129,22 @@ $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);
 $("text").addEventListener("input",cnt);
 $("sample").onclick=()=>{if(!$("kw").value.trim()&&!$("client").value){msg("업체와 키워드를 먼저 골라 주세요.","warn");return;}auto(true);};
 $("fsave").onclick=async()=>{const k=ckey();if(!k){$("fmsg").textContent="업체를 먼저 골라 주세요.";return;}
-  const p=prof(),d={type:p.type,area:$("farea").value.trim(),feats:$("ffeat").value.split("\n").map(s=>s.trim()).filter(Boolean)};
+  const p=prof(),tid=$("ftplid").value.trim()||$("ftpl").value,d={type:p.type,area:$("farea").value.trim(),feats:$("ffeat").value.split("\n").map(s=>s.trim()).filter(Boolean),ss:{contentTemplateId:tid,title:$("ftitle").checked}};
   try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:k,data:d})});PROF[k]=d;$("fmsg").textContent="저장했어요. 다음 대본부터 들어가요.";auto();}
   catch(e){$("fmsg").textContent="저장하지 못했어요. ("+e.message+")";}};
+$("ffind").onclick=async()=>{$("fmsg").textContent="슈퍼쇼츠에 디자인 목록을 물어보는 중이에요…";$("ffind").disabled=true;
+  try{const r=await fn({action:"options"});if(!r.ok){$("fmsg").textContent=r.error||"불러오지 못했어요.";return;}
+    TPLS=findTpls(r.probes);$("fraw").textContent=JSON.stringify(r.probes,null,1);$("fprobe").hidden=false;
+    try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:"_probe",data:{at:new Date().toISOString(),probes:r.probes}})});}catch(e){}
+    tplOpts($("ftpl").value);$("fmsg").textContent=TPLS.length?`디자인 ${TPLS.length}개를 찾았어요. 이 업체 디자인을 고르고 [특징 저장]을 눌러 주세요.`:"목록을 찾지 못했어요. 아래 '슈퍼쇼츠 응답 원문'을 펼쳐 화면을 찍어 보내 주세요.";}
+  catch(e){$("fmsg").textContent="연결하지 못했어요.";}finally{$("ffind").disabled=false;}};
 $("go").onclick=async()=>{if(busy)return;const text=$("text").value.trim();
   if(!text){msg("대본을 넣어 주세요.","err");return;}
   if(text.includes("(여기에")){msg("예시 대본의 괄호 부분을 실제 내용으로 고쳐 주세요. 그대로 보내면 크레딧만 써요.","err");return;}
   busy=true;$("go").disabled=true;msg("슈퍼쇼츠에 보내는 중이에요…","warn");ls.set("gs-video-voice",$("voice").value);
-  try{const r=await fn({action:"make",text,voice:$("voice").value,length:$("length").value});
+  const ss=prof().ss||{},opts={};if(ss.contentTemplateId)opts.contentTemplateId=ss.contentTemplateId;
+  if(ss.title!==false){const h=text.split("\n")[0].trim();if(h)opts.title=h.length>40?h.slice(0,40):h;}
+  try{const r=await fn({action:"make",text,voice:$("voice").value,length:$("length").value,opts});
     if(r.ok){const d=new Date(),p=n=>String(n).padStart(2,"0");
       const rec={id:r.id,cid:$("client").value,client:$("client").value?cname():"",kw:$("kw").value.trim(),text,voice:$("voice").value,length:$("length").value,status:"queued",files:[],at:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,reserved:r.reserved,credits:null,error:""};
       LIST.unshift(rec);render();try{await save(rec);}catch(e){}
