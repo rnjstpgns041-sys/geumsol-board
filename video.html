@@ -144,11 +144,11 @@ $("go").onclick=async()=>{if(busy)return;const text=$("text").value.trim();
   busy=true;$("go").disabled=true;msg("슈퍼쇼츠에 보내는 중이에요…","warn");ls.set("gs-video-voice",$("voice").value);
   const ss=prof().ss||{},opts={};if(ss.contentTemplateId)opts.contentTemplateId=ss.contentTemplateId;
   if(ss.title!==false){const h=text.split("\n")[0].trim();if(h)opts.title=h.length>40?h.slice(0,40):h;}
-  try{const r=await fn({action:"make",text,voice:$("voice").value,length:$("length").value,opts});
+  try{const r=await fn({action:"make",text,client:$("client").value?cname():"",voice:$("voice").value,length:$("length").value,opts});
     if(r.ok){const d=new Date(),p=n=>String(n).padStart(2,"0");
       const rec={id:r.id,cid:$("client").value,client:$("client").value?cname():"",kw:$("kw").value.trim(),text,voice:$("voice").value,length:$("length").value,status:"queued",files:[],at:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,reserved:r.reserved,credits:null,error:""};
       LIST.unshift(rec);render();try{await save(rec);}catch(e){}
-      msg(`접수됐어요. 다 되면 아래에 영상이 나와요. (예약 크레딧 ${r.reserved??"-"}개) 창을 닫아도 다시 열면 이어서 확인해요.`);}
+      msg(`${r.tpl?`슈퍼쇼츠에 저장된 "${esc(r.tpl)}" 디자인으로 `:""}접수됐어요. 다 되면 아래에 영상이 나와요. (예약 크레딧 ${r.reserved??"-"}개) 창을 닫아도 다시 열면 이어서 확인해요.`);}
     else if(r.auth!==false)msg(esc(r.error||"보내지 못했어요."),"err");}
   catch(e){msg("영상 함수에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.","err");}
   busy=false;$("go").disabled=false;};

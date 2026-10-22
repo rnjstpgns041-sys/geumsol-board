@@ -23,6 +23,32 @@ function why(s: number) {
   return m[s] || "슈퍼쇼츠 서버에 연결하지 못했어요.";
 }
 
+
+// 슈퍼쇼츠 응답 어디에 있든 {id, name} 모양의 디자인을 모은다 (목소리·기본 템플릿 번호는 뺌)
+const VOICE_IDS = ["seoa","hajun","taeo","ina","doyun","jihoon","yuna","minjae","luna","harin","seojun","daon","chaea","dahae","jia","mio","haru","ren","oliver","noah","emma","liam","ava","chloe","adam","jay"];
+function findTpls(texts: string[]) {
+  const out: { id: string; name: string }[] = [], seen = new Set<string>();
+  const walk = (v: any) => {
+    if (!v || typeof v !== "object") return;
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    const id = v.contentTemplateId ?? v.templateId ?? v.id, name = v.name ?? v.title ?? v.label ?? v.displayName;
+    if (typeof id === "string" && typeof name === "string" && !seen.has(id) && !/^(cmn|cmp)/.test(id) && !VOICE_IDS.includes(id)) { seen.add(id); out.push({ id, name }); }
+    Object.values(v).forEach(walk);
+  };
+  const parse = (t: string) => { try { return JSON.parse(t); } catch { return null; } };
+  for (const body of texts) {
+    const all = [body, ...body.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5))];
+    for (const t of all) {
+      let d = parse(t); if (typeof d === "string") d = parse(d); if (!d) continue; walk(d);
+      const c = d.result?.content; if (Array.isArray(c)) c.forEach((x: any) => { const e = typeof x?.text === "string" ? parse(x.text) : null; if (e) walk(e); });
+    }
+  }
+  return out;
+}
+const norm = (x: string) => x.replace(/\s|한의원|한방병원|병원|변호사|법률사무소|의원/g, "");
+const PROBES = ["/me", "/options", "/creation-options", "/templates", "/content-templates", "/presets", "/automation", "/automation-preset", "/settings"];
+const MCPS = ["https://www.supershorts.co.kr/api/mcp", "https://www.supershorts.co.kr/api/business/mcp", "https://www.supershorts.co.kr/mcp"];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const key = (Deno.env.get("SUPERSHORTS_KEY") || "").trim();
@@ -41,6 +67,23 @@ Deno.serve(async (req) => {
     return { status: r.status, d };
   }
 
+
+  // 디자인 목록이 있을 만한 주소를 차례로 물어봄 (읽기만 함, 크레딧 안 씀)
+  async function probe() {
+    const out: { path: string; status?: number; body?: string; error?: string }[] = [];
+    for (const p of PROBES) {
+      try { const r = await call("GET", p); out.push({ path: p, status: r.status, body: JSON.stringify(r.d).slice(0, 8000) }); } catch (e) { out.push({ path: p, error: String(e) }); }
+    }
+    for (const u of MCPS) {
+      try {
+        const r = await fetch(u, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_creation_options", arguments: {} } }) });
+        out.push({ path: u.replace("https://www.supershorts.co.kr", ""), status: r.status, body: (await r.text()).slice(0, 12000) });
+      } catch (e) { out.push({ path: u, error: String(e) }); }
+    }
+    return out;
+  }
+
   if (b.action === "make") {
     const text = String(b.text || "").trim();
     if (!text) return j({ ok: false, error: "대본을 넣어 주세요." }, 400);
@@ -51,6 +94,17 @@ Deno.serve(async (req) => {
     const id = (v: unknown) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) ? v : undefined;
     const body: Record<string, unknown> = { sourceText: text, planningMode: o.planningMode === "auto" ? "auto" : "direct", variantCount: 1, lengthMode, voice };
     if (id(o.contentTemplateId)) body.contentTemplateId = o.contentTemplateId;
+    // 디자인을 따로 안 골랐으면 슈퍼쇼츠에 저장된 디자인 중 업체 이름이 같은 것을 자동으로 씀
+    let tpl = "";
+    const cl = norm(String(b.client || ""));
+    if (!body.contentTemplateId && cl) {
+      try {
+        const ps = await probe();
+        const ts = findTpls(ps.filter((p) => p.body && (p.status ?? 500) < 300).map((p) => p.body as string));
+        const hit = ts.find((t) => norm(t.name) === cl) || ts.find((t) => norm(t.name).includes(cl) || cl.includes(norm(t.name)) && norm(t.name).length >= 2);
+        if (hit) { body.contentTemplateId = hit.id; tpl = hit.name; }
+      } catch (_) { /* 못 찾으면 기본 디자인 */ }
+    }
     if (id(o.template)) body.template = o.template;
     if (typeof o.introEnabled === "boolean") body.introEnabled = o.introEnabled;
     if (id(o.introTemplateId)) body.introTemplateId = o.introTemplateId;
@@ -59,12 +113,14 @@ Deno.serve(async (req) => {
     let r = await call("POST", "/jobs", body);
     // 제목·디자인 칸을 슈퍼쇼츠가 안 받으면 그 칸을 빼고 한 번 더 보냄
     if (r.status === 400 && body.title) { delete body.title; r = await call("POST", "/jobs", body); }
+    // 자동으로 찾은 디자인 번호를 안 받으면 기본 디자인으로라도 만듦
+    if (r.status === 400 && tpl) { delete body.contentTemplateId; tpl = ""; r = await call("POST", "/jobs", body); }
     if (r.status >= 300) {
       const e = r.d?.error ?? r.d?.message ?? r.d?.detail ?? r.d?.raw ?? "";
       const msg = (typeof e === "string" ? e : JSON.stringify(e)).split(key).join("[키]").slice(0, 300);
       return j({ ok: false, error: `${why(r.status)} (${r.status})${msg ? " · 슈퍼쇼츠: " + msg : ""}` });
     }
-    return j({ ok: true, id: String(r.d.job_id), reserved: r.d.reserved_credits ?? null });
+    return j({ ok: true, id: String(r.d.job_id), reserved: r.d.reserved_credits ?? null, tpl });
   }
 
   if (b.action === "job") {
@@ -108,17 +164,7 @@ Deno.serve(async (req) => {
 
   // 디자인 목록 찾기: 슈퍼쇼츠에 저장된 업체별 디자인 번호를 알아내려고 후보 주소를 차례로 물어봄 (읽기만 함, 크레딧 안 씀)
   if (b.action === "options") {
-    const out: unknown[] = [];
-    for (const p of ["/me", "/options", "/creation-options", "/templates", "/content-templates", "/presets", "/automation", "/automation-preset", "/settings"]) {
-      try { const r = await call("GET", p); out.push({ path: p, status: r.status, body: JSON.stringify(r.d).slice(0, 8000) }); } catch (e) { out.push({ path: p, error: String(e) }); }
-    }
-    for (const u of ["https://www.supershorts.co.kr/api/mcp", "https://www.supershorts.co.kr/api/business/mcp", "https://www.supershorts.co.kr/mcp"]) {
-      try {
-        const r = await fetch(u, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_creation_options", arguments: {} } }) });
-        out.push({ path: u.replace("https://www.supershorts.co.kr", ""), status: r.status, body: (await r.text()).slice(0, 12000) });
-      } catch (e) { out.push({ path: u, error: String(e) }); }
-    }
+    const out = await probe();
     // 키가 섞여 나오지 않게 지움
     return j({ ok: true, probes: JSON.parse(JSON.stringify(out).split(key).join("[키]")) });
   }
