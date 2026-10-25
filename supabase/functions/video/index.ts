@@ -120,12 +120,15 @@ Deno.serve(async (req) => {
     // 같은 버전이면 lite 아닌 것, 이름이 짧은 것(정식판) 먼저
     list.sort((a, b) => ver(b) - ver(a) || Number(/lite/.test(a)) - Number(/lite/.test(b)) || a.length - b.length);
     const pre = kind === "image" ? MODELS.filter((n) => /^gemini-.*image/.test(n) && /preview/.test(n) && !list.includes(n)).sort((a, b) => ver(b) - ver(a)) : [];
-    return [...list, ...pre, ...(kind === "image" ? ["gemini-2.5-flash-image"] : ["gemini-flash-latest", "gemini-2.5-flash"])];
+    const pro = kind === "text" ? MODELS.filter((n) => /^gemini-[\d.]+-pro$/.test(n)).sort((a, b) => ver(b) - ver(a)).slice(0, 1) : [];
+    const extra = kind === "image" ? ["gemini-2.5-flash-image"] : ["gemini-flash-latest", "gemini-flash-lite-latest", ...pro];
+    return [...new Set([...list, ...pre, ...extra])];
   }
   async function gemAuto(kind: "text" | "image", body: unknown) {
-    let last: unknown = null;
+    let last: unknown = null; const tried: string[] = [];
     // 없는 모델이면 다음 모델로, 붐비면(503·429) 잠깐 쉬고 한 번 더 한 뒤 다음 모델로
-    for (const m of (await models(kind)).slice(0, 6)) {
+    for (const m of (await models(kind)).slice(0, 8)) {
+      tried.push(m);
       for (let k = 0; k < 2; k++) {
         try { return await gem(m, body); } catch (e) {
           last = e; const t = String((e as Error).message || e);
@@ -135,7 +138,8 @@ Deno.serve(async (req) => {
         }
       }
     }
-    throw last || new Error("쓸 수 있는 제미나이 모델을 찾지 못했어요.");
+    const msg = String((last as Error)?.message || last || "쓸 수 있는 제미나이 모델을 찾지 못했어요.");
+    throw new Error(msg.slice(0, 120) + " [시도한 모델: " + tried.join(", ") + "]");
   }
   async function gem(model: string, body: unknown) {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -180,7 +184,7 @@ Deno.serve(async (req) => {
     for (const h of [home, ...subs]) for (const m of h.matchAll(/<img\b[^>]*?(?:data-src|src)=["']([^"']+)["']/gi)) {
       try { const u = new URL(m[1], u0); if (/^https?:$/.test(u.protocol) && !/logo|icon|btn|blank|sprite|banner_s|\.gif|\.svg/i.test(u.pathname)) imgs.add(u.href); } catch { /* */ }
     }
-    const text = pages.join("\n----\n").slice(0, 40000);
+    const text = pages.join("\n----\n").slice(0, 24000);
     const logo = (home.match(/<img\b[^>]*(?:src)=["']([^"']*logo[^"']*)["']/i) || [])[1];
     // 키가 없을 때: 전화·주소·진료시간만 글자 규칙으로
     const tel = (text.match(/0\d{1,2}[-.)\s]\d{3,4}[-.\s]\d{4}|1[5-9]\d{2}-\d{4}/) || [""])[0];
@@ -204,7 +208,7 @@ ${text}`;
         const t = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
         const g = JSON.parse(t.replace(/^```json|```$/g, "").trim());
         info = { ...info, ...Object.fromEntries(Object.entries(g).filter(([, v]) => v !== "" && v != null && !(Array.isArray(v) && !v.length))) };
-      } catch (e) { note = "제미나이 정리를 못 해서 전화·주소·시간만 채웠어요. (" + String((e as Error).message || e).slice(0, 160) + ")"; }
+      } catch (e) { note = "제미나이 정리를 못 해서 전화·주소·시간만 채웠어요. (" + String((e as Error).message || e).slice(0, 400) + ")"; }
     } else note = "제미나이 키(GEMINI_KEY)가 없어서 전화·주소·시간만 채웠어요.";
     return j({ ok: true, info, imgs: [...imgs].slice(0, 40), logo: logo ? new URL(logo, u0).href : "", pages: pages.length, note });
   }
