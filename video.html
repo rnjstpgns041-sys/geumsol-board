@@ -1,5 +1,6 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>금솔 영상 만들기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap">
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017}}
@@ -21,41 +22,46 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
 .it video{width:100%;aspect-ratio:9/16;background:#000;border-radius:8px}
 .it .t{font-weight:700}.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:1px 9px;background:var(--soft);color:var(--accent)}
 .pill.run{background:var(--warnbg);color:var(--warn)}.pill.bad{background:var(--badbg);color:var(--bad)}
+.mk{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}@media(max-width:820px){.mk{grid-template-columns:minmax(0,1fr)}}
+.pv{display:flex;flex-direction:column;gap:8px;position:sticky;top:12px}.pv canvas{width:100%;aspect-ratio:9/16;border-radius:12px;background:#111;display:block}
+.bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0}
 .ph{aspect-ratio:9/16;border-radius:8px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 10px,var(--line) 10px,var(--line) 20px);display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
 </style></head><body><div class="wrap">
-<div class="card"><h1>쇼츠 영상 만들기</h1><div class="muted">대본을 넣고 [영상 만들기]를 누르면 슈퍼쇼츠가 사진·영상·목소리를 붙여 쇼츠를 만들어요. 어느 컴퓨터나 휴대폰에서 열어도 돼요. 만든 영상은 팀 모두에게 아래 목록으로 보여요.</div></div>
+<div class="card"><h1>쇼츠 영상 만들기</h1><div class="muted">업체와 키워드를 고르면 1분 대본이 자동으로 써지고, [영상 만들기]를 누르면 이 화면에서 바로 쇼츠 영상(세로 1080×1920)이 만들어져요. 업체 영상 모양(위 제목, 사진과 자막, 아래 로고, 끝 로고 화면) 그대로예요. 만든 영상은 팀 모두에게 아래 목록으로 보여요. 크롬이나 엣지로 열어 주세요.</div></div>
 <div id="gate"></div>
 <div id="main" hidden>
-<div class="card">
+<div class="card mk"><div style="min-width:0">
   <div class="grid">
     <label>업체<select id="client"></select></label>
     <label>키워드<input id="kw" placeholder="예: 시흥교통사고한의원"></label>
     <label>목소리<select id="voice">
-      <option value="doyun">도윤 (남)</option><option value="seojun">서준 (남)</option><option value="hajun">하준 (남)</option><option value="jihoon">지훈 (남)</option><option value="daon">다온</option>
-      <option value="harin">하린 (여)</option><option value="ina">이나 (여)</option><option value="seoa">서아 (여)</option><option value="yuna">유나 (여)</option><option value="dahae">다해 (여)</option><option value="jia">지아 (여)</option>
+      <option value="ko-KR-Neural2-C">남자 (차분)</option><option value="ko-KR-Wavenet-D">남자 (또렷)</option><option value="ko-KR-Neural2-A">여자 (밝게)</option><option value="ko-KR-Neural2-B">여자 (차분)</option><option value="none">목소리 없이</option>
     </select></label>
-    <label>길이<select id="length"><option value="shortform">쇼츠 (세로)</option><option value="longform">긴 영상</option></select></label>
+    <label>말 빠르기<select id="rate"><option value="1.0">보통</option><option value="1.1" selected>조금 빠르게</option><option value="1.2">빠르게</option></select></label>
   </div>
   <div id="kws" class="row" style="margin-top:8px"></div>
   <details id="fbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">업체 특징 보기·고치기 (대본에 들어가요)</summary>
     <div class="grid" style="grid-template-columns:200px 1fr;margin-top:8px"><label>지역<input id="farea" placeholder="예: 부산 동래"></label><label>특징 (한 줄에 하나, 위에서부터 3~4개가 들어가요)<textarea id="ffeat" style="min-height:110px"></textarea></label></div>
-    <div class="grid" style="grid-template-columns:1fr auto;margin-top:8px;align-items:end"><label>슈퍼쇼츠 디자인 (업체 전용 템플릿)<select id="ftpl"><option value="">슈퍼쇼츠 기본값 그대로</option></select></label><button class="btn small" id="ffind" style="height:38px">디자인 목록 불러오기</button></div>
+    <div hidden><div class="grid" style="grid-template-columns:1fr auto;margin-top:8px;align-items:end"><label>슈퍼쇼츠 디자인 (업체 전용 템플릿)<select id="ftpl"><option value="">슈퍼쇼츠 기본값 그대로</option></select></label><button class="btn small" id="ffind" style="height:38px">디자인 목록 불러오기</button></div>
     <label style="margin-top:8px">디자인 번호 직접 넣기 (목록에 없을 때)<input id="ftplid" placeholder="예: 슈퍼쇼츠에서 알려 준 디자인 ID"></label>
     <label style="flex-direction:row;align-items:center;gap:6px;margin-top:8px"><input type="checkbox" id="ftitle" style="width:auto" checked> 대본 첫 문장을 영상 위 제목(두 줄)으로 넣기</label>
-    <div class="row" style="margin-top:8px"><button class="btn small" id="fsave">특징 저장 (팀 모두에게 적용)</button><span class="muted" id="fmsg"></span></div>
+    </div><div class="row" style="margin-top:8px"><button class="btn small" id="fsave">특징 저장 (팀 모두에게 적용)</button><span class="muted" id="fmsg"></span></div>
     <details id="fprobe" hidden style="margin-top:8px"><summary class="muted">슈퍼쇼츠 응답 원문 (문제 생기면 이 화면을 찍어 보내 주세요)</summary><pre id="fraw" style="white-space:pre-wrap;font-size:11px;max-height:260px;overflow:auto"></pre></details>
   </details>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px"><label>영상 위 제목 첫 줄<input id="t1" placeholder="비워 두면 대본 첫 문장으로 채워요"></label><label>제목 둘째 줄 (강조 색)<input id="t2" placeholder=""></label></div>
   <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
   <div class="row" style="margin-top:10px;justify-content:space-between">
-    <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 1분 대본은 크레딧 2개 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
+    <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 한 줄이 한 장면이에요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
     <button class="btn primary" id="go">영상 만들기</button>
   </div>
   <div id="msg" style="margin-top:10px"></div>
+</div><div class="pv"><canvas id="pv"></canvas><div class="bar"><i id="pbar"></i></div><div class="row" style="justify-content:space-between"><span class="muted" id="pinfo">미리보기</span><button class="btn small" id="pnext">사진 바꿔 보기</button></div></div>
 </div>
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
 </div>
 </div>
 <script src="script-gen.js"></script>
+<script src="shorts-maker.js"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video";
@@ -100,7 +106,7 @@ function findTpls(probes){const out=[],seen=new Set();
 /* 키워드·업체가 바뀌면 대본 칸이 비었거나 아직 자동으로 쓴 그대로일 때만 새로 쓴다 (직접 고친 대본은 건드리지 않음) */
 function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$("text").value.trim();if(!force&&cur&&cur!==LAST)return;if(!$("client").value&&!$("kw").value.trim())return;
   const r=ScriptGen.make($("kw").value,$("client").value?cname():"",prof(),++SEED);$("text").value=LAST=r.text;cnt();
-  msg(`1분 분량(${r.chars}자) 대본을 자동으로 썼어요. 읽어 보고 고칠 곳만 고쳐 주세요.`+(force?" 다시 누르면 다른 버전이 나와요.":""),"ok");}
+  if(typeof preview==="function")preview();msg(`1분 분량(${r.chars}자) 대본을 자동으로 썼어요. 읽어 보고 고칠 곳만 고쳐 주세요.`+(force?" 다시 누르면 다른 버전이 나와요.":""),"ok");}
 function cname(){const o=$("client").selectedOptions[0];return o?o.textContent:"";}
 function renderKws(){const cid=$("client").value,ks=KW.filter(k=>k.cid===cid);
   $("kws").innerHTML=ks.length?`<span class="muted">이 업체 키워드:</span>`+ks.map(k=>`<button class="chip" data-kw="${esc(k.kw)}" aria-pressed="${k.kw===$("kw").value}">${esc(k.kw)}</button>`).join(""):"";}
@@ -122,8 +128,8 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   const hit=CL.find(c=>c.id===P.get("cid"))||(want&&CL.find(c=>c.name.replace(/\s/g,"").includes(want)||want.includes(c.name.replace(/\s/g,""))));
   if(hit)$("client").value=hit.id;
   $("kw").value=P.get("kw")||"";
-  const v=ls.get("gs-video-voice");if(v)$("voice").value=v;
-  renderKws();fill();auto();await loadList();poll();}
+  const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
+  renderKws();fill();auto();preview();await loadList();poll();}
 $("client").onchange=()=>{renderKws();fill();auto();};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
 $("text").addEventListener("input",cnt);
@@ -138,20 +144,38 @@ $("ffind").onclick=async()=>{$("fmsg").textContent="슈퍼쇼츠에 디자인 �
     try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:"_probe",data:{at:new Date().toISOString(),probes:r.probes}})});}catch(e){}
     tplOpts($("ftpl").value);$("fmsg").textContent=TPLS.length?`디자인 ${TPLS.length}개를 찾았어요. 이 업체 디자인을 고르고 [특징 저장]을 눌러 주세요.`:"목록을 찾지 못했어요. 아래 '슈퍼쇼츠 응답 원문'을 펼쳐 화면을 찍어 보내 주세요.";}
   catch(e){$("fmsg").textContent="연결하지 못했어요.";}finally{$("ffind").disabled=false;}};
-$("go").onclick=async()=>{if(busy)return;const text=$("text").value.trim();
-  if(!text){msg("대본을 넣어 주세요.","err");return;}
-  if(text.includes("(여기에")){msg("예시 대본의 괄호 부분을 실제 내용으로 고쳐 주세요. 그대로 보내면 크레딧만 써요.","err");return;}
-  busy=true;$("go").disabled=true;msg("슈퍼쇼츠에 보내는 중이에요…","warn");ls.set("gs-video-voice",$("voice").value);
-  const ss=prof().ss||{},opts={};if(ss.contentTemplateId)opts.contentTemplateId=ss.contentTemplateId;
-  if(ss.title!==false){const h=text.split("\n")[0].trim();if(h)opts.title=h.length>40?h.slice(0,40):h;}
-  try{const r=await fn({action:"make",text,client:$("client").value?cname():"",voice:$("voice").value,length:$("length").value,opts});
-    if(r.ok){const d=new Date(),p=n=>String(n).padStart(2,"0");
-      const rec={id:r.id,cid:$("client").value,client:$("client").value?cname():"",kw:$("kw").value.trim(),text,voice:$("voice").value,length:$("length").value,status:"queued",files:[],at:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,reserved:r.reserved,credits:null,error:""};
-      LIST.unshift(rec);render();try{await save(rec);}catch(e){}
-      msg(`${r.tpl?`슈퍼쇼츠에 저장된 "${esc(r.tpl)}" 디자인으로 `:""}접수됐어요. 다 되면 아래에 영상이 나와요. (예약 크레딧 ${r.reserved??"-"}개) 창을 닫아도 다시 열면 이어서 확인해요.`);}
-    else if(r.auth!==false)msg(esc(r.error||"보내지 못했어요."),"err");}
-  catch(e){msg("영상 함수에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.","err");}
+/* 영상 만들기: 구글 음성으로 문장마다 목소리를 받고, 이 화면에서 바로 영상 파일을 만든다 */
+let TTS=null,SEEDV=Date.now()%1000,PVT=0;
+function lines(){return $("text").value.split("\n").map(x=>x.trim()).filter(Boolean);}
+function titleNow(){const L=lines(),d=ShortsMaker.titleOf(L[0]||"");const a=$("t1").value.trim(),b=$("t2").value.trim();return a||b?[a||d[0],b]:d;}
+async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
+  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
+function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
+async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
+$("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
+  if(!L.length){msg("대본을 넣어 주세요.","err");return;}
+  if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요. (유당한의원, 수월한의원, 정용균변호사)","err");return;}
+  busy=true;$("go").disabled=true;ls.set("gs-video-voice",$("voice").value);
+  try{let audios=[];const v=$("voice").value;
+    if(v!=="none"){if(TTS===null){const p=await fn({action:"ping"});TTS=!!p.tts;}
+      if(TTS){msg("구글 음성으로 목소리를 만드는 중이에요…","warn");const r=await fn({action:"tts",lines:L,voice:v,rate:$("rate").value});
+        if(!r.ok)throw new Error(r.error||"목소리를 만들지 못했어요.");audios=r.audios.map(b64ab);}
+      else msg("구글 음성 키가 아직 없어서 이번에는 목소리 없이 만들어요.","warn");}
+    msg("영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 창을 앞에 띄워 두세요.","warn");
+    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,canvas:$("pv"),seed:SEEDV,title:titleNow(),
+      onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
+    const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
+    const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;
+    const url=URL.createObjectURL(o.blob),a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
+    $("pbar").style.width="100%";$("pinfo").textContent=`완성 · ${Math.round(o.seconds)}초`;
+    let pub="";try{msg("완성! 내 컴퓨터에 내려받았어요. 팀 목록에 올리는 중이에요…","ok");pub=await upload(o.blob,`mk_${stamp}_${Math.random().toString(36).slice(2,7)}.${o.ext}`);}catch(e){}
+    const rec={id:"mk_"+stamp,cid:$("client").value,client:cname(),kw:$("kw").value.trim(),text,voice:v,length:"shortform",status:"completed",files:pub?[pub]:[],at:`${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())} ${pd(d.getHours())}:${pd(d.getMinutes())}`,credits:null,error:"",local:true};
+    if(!pub)rec.files=[url];LIST.unshift(rec);render();if(pub){try{await save(rec);}catch(e){}}
+    msg(`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`,"ok");}
+  catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
   busy=false;$("go").disabled=false;};
+$("pnext").onclick=()=>{SEEDV++;preview();};
+["text","t1","t2"].forEach(id=>$(id).addEventListener("input",preview));$("client").addEventListener("change",()=>{$("t1").value="";$("t2").value="";preview();});
 $("logout").onclick=()=>{PW="";ls.set("gs-video-pw","");gate();};
 document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.kw){$("kw").value=t.dataset.kw;renderKws();auto();}
