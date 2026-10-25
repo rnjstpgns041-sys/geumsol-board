@@ -45,18 +45,29 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
     <label>키워드<input id="kw" placeholder="예: 파주교통사고한의원"></label>
     <div id="kws" class="row"></div>
     <div class="g2"><label>주제<select id="topic"></select></label><label>진료 방식<select id="km"><option value="1">한방 (침·추나·한약)</option><option value="0">양방 (검사·도수·주사)</option></select></label></div>
+    <div class="g2" style="grid-template-columns:1fr auto;align-items:end"><label>디자인 (네이버 블로그 참고)<select id="style"></select></label><button class="btn small" id="restyle" style="height:36px">다른 디자인</button></div>
+    <label>사진 채우기<select id="phsrc"><option value="co-free">업체 사진 먼저, 모자라면 무료 사진</option><option value="co-gen">업체 사진 먼저, 모자라면 나노바나나</option><option value="free">무료 사진만</option><option value="gen">나노바나나만</option><option value="co">업체 사진만</option></select></label>
     <div class="g2"><label>진한 색<input type="color" id="cm" value="#16325c"></label><label>강조 색<input type="color" id="ca" value="#1f9d6b"></label></div>
     <div><div class="muted" style="margin-bottom:4px">넣을 구역</div><div id="ons" class="row"></div></div>
-    <div class="row"><button class="btn small" id="photosgo">무료 사진 다시 채우기</button><button class="btn small" id="reset">글 처음으로</button></div>
+    <div class="row"><button class="btn small" id="photosgo">사진 다시 채우기</button><button class="btn small" id="reset">글 처음으로</button></div>
     <div class="row"><button class="btn primary" id="one">한 장으로 저장</button><button class="btn" id="each">구역별로 저장</button></div>
     <div class="bar" id="pbarw" hidden><i id="pbar"></i></div>
     <div id="msg"></div>
+  </div>
+  <div class="card sec" id="cobox">
+    <h2 style="margin:0">업체 홈페이지 · 업체 사진</h2>
+    <div class="g2" style="grid-template-columns:1fr auto;align-items:end"><label>홈페이지 주소<input data-f="homepage" placeholder="예: www.파주365.com"></label><button class="btn small" id="sitego" style="height:36px">읽어서 채우기</button></div>
+    <div class="muted" id="sitemsg">홈페이지에서 진료시간·의료진·진료 항목·특징을 읽어 아래 업체 정보에 채워요. 채운 뒤 꼭 한 번 읽어 보고 저장해 주세요.</div>
+    <div class="row"><button class="btn small" id="coup">업체 사진 올리기</button><button class="btn small" id="cosite">홈페이지 사진 고르기</button><span class="muted">(<span id="cocnt">0</span>장) 사진 자리에 먼저 들어가요</span></div>
+    <div id="cos" class="thumbs"></div>
   </div>
   <details class="card" id="cfgbox"><summary>업체 정보 · 의료진 · 시설 사진 (팀 모두 같이 써요)</summary>
     <div class="sec">
       <div class="muted">여기 넣은 내용은 이 업체 이미지에 늘 들어가요. 비워 둔 칸은 이미지에서 빠져요. 입원실·365일처럼 업체마다 다른 사실은 여기에만 써 주세요.</div>
       <label>업체 이름<input data-f="name"></label>
       <div class="row"><button class="btn small" id="logoup">로고 올리기</button><button class="btn small" id="logodel">로고 빼기</button><img id="logoimg" alt="" style="max-height:34px;max-width:160px;display:none"></div>
+      <label>업체 소개 특징 4개 (한 줄에 하나, 강조할 낱말은 [[ ]])<textarea data-f="feats" placeholder="[[자동차보험]] 진료&#10;상태별 [[맞춤 치료]]&#10;[[1:1]] 상담&#10;[[입원]] 집중 관리"></textarea></label>
+      <label>진료 항목 (치료 방법 구역, 한 줄에 하나, 2~4개)<textarea data-f="treats" placeholder="약침 치료&#10;추나 요법&#10;한약 처방&#10;입원 치료"></textarea></label>
       <label>사진 옆 강점 3개 (한 줄에 하나)<textarea data-f="badges" placeholder="자동차보험 진료&#10;야간 진료&#10;입원 가능"></textarea></label>
       <label>진료 문의 전화<input data-f="tel"></label>
       <label>진료시간 (한 줄에 '요일 | 시간')<textarea data-f="hours" placeholder="평일 | 09:00 - 20:00&#10;토요일 | 09:00 - 15:00&#10;일요일·공휴일 | 09:00 - 13:00"></textarea></label>
@@ -99,7 +110,7 @@ let ON={};try{ON=JSON.parse(ls.get("gs-blog-on")||"{}")}catch(e){}
 
 /* ── 업체 정보: docs blogcfg/<cid>. 처음엔 순위판 업체 정보(전화·주소·분류)로 채움 ── */
 function client(){return CL.find(c=>c.id===$("client").value)||null;}
-function defCfg(c){const i=(c&&c.info)||{};return {name:c?c.name:"",tel:i.tel||"",addr:i.addr||"",km:/한의원|한방/.test((i.category||"")+(c?c.name:""))?1:0,badges:[],hours:[],lunch:"",way:"",station:"",walk:"",parking:"",infoBadge:"",logo:"",doctors:[],room:{on:false,title:"",items:[],note:""},photos:[]};}
+function defCfg(c){const i=(c&&c.info)||{};return {name:c?c.name:"",tel:i.tel||"",addr:i.addr||"",km:/한의원|한방/.test((i.category||"")+(c?c.name:""))?1:0,badges:[],hours:[],lunch:"",way:"",station:"",walk:"",parking:"",infoBadge:"",logo:"",homepage:(i.homepage&&!/blog\.naver/.test(i.homepage))?i.homepage:"",coPhotos:[],feats:[],treats:[],doctors:[],room:{on:false,title:"",items:[],note:""},photos:[]};}
 async function loadCfg(){const c=client();if(!c){CFG=defCfg(null);return;}
   let d=null;try{const r=await rest(`docs?coll=eq.blogcfg&id=eq.${encodeURIComponent(c.id)}&select=data`);d=r&&r[0]&&r[0].data;}catch(e){}
   CFG=Object.assign(defCfg(c),d||{});CFG.room=Object.assign({on:false,title:"",items:[],note:""},CFG.room||{});}
@@ -116,12 +127,12 @@ function fillForm(){document.querySelectorAll("[data-f]").forEach(el=>{const k=e
     else if(k==="hours")el.value=(v||[]).map(h=>h[0]+" | "+h[1]).join("\n");
     else if(k==="room.items")el.value=(v||[]).map(h=>h[1]+(h[2]?" | "+h[2]:"")).join("\n");
     else el.value=Array.isArray(v)?v.join("\n"):(v||"");});
-  $("km").value=CFG.km?"1":"0";$("logoimg").src=CFG.logo||"";$("logoimg").style.display=CFG.logo?"":"none";renderDocs();renderFacs();}
+  $("km").value=CFG.km?"1":"0";$("logoimg").src=CFG.logo||"";$("logoimg").style.display=CFG.logo?"":"none";renderDocs();renderFacs();renderCos();}
 function readForm(){document.querySelectorAll("[data-f]").forEach(el=>{const k=el.dataset.f;
     if(el.type==="checkbox")fset(k,el.checked);
     else if(k==="hours")fset(k,pairs(el.value));
     else if(k==="room.items")fset(k,pairs(el.value).map((p,i)=>[RICON[i%RICON.length],p[0],p[1]]));
-    else if(k==="badges")fset(k,lines(el.value));
+    else if(k==="badges"||k==="feats"||k==="treats")fset(k,lines(el.value));
     else fset(k,el.value.trim());});
   CFG.km=$("km").value==="1"?1:0;
   document.querySelectorAll("[data-d]").forEach(el=>{const [i,k]=el.dataset.d.split(":"),d=CFG.doctors[+i];if(!d)return;d[k]=(k==="fields"||k==="history")?lines(el.value):el.value.trim();});
@@ -143,7 +154,7 @@ async function up(f,png){const c=client(),b=await shrink(f,png?900:1600,png),nam
   const r=await fetch(`${SB}/storage/v1/object/files/${path}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":png?"image/png":"image/jpeg"},body:b});if(!r.ok)throw new Error("올리기 "+r.status);return PUB+path;}
 function pickFiles(multi){return new Promise(ok=>{const el=$(multi?"filen":"file1");el.value="";el.onchange=()=>ok([...el.files]);el.click();});}
 /* 업체 사진: 순위판에 모아 둔 업체 사진(myPhotos) + 네이버 플레이스 사진 + 시설 사진 */
-function clinicPhotos(){const c=client()||{},i=c.info||{},out=[];
+function clinicPhotos(){const c=client()||{},i=c.info||{},out=[...(CFG.coPhotos||[])];
   (c.myPhotos||[]).concat(i.photos||[]).forEach(x=>{const id=typeof x==="string"?x:(x&&x.id);if(id&&/^[0-9a-f]{32}$/.test(id))out.push(PUB+"blob/"+id);});
   (CFG.photos||[]).forEach(p=>p.url&&out.push(p.url));return [...new Set(out)];}
 
@@ -152,8 +163,12 @@ function mix(h,w,t){const a=parseInt(h.slice(1),16),b=parseInt(w.slice(1),16),f=
 function vars(){const m=$("cm").value,a=$("ca").value;return `--m:${m};--a:${a};--bg2:${mix(a,"#ffffff",.93)};--soft:${mix(a,"#ffffff",.84)};--soft2:${mix(m,"#ffffff",.95)}`;}
 function onMap(){const o={};SECS.forEach(([k])=>{if(ON[k]===false)o[k]=false;});(CFG.doctors||[]).forEach((d,i)=>{if(ON.doc===false)o["doc"+i]=false;});return o;}
 function clinicObj(){return Object.assign({},CFG,{km:$("km").value==="1",name:CFG.name||(client()||{}).name||"",photos:(CFG.photos||[]).filter(p=>p.url)});}
-function render(){const c=clinicObj(),root=$("bi");root.setAttribute("style",vars());
-  root.innerHTML=BK.build({topic:$("topic").value,clinic:c,img:IMG,on:onMap()});
+let STY="basic";
+function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const ks=Object.keys(BK.STYLES).filter(k=>k!==STY);STY=ks[Math.floor(Math.random()*ks.length)];}
+  const st=BK.STYLES[STY];$("cm").value=st.m;$("ca").value=st.a;}
+function kick(){const t=$("topic").value;return (t==="기본"?"건강":t)+" 가이드";}
+function render(){const c=clinicObj(),root=$("bi");root.className="bi st-"+STY;root.setAttribute("style",vars());
+  root.innerHTML=BK.build({topic:$("topic").value,clinic:c,img:IMG,on:onMap(),kick:kick()});
   root.querySelectorAll(".blk").forEach(b=>{b.insertAdjacentHTML("afterbegin",`<div class="bx"><button data-save="${b.dataset.k}">이 구역만 저장</button><button data-hide="${b.dataset.k}">빼기</button></div>`);
     const k=b.dataset.k,ed=EDITS[k]||{};b.querySelectorAll("[contenteditable]").forEach((el,i)=>{el.dataset.o=el.textContent;const e=ed[i];if(e&&e.o===el.textContent)el.innerHTML=e.n;});});}
 $("bi").addEventListener("input",e=>{const el=e.target.closest("[contenteditable]"),b=e.target.closest(".blk");if(!el||!b)return;
@@ -167,13 +182,25 @@ async function needPW(){if(PW)return true;return new Promise(ok=>{const m=docume
   document.body.appendChild(m);const close=v=>{m.remove();ok(v);};$("pwno").onclick=()=>close(false);
   $("pwok").onclick=async()=>{PW=$("pwi").value.trim();if(!PW)return;const r=await fn({action:"ping"});if(r.ok){ls.set("gs-video-pw",PW);close(true);}else{$("pwm").innerHTML=`<div class="msg err" style="margin-top:8px">${esc(r.error||"비밀번호가 맞지 않아요.")}</div>`;}};
   $("pwi").onkeydown=e=>{if(e.key==="Enter")$("pwok").click();};$("pwi").focus();});}
-let USED=[];
+let USED=[],COUSE=0;
+const SLOTS=()=>["person","treat0","treat1","treat2","treat3"].concat(CFG.room&&CFG.room.on&&ON.room!==false?["room"]:[]).filter(k=>k==="room"||document.querySelector(`[data-ph="${k}"]`));
 async function freePhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
   const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});keys=keys.filter(k=>q[k]);if(!keys.length)return false;
   const r=await fn({action:"photos",queries:keys.map(k=>q[k]),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
   (r.photos||[]).forEach((p,i)=>{if(p){IMG[keys[i]]=p.src;USED.push(p.id);}});return true;}
-async function autoPhotos(force){const want=["person","treat0","treat1","treat2","treat3"].filter(k=>force||!IMG[k]);if(!want.length)return;
-  if(!PW&&!force)return;msg("사진을 고르는 중이에요…","ok");try{if(await freePhotos(want,force)){render();msg("");}}catch(e){msg("사진을 가져오지 못했어요. 사진 자리를 눌러 직접 넣어도 돼요.","warn");}}
+/* 나노바나나: 한 장씩 그림 (한 장에 몇 초) */
+async function genPhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
+  const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});let ok=0;
+  for(const k of keys){if(!q[k])continue;msg(`나노바나나가 그리는 중이에요… (${ok+1}/${keys.length})`,"ok");
+    const r=await fn({action:"genimg",prompt:q[k]});if(!r.ok){msg(esc(r.error||"그림을 못 만들었어요."),"warn");return ok>0;}IMG[k]=r.src;ok++;render();}
+  return ok>0;}
+/* 업체 사진을 섞어 먼저 넣고, 모자란 자리는 무료 사진이나 나노바나나로 */
+async function autoPhotos(force){const mode=$("phsrc").value,slots=SLOTS();let want=slots.filter(k=>force||!IMG[k]);if(!want.length)return;
+  if(mode.startsWith("co")){const co=(CFG.coPhotos||[]).slice();for(let i=co.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[co[i],co[j]]=[co[j],co[i]];}
+    want.forEach((k,i)=>{if(i<co.length)IMG[k]=co[(i+COUSE)%co.length];});COUSE+=want.length;want=want.slice(co.length);render();}
+  if(!want.length||mode==="co")return;if(!PW&&!force)return;
+  const gen=mode.endsWith("gen");msg(gen?"나노바나나가 그리는 중이에요…":"사진을 고르는 중이에요…","ok");
+  try{if(gen?await genPhotos(want,force):await freePhotos(want,force)){render();msg("");}}catch(e){msg("사진을 가져오지 못했어요. 사진 자리를 눌러 직접 넣어도 돼요.","warn");}}
 
 /* ── 사진 자리 누르기 ── */
 let MENU=null;function closeMenu(){if(MENU){MENU.remove();MENU=null;}}
@@ -184,10 +211,11 @@ $("bi").addEventListener("click",async e=>{const sv=e.target.closest("[data-save
   const ph=e.target.closest(".ph");if(!ph)return;const key=ph.dataset.ph;closeMenu();
   const free=/^(person|treat\d|room)$/.test(key),r=ph.getBoundingClientRect();
   MENU=document.createElement("div");MENU.className="menu";MENU.style.left=Math.min(innerWidth-220,Math.max(8,r.left+20))+"px";MENU.style.top=Math.min(innerHeight-200,Math.max(8,r.top+20))+"px";
-  MENU.innerHTML=`<button data-a="up">내 사진 올리기</button><button data-a="co">업체 사진에서 고르기</button>${free?'<button data-a="free">무료 사진 다른 것</button>':""}<button data-a="rm">사진 빼기</button>`;
+  MENU.innerHTML=`<button data-a="up">내 사진 올리기</button><button data-a="co">업체 사진에서 고르기</button>${free?'<button data-a="free">무료 사진 다른 것</button><button data-a="gen">나노바나나로 그리기</button>':""}<button data-a="rm">사진 빼기</button>`;
   document.body.appendChild(MENU);MENU.onclick=async ev=>{const a=ev.target.dataset.a;if(!a)return;closeMenu();
     try{if(a==="up"){const [f]=await pickFiles(false);if(!f)return;msg("올리는 중이에요…","ok");setPhoto(key,await up(f));msg("");}
       else if(a==="co"){const u=await choose(clinicPhotos());if(u)setPhoto(key,u);}
+      else if(a==="gen"){if(await genPhotos([key],true)){render();msg("");}}
       else if(a==="free"){msg("다른 사진을 찾는 중이에요…","ok");if(await freePhotos([key],true)){render();msg("");}}
       else setPhoto(key,"");}catch(err){msg("사진을 넣지 못했어요 ("+esc(err.message)+")","err");}};});
 function setPhoto(key,url){let m;if((m=key.match(/^doc(\d+)$/))){const d=(CFG.doctors||[]).filter(d=>d&&d.name)[+m[1]];if(d)d.photo=url;renderDocs();}
@@ -202,7 +230,7 @@ function fname(s){return (s||"").replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,60);}
 function base(){const c=client();return fname([(c&&c.name)||CFG.name,$("kw").value.trim()||$("topic").value].filter(Boolean).join("_"))||"blog";}
 function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
 async function shot(el,scale){const z=$("pvz"),old=z.style.zoom;z.style.zoom=1;el.querySelectorAll(".bx").forEach(x=>x.style.display="none");
-  try{const h=el.offsetHeight;return await BK.snap(el,{scale:Math.min(scale,30000/Math.max(1,h)),font:FONT,style:vars()});}
+  try{const h=el.offsetHeight;return await BK.snap(el,{scale:Math.min(scale,30000/Math.max(1,h)),font:FONT,style:vars(),cls:"st-"+STY});}
   finally{el.querySelectorAll(".bx").forEach(x=>x.style.display="");z.style.zoom=old;fit();}}
 async function run(f){if(BUSY)return;BUSY=true;$("one").disabled=$("each").disabled=true;$("pbarw").hidden=false;$("pbar").style.width="5%";
   try{await f();}catch(e){msg("저장하지 못했어요 ("+esc(e.message)+"). 다시 눌러 주세요.","err");}finally{BUSY=false;$("one").disabled=$("each").disabled=false;setTimeout(()=>{$("pbarw").hidden=true;},600);}}
@@ -222,16 +250,20 @@ function renderKws(){const c=client(),ks=c?KW.filter(k=>k.cid===c.id):[];
   $("kws").innerHTML=ks.length?ks.slice(0,30).map(k=>`<button class="chip" data-kw="${esc(k.kw)}" aria-pressed="${k.kw===$("kw").value}">${esc(k.kw)}</button>`).join(""):"";}
 function autoTopic(){const c=client();$("topic").value=BK.topicOf($("kw").value,c&&c.info&&c.info.topics);}
 function fresh(){IMG={};EDITS={};USED=[];}
-async function onClient(){fresh();const c0=client(),v=c0&&ls.get("gs-blog-color-"+c0.id);if(v){const [m,a]=v.split(",");$("cm").value=m;$("ca").value=a;}await loadCfg();fillForm();renderKws();autoTopic();render();autoPhotos(false);}
+async function onClient(){fresh();pickStyle(false);await loadCfg();fillForm();renderKws();autoTopic();render();autoPhotos(false);}
 $("client").onchange=onClient;
-let kt=0;$("kw").oninput=()=>{clearTimeout(kt);kt=setTimeout(()=>{const t=$("topic").value;autoTopic();renderKws();if(t!==$("topic").value){fresh();render();autoPhotos(false);}},400);};
+let kt=0;$("kw").oninput=()=>{clearTimeout(kt);kt=setTimeout(()=>{const t=$("topic").value;autoTopic();renderKws();if(t!==$("topic").value){fresh();pickStyle(false);render();autoPhotos(false);}},400);};
 $("kws").onclick=e=>{const b=e.target.closest("[data-kw]");if(!b)return;$("kw").value=b.dataset.kw;$("kw").oninput();};
 $("topic").onchange=()=>{fresh();render();autoPhotos(false);};
 $("km").onchange=()=>{CFG.km=$("km").value==="1"?1:0;["treat0","treat1","treat2","treat3"].forEach(k=>delete IMG[k]);delete EDITS.treat;render();autoPhotos(false);};
-["cm","ca"].forEach(id=>$(id).oninput=()=>{$("bi").setAttribute("style",vars());const c=client();if(c)ls.set("gs-blog-color-"+c.id,$("cm").value+","+$("ca").value);});
+["cm","ca"].forEach(id=>$(id).oninput=()=>{$("bi").setAttribute("style",vars());});
+$("style").onchange=()=>{ls.set("gs-blog-style",$("style").value);pickStyle(false);render();};
+$("restyle").onclick=()=>{pickStyle(true);render();msg(`'${esc(BK.STYLES[STY].name)}' 디자인이에요. 마음에 들면 위 디자인 칸에서 고정할 수 있어요.`,"ok");};
+$("phsrc").onchange=()=>ls.set("gs-blog-phsrc",$("phsrc").value);
 $("ons").onclick=e=>{const b=e.target.closest("[data-on]");if(!b)return;const k=b.dataset.on;ON[k]=ON[k]===false?true:false;ls.set("gs-blog-on",JSON.stringify(ON));renderOns();render();};
 $("photosgo").onclick=()=>autoPhotos(true);
 $("reset").onclick=()=>{EDITS={};render();msg("고친 글을 처음 글로 돌렸어요.","ok");};
+$("cobox").addEventListener("change",e=>{if(e.target.closest("[data-f]"))readForm();});
 $("cfgbox").addEventListener("change",e=>{if(e.target.closest("[data-f],[data-d],[data-fl]")){readForm();render();}});
 $("cfgsave").onclick=saveCfg;
 $("logoup").onclick=async()=>{const [f]=await pickFiles(false);if(!f)return;try{$("cfgmsg").textContent="올리는 중…";CFG.logo=await up(f,true);fillForm();render();$("cfgmsg").textContent="로고를 넣었어요. [업체 정보 저장]을 눌러야 팀 모두에게 적용돼요.";}catch(e){$("cfgmsg").textContent="못 올렸어요 ("+e.message+")";}};
@@ -244,9 +276,37 @@ $("facup").onclick=async()=>{const fs=await pickFiles(true);if(!fs.length)return
   for(const f of fs){if((CFG.photos||[]).length>=12)break;try{$("cfgmsg").textContent=`올리는 중… ${++n}/${fs.length}`;(CFG.photos=CFG.photos||[]).push({url:await up(f),label:"",icon:"hospital"});}catch(e){}}
   $("cfgmsg").textContent="사진 아래에 이름(예: 접수·대기실)을 써 주세요.";renderFacs();render();};
 $("facfrom").onclick=async()=>{readForm();const u=await choose(clinicPhotos().filter(u=>!(CFG.photos||[]).some(p=>p.url===u)));if(!u)return;(CFG.photos=CFG.photos||[]).push({url:u,label:"",icon:"hospital"});renderFacs();render();};
+function renderCos(){const a=CFG.coPhotos||[];$("cocnt").textContent=a.length;
+  $("cos").innerHTML=a.map((u,i)=>`<div class="tb"><img src="${esc(u)}" alt="" loading="lazy"><button class="x" data-cdel="${i}">✕</button></div>`).join("");}
+async function quietSave(){const c=client();if(!c)return;try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"blogcfg",id:c.id,data:CFG})});}catch(e){}}
+$("coup").onclick=async()=>{if(!client())return msg("업체를 먼저 골라 주세요.","warn");const fs=await pickFiles(true);if(!fs.length)return;readForm();let n=0;
+  for(const f of fs){try{$("sitemsg").textContent=`올리는 중… ${++n}/${fs.length}`;(CFG.coPhotos=CFG.coPhotos||[]).push(await up(f));}catch(e){}}
+  renderCos();await quietSave();$("sitemsg").textContent=`업체 사진 ${n}장을 넣었어요. 팀 모두 같이 써요.`;IMG={};autoPhotos(false);};
+$("cos").onclick=async e=>{const d=e.target.closest("[data-cdel]");if(!d)return;readForm();CFG.coPhotos.splice(+d.dataset.cdel,1);renderCos();await quietSave();};
+let SITEIMGS=[];
+$("sitego").onclick=async()=>{readForm();const url=CFG.homepage;if(!url)return $("sitemsg").textContent="홈페이지 주소를 넣어 주세요.";if(!await needPW())return;
+  $("sitego").disabled=true;$("sitemsg").textContent="홈페이지를 읽는 중이에요… (조금 걸려요)";
+  try{const r=await fn({action:"site",url});if(!r.ok)throw new Error(r.error||"읽지 못했어요");const g=r.info||{};SITEIMGS=r.imgs||[];
+    const put=(k,v)=>{if(v!=null&&v!==""&&!(Array.isArray(v)&&!v.length))CFG[k]=v;};
+    ["tel","addr","lunch","way","station","walk","parking"].forEach(k=>put(k,typeof g[k]==="string"?g[k].trim():""));
+    if(Array.isArray(g.hours))put("hours",g.hours.filter(h=>Array.isArray(h)&&h[1]).map(h=>[String(h[0]),String(h[1])]));
+    ["badges","feats","treats"].forEach(k=>{if(Array.isArray(g[k]))put(k,g[k].map(String).filter(Boolean));});
+    if(Array.isArray(g.doctors)&&g.doctors.some(d=>d&&d.name)){const old=CFG.doctors||[];CFG.doctors=g.doctors.filter(d=>d&&d.name).slice(0,4).map(d=>({name:String(d.name),title:String(d.title||"원장"),role:String(d.role||""),fields:(d.fields||[]).map(String),history:(d.history||[]).map(String),photo:(old.find(o=>o.name===d.name)||{}).photo||""}));}
+    if(g.room&&g.room.on){CFG.room={on:true,title:String(g.room.title||"[[입원실]] 안내"),items:(g.room.items||[]).filter(Array.isArray).slice(0,6).map((x,i)=>[RICON[i%RICON.length],String(x[0]||""),String(x[1]||"")]),note:String(g.room.note||"")};}
+    if(!CFG.logo&&r.logo)CFG.logoCand=r.logo;
+    fillForm();render();$("cfgbox").open=true;
+    $("sitemsg").textContent=`홈페이지 ${r.pages}쪽을 읽어 채웠어요. 아래 업체 정보를 확인하고 [업체 정보 저장]을 눌러 주세요.`+(r.note?" "+r.note:"")+(SITEIMGS.length?` 홈페이지 사진 ${SITEIMGS.length}장은 [홈페이지 사진 고르기]에서 넣을 수 있어요.`:"");}
+  catch(e){$("sitemsg").textContent="홈페이지를 읽지 못했어요. ("+e.message+")";}finally{$("sitego").disabled=false;}};
+$("cosite").onclick=async()=>{if(!SITEIMGS.length){$("sitemsg").textContent="먼저 [읽어서 채우기]를 눌러 주세요.";return;}
+  const u=await choose(SITEIMGS);if(!u)return;$("sitemsg").textContent="사진을 가져오는 중이에요…";
+  try{const r=await fn({action:"img",url:u});if(!r.ok)throw new Error(r.error);const bl=await (await fetch(r.src)).blob();readForm();
+    (CFG.coPhotos=CFG.coPhotos||[]).push(await up(new File([bl],"site.jpg",{type:bl.type})));renderCos();await quietSave();$("sitemsg").textContent="업체 사진에 넣었어요. 더 고르려면 다시 눌러 주세요.";}
+  catch(e){$("sitemsg").textContent="사진을 가져오지 못했어요. ("+e.message+")";}};
 $("facs").onclick=e=>{const d=e.target.closest("[data-fdel]");if(!d)return;readForm();CFG.photos.splice(+d.dataset.fdel,1);renderFacs();render();};
 
-async function start(){$("bistyle").textContent=BK.CSS;$("topic").innerHTML=Object.keys(BK.T).map(k=>`<option>${esc(k)}</option>`).join("");renderOns();fit();
+async function start(){$("bistyle").textContent=BK.CSS+BK.STYLE_CSS;
+  $("style").innerHTML='<option value="auto">만들 때마다 바뀌게</option>'+Object.entries(BK.STYLES).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join("");
+  [["style","gs-blog-style"],["phsrc","gs-blog-phsrc"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});$("topic").innerHTML=Object.keys(BK.T).map(k=>`<option>${esc(k)}</option>`).join("");renderOns();fit();
   try{const cs=await rest("docs?coll=eq.clients&select=id,data");CL=(cs||[]).map(x=>Object.assign({id:x.id},x.data||{})).filter(c=>c.name).sort((a,b)=>(a.order??999)-(b.order??999)||a.id.localeCompare(b.id));
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}
   catch(e){msg("업체 목록을 불러오지 못했어요. 업체 없이도 만들 수 있어요.","warn");}

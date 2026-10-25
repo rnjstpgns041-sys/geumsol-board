@@ -1,6 +1,6 @@
 // 금솔 팀 사이트 영상 만들기: 슈퍼쇼츠 키를 Supabase 비밀값(SUPERSHORTS_KEY)에 숨겨 두고 대신 불러 주는 함수.
 // 필요한 비밀값(Edge Functions > Secrets): SUPERSHORTS_KEY (ss_live_...), VIDEO_PW (영상 비밀번호)
-// 있으면 쓰는 비밀값: GOOGLE_TTS_KEY (구글 음성), PIXABAY_KEY 또는 PEXELS_KEY (대본에 맞는 무료 사진)
+// 있으면 쓰는 비밀값: GOOGLE_TTS_KEY (구글 음성), PIXABAY_KEY 또는 PEXELS_KEY (대본에 맞는 무료 사진), GEMINI_KEY (홈페이지 정리·나노바나나)
 // 함수 설정에서 "Verify JWT"는 꺼 두세요 (사이트는 로그인 없이 부름, 대신 VIDEO_PW로 막음).
 const SS = "https://www.supershorts.co.kr/api/business";
 const cors = {
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return j({ ok: false, error: "요청이 비어 있어요." }, 400); }
 
-  if (b.action === "ping") return j({ ok: true, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim(), photos: !!((Deno.env.get("PIXABAY_KEY") || "").trim() || (Deno.env.get("PEXELS_KEY") || "").trim()) });
+  if (b.action === "ping") return j({ ok: true, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim(), photos: !!((Deno.env.get("PIXABAY_KEY") || "").trim() || (Deno.env.get("PEXELS_KEY") || "").trim()), gemini: !!(Deno.env.get("GEMINI_KEY") || "").trim() });
 
   // 구글 음성: 문장마다 mp3를 만들어 돌려줌 (사이트에서 영상에 붙임). 비밀값 GOOGLE_TTS_KEY
   if (b.action === "tts") {
@@ -85,6 +85,126 @@ Deno.serve(async (req) => {
     return j({ ok: true, audios: out });
   }
 
+  // ── 블로그 이미지 도우미 ──
+  // 비밀값 GEMINI_KEY (aistudio.google.com/apikey): 홈페이지 내용 정리(gemini-2.5-flash) + 나노바나나 그림(gemini-2.5-flash-image)
+  const gemk = (Deno.env.get("GEMINI_KEY") || "").trim();
+  const safeUrl = (s: unknown) => {
+    try {
+      const u = new URL(String(s || "").trim().replace(/^(?!https?:\/\/)/i, "https://"));
+      if (!/^https?:$/.test(u.protocol)) return null;
+      const h = u.hostname.toLowerCase();
+      if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || /^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[|::)/.test(h) || /^\d+$/.test(h)) return null;
+      return u;
+    } catch { return null; }
+  };
+  const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+  const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept-Language": "ko-KR,ko;q=0.9" };
+  async function gem(model: string, body: unknown) {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240));
+    return d;
+  }
+
+  // 홈페이지 읽기: 첫 화면 + 의료진·진료시간·오시는 길 같은 하위 쪽을 읽어 글자만 모으고, 제미나이 키가 있으면 칸별로 정리
+  if (b.action === "site") {
+    const u0 = safeUrl(b.url);
+    if (!u0) return j({ ok: false, error: "홈페이지 주소를 확인해 주세요." });
+    const strip = (h: string) => h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<br\s*\/?>|<\/(p|div|li|tr|h\d|dt|dd|section)>/gi, "\n").replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
+      .replace(/[ \t\r\f]+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
+    async function get(u: URL) {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
+      try {
+        const r = await fetch(u, { headers: UA, signal: ctl.signal, redirect: "follow" });
+        if (!r.ok) return "";
+        const buf = new Uint8Array(await r.arrayBuffer()).subarray(0, 1_500_000);
+        let txt = new TextDecoder("utf-8").decode(buf);
+        if (/charset=["']?euc-kr/i.test(txt) || /euc-kr/i.test(r.headers.get("content-type") || "")) txt = new TextDecoder("euc-kr").decode(buf);
+        return txt;
+      } catch { return ""; } finally { clearTimeout(t); }
+    }
+    const home = await get(u0);
+    if (!home) return j({ ok: false, error: "홈페이지를 열지 못했어요. 주소가 맞는지 확인해 주세요." });
+    const pages: string[] = [strip(home)], imgs = new Set<string>(), seen = new Set([u0.href]);
+    const WANT = /의료진|원장|소개|진료\s*시간|진료안내|오시는|찾아오|위치|시설|둘러|입원|병실|진료과목|클리닉|치료|about|doctor|location|map|info/i;
+    const links: URL[] = [];
+    for (const m of home.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+      try {
+        const u = new URL(m[1], u0); const label = strip(m[2]);
+        if (u.hostname !== u0.hostname || seen.has(u.href) || !/^https?:$/.test(u.protocol)) continue;
+        if (WANT.test(label) || WANT.test(u.pathname)) { seen.add(u.href); links.push(u); }
+      } catch { /* 잘못된 링크 */ }
+    }
+    const subs = await Promise.all(links.slice(0, 6).map(get));
+    subs.forEach((h) => { if (h) pages.push(strip(h)); });
+    for (const h of [home, ...subs]) for (const m of h.matchAll(/<img\b[^>]*?(?:data-src|src)=["']([^"']+)["']/gi)) {
+      try { const u = new URL(m[1], u0); if (/^https?:$/.test(u.protocol) && !/logo|icon|btn|blank|sprite|banner_s|\.gif|\.svg/i.test(u.pathname)) imgs.add(u.href); } catch { /* */ }
+    }
+    const text = pages.join("\n----\n").slice(0, 40000);
+    const logo = (home.match(/<img\b[^>]*(?:src)=["']([^"']*logo[^"']*)["']/i) || [])[1];
+    // 키가 없을 때: 전화·주소·진료시간만 글자 규칙으로
+    const tel = (text.match(/0\d{1,2}[-.)\s]\d{3,4}[-.\s]\d{4}|1[5-9]\d{2}-\d{4}/) || [""])[0];
+    const hours: string[][] = [];
+    for (const m of text.matchAll(/(평일|월[~\-–]금|월요일[^\n]{0,8}금요일|토요일|토|일요일|일·공휴일|공휴일|일요일·공휴일|야간[^\n]{0,8})\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*(?:분)?\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2}\s*(?:분)?)/g)) {
+      if (hours.length < 4 && !hours.some((h) => h[0] === m[1])) hours.push([m[1], m[2].replace(/\s+/g, " ")]);
+    }
+    const lunch = ((text.match(/점심\s*시간\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2})/) || [])[1] || "");
+    const addr = ((text.match(/((?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n]{4,60}?(?:로|길)\s?\d+[^\n]{0,30})/) || [])[1] || "").trim();
+    let info: Record<string, unknown> = { tel, hours, lunch, addr };
+    let note = "";
+    if (gemk) {
+      const prompt = `아래는 한 병원(한의원) 홈페이지에서 모은 글이에요. 블로그 안내 이미지에 넣을 정보를 JSON 하나로만 정리해 주세요.
+규칙: 홈페이지에 실제로 있는 사실만 쓰고, 없으면 빈 값. 의료광고법에 걸리는 말(최고, 최초, 유일, 완치, 100%, 부작용 없음, 보장, 후기, 치료 효과 단정)은 쓰지 말 것. 짧고 쉬운 말로.
+모양: {"name":"업체 이름","tel":"전화","hours":[["평일","09:00 - 19:00"]],"lunch":"13:00 - 14:00","addr":"주소","way":"찾아오는 길 한 줄","station":"가까운 역과 출구","walk":"도보 몇 분","parking":"주차 안내 한 줄","badges":["강점 3개, 6~10자"],"feats":["업체 특징 4개, 12자 안팎, 핵심 낱말 하나를 [[ ]]로 감싸기"],"treats":["진료·치료 항목 4~6개, 6~10자"],"doctors":[{"name":"","title":"대표원장","role":"한의사","fields":["진료 분야"],"history":["약력·학회 3~5줄"]}],"room":{"on":false,"title":"","items":[["1인실·다인실","짧은 설명"]],"note":""},"intro":"업체 소개 두 문장"}
+room.on은 입원실이 실제로 있을 때만 true.
+----
+${text}`;
+      try {
+        const d = await gem("gemini-2.5-flash", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } });
+        const t = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
+        const g = JSON.parse(t.replace(/^```json|```$/g, "").trim());
+        info = { ...info, ...Object.fromEntries(Object.entries(g).filter(([, v]) => v !== "" && v != null && !(Array.isArray(v) && !v.length))) };
+      } catch (e) { note = "제미나이 정리를 못 해서 전화·주소·시간만 채웠어요. (" + String((e as Error).message || e).slice(0, 160) + ")"; }
+    } else note = "제미나이 키(GEMINI_KEY)가 없어서 전화·주소·시간만 채웠어요.";
+    return j({ ok: true, info, imgs: [...imgs].slice(0, 40), logo: logo ? new URL(logo, u0).href : "", pages: pages.length, note });
+  }
+
+  // 홈페이지 사진 한 장을 대신 받아 data URL로 (브라우저는 다른 사이트 사진을 그림으로 저장할 수 없어서)
+  if (b.action === "img") {
+    const u = safeUrl(b.url);
+    if (!u) return j({ ok: false, error: "사진 주소가 이상해요." });
+    try {
+      const r = await fetch(u, { headers: { ...UA, Referer: u.origin + "/" } });
+      const ct = r.headers.get("content-type") || "";
+      if (!r.ok || !/^image\//.test(ct)) return j({ ok: false, error: "사진을 받지 못했어요." });
+      const buf = new Uint8Array(await r.arrayBuffer());
+      if (buf.length > 8_000_000) return j({ ok: false, error: "사진이 너무 커요." });
+      return j({ ok: true, src: "data:" + ct.split(";")[0] + ";base64," + b64(buf) });
+    } catch { return j({ ok: false, error: "사진을 받지 못했어요." }); }
+  }
+
+  // 나노바나나(gemini-2.5-flash-image)로 사진 그리기. 구글 결제가 연결된 키에서만 됨 (한 장 약 50원)
+  if (b.action === "genimg") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const what = String(b.prompt || "").slice(0, 500);
+    if (!what) return j({ ok: false, error: "무엇을 그릴지 비어 있어요." });
+    const prompt = `A natural, photorealistic photo for a Korean clinic's blog: ${what}. Korean people if people appear, bright clean modern Korean clinic interior, soft natural light, warm and trustworthy mood, landscape 4:3. Absolutely no text, letters, watermarks or logos in the image.`;
+    const tryOnce = (cfg: Record<string, unknown>) => gem("gemini-2.5-flash-image", { contents: [{ parts: [{ text: prompt }] }], generationConfig: cfg });
+    try {
+      let d;
+      try { d = await tryOnce({ responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "4:3" } }); }
+      catch { d = await tryOnce({ responseModalities: ["TEXT", "IMAGE"] }); }
+      const p = (d?.candidates?.[0]?.content?.parts || []).find((x: { inlineData?: { data?: string } }) => x.inlineData?.data);
+      if (!p) return j({ ok: false, error: "그림이 나오지 않았어요. 다시 눌러 주세요." });
+      return j({ ok: true, src: "data:" + (p.inlineData.mimeType || "image/png") + ";base64," + p.inlineData.data });
+    } catch (e) {
+      const m = String((e as Error).message || e);
+      return j({ ok: false, error: /billing|quota|limit|RESOURCE_EXHAUSTED|free tier/i.test(m) ? "나노바나나는 구글 결제가 연결돼야 그려져요. (" + m.slice(0, 140) + ")" : "나노바나나 그림을 못 만들었어요. (" + m.slice(0, 160) + ")" });
+    }
+  }
+
   // 대본에 맞는 사진: 검색어마다 무료 사진(Pixabay, 없으면 Pexels) 하나를 골라 그림 자체(data URL)로 돌려줌.
   // 비밀값 PIXABAY_KEY (pixabay.com/api/docs 에서 가입하면 바로 보임) 또는 PEXELS_KEY
   if (b.action === "photos") {
@@ -93,7 +213,6 @@ Deno.serve(async (req) => {
     const qs = (Array.isArray(b.queries) ? b.queries : []).slice(0, 30).map((x) => String(x || "").trim().slice(0, 80));
     const skip = new Set((Array.isArray(b.skip) ? b.skip : []).map(String));
     const pick = Math.max(0, Math.floor(Number(b.pick) || 0));
-    const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
     // 검색 결과를 {id, url, by} 목록으로
     async function search(q: string): Promise<{ id: string; url: string; by: string }[] | "badkey"> {
       if (xk) {
