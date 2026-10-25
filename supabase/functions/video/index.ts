@@ -124,10 +124,15 @@ Deno.serve(async (req) => {
   }
   async function gemAuto(kind: "text" | "image", body: unknown) {
     let last: unknown = null;
-    for (const m of (await models(kind)).slice(0, 5)) {
-      try { return await gem(m, body); } catch (e) {
-        last = e; const t = String((e as Error).message || e);
-        if (!/not found|no longer|not available|not supported|deprecated|unsupported|404/i.test(t)) throw e;
+    // 없는 모델이면 다음 모델로, 붐비면(503·429) 잠깐 쉬고 한 번 더 한 뒤 다음 모델로
+    for (const m of (await models(kind)).slice(0, 6)) {
+      for (let k = 0; k < 2; k++) {
+        try { return await gem(m, body); } catch (e) {
+          last = e; const t = String((e as Error).message || e);
+          if (/high demand|overloaded|unavailable|try again|503|429|RESOURCE_EXHAUSTED|rate/i.test(t)) { if (k === 0) { await new Promise((r) => setTimeout(r, 2500)); continue; } break; }
+          if (/not found|no longer|not available|not supported|deprecated|unsupported|404/i.test(t)) break;
+          throw e;
+        }
       }
     }
     throw last || new Error("쓸 수 있는 제미나이 모델을 찾지 못했어요.");
@@ -135,7 +140,7 @@ Deno.serve(async (req) => {
   async function gem(model: string, body: unknown) {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240) + (r.status === 404 ? " (404)" : ""));
+    if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240) + (r.status === 404 || r.status === 503 || r.status === 429 ? " (" + r.status + ")" : ""));
     return d;
   }
 
