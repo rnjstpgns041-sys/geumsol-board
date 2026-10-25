@@ -43,7 +43,9 @@ function plan(lines,durs,opt){const T=[],L=[];let t=0.25;const gap=opt.gap==null
   const scenes=G.map((gr,k)=>{const a=L[gr.i[0]],z=L[gr.i[gr.i.length-1]];
     let ph=gr.i.map(i=>own[i]).find(x=>x>=0&&!used.has(x));if(ph==null)ph=next();
     if(ph<0)ph=own.find(x=>x>=0&&!used.has(x));if(ph==null||ph<0)ph=k%Math.max(1,opt.nPhotos);
-    used.add(ph);return {t:a.t,d:z.t+z.d-a.t,photo:ph,fx:k%3};});
+    used.add(ph);return {t:a.t,d:z.t+z.d-a.t,photo:ph};});
+  /* 장면마다 사진 움직임(mv 6가지)과 바뀔 때 효과(fx 6가지)를 고르되, 바로 앞과 같은 건 피함 */
+  let lm=-1,lf=-1;scenes.forEach(sc=>{let m,f;do m=Math.floor(r()*6);while(m===lm);do f=Math.floor(r()*6);while(f===lf);sc.mv=lm=m;sc.fx=lf=f;});
   const endAt=Math.max(scenes.length>1?scenes[scenes.length-1].t:total-3.5,total-6);
   return {subs:T,lines:L,scenes,total,endAt};}
 
@@ -65,16 +67,25 @@ function drawFrame(g,t,S){const {B,P,A,title,kw}=S;
   if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=HEAD*0.42+s1*0.55+s2*0.75;
     if(B.t2bg){const w=g.measureText(title[1]).width+36;g.fillStyle=B.t2bg;g.fillRect(W/2-w/2,y2-s2*0.68,w,s2*1.36);}
     g.fillStyle=B.t2;g.fillText(title[1],W/2,y2);}
-  /* 가운데 사진: 천천히 확대 + 장면 바뀔 때 밀기·겹치기·확대 효과 */
+  /* 가운데 사진: 장면마다 확대·축소·좌우·위아래로 움직이고, 바뀔 때 밀기·겹치기·원·위로 밀기·확대·블라인드 효과 */
   g.save();g.beginPath();g.rect(0,HEAD,W,BAND);g.clip();
   let k=P.scenes.findIndex((s,i)=>t>=s.t&&(i===P.scenes.length-1||t<P.scenes[i+1].t));if(k<0)k=0;
-  const sc=P.scenes[k],prev=P.scenes[k-1],p=(t-sc.t)/Math.max(1,sc.d+0.4),tr=ease((t-sc.t)/0.45);
-  const draw=(s,pp,alpha,dx)=>{const im=A.photos[s.photo%A.photos.length],z=1.04+0.08*pp,dir=s.photo%2?1:-1;g.globalAlpha=alpha;cover(g,im,dx,HEAD,W,BAND,z,dir*0.4*pp,0);g.globalAlpha=1;};
-  if(prev&&tr<1){const pp=(t-prev.t)/Math.max(1,prev.d+0.4);
-    if(sc.fx===0){draw(prev,pp,1,-W*tr);draw(sc,p,1,W*(1-tr));}
-    else if(sc.fx===1){draw(prev,pp,1,0);draw(sc,p,tr,0);}
-    else{draw(prev,pp,1,0);g.save();const r=Math.max(1,tr*W*0.75);g.beginPath();g.arc(W/2,HEAD+BAND/2,r,0,7);g.clip();draw(sc,p,1,0);g.restore();}}
-  else draw(sc,p,1,0);
+  const TR=0.5,am=[0.45,1,1.7][S.mo==null?1:S.mo];
+  const sc=P.scenes[k],prev=P.scenes[k-1],p=Math.min(1,(t-sc.t)/Math.max(1,sc.d+TR)),tr=ease((t-sc.t)/TR);
+  const draw=(s,pp,alpha,dx,dy,zx)=>{const im=A.photos[s.photo%A.photos.length],q=pp*pp*(3-2*pp)*0.35+pp*0.65;let z=1.06,px=0,py=0;
+    switch(s.mv){case 0:z=1.04+0.16*am*q;break;case 1:z=1.04+0.16*am*(1-q);break;
+      case 2:z=1.1+0.08*am;px=Math.min(1,am)*(-0.9+1.8*q);break;case 3:z=1.1+0.08*am;px=Math.min(1,am)*(0.9-1.8*q);break;
+      case 4:z=1.12+0.08*am;py=Math.min(1,am)*(0.9-1.8*q);break;default:z=1.05+0.13*am*q;px=0.6*Math.min(1,am)*q;py=-0.5*Math.min(1,am)*q;}
+    g.globalAlpha=alpha;cover(g,im,dx||0,HEAD+(dy||0),W,BAND,z*(zx||1),px,py);g.globalAlpha=1;};
+  if(prev&&tr<1){const pp=Math.min(1,(t-prev.t)/Math.max(1,prev.d+TR));
+    switch(sc.fx){
+      case 0:draw(prev,pp,1,-W*tr);draw(sc,p,1,W*(1-tr));break;
+      case 1:draw(prev,pp,1);draw(sc,p,tr);break;
+      case 2:{draw(prev,pp,1);g.save();g.beginPath();g.arc(W/2,HEAD+BAND/2,Math.max(1,tr*W*0.8),0,7);g.clip();draw(sc,p,1);g.restore();break;}
+      case 3:draw(prev,pp,1,0,-BAND*tr);draw(sc,p,1,0,BAND*(1-tr));break;
+      case 4:draw(prev,pp,1,0,0,1+0.25*tr);draw(sc,p,tr,0,0,1.3-0.3*tr);break;
+      default:{draw(prev,pp,1);g.save();g.beginPath();const n=7,bw=W/n;for(let i=0;i<n;i++)g.rect(i*bw,HEAD,bw*Math.min(1,Math.max(0,tr*1.6-i*0.09)),BAND);g.clip();draw(sc,p,1);g.restore();}}}
+  else draw(sc,p,1);
   /* 끝 화면: 로고가 크게 들어왔다가 조금씩 작아짐 */
   if(t>=P.endAt){const e=ease((t-P.endAt)/0.6),zz=1.08-0.06*ease((t-P.endAt)/(P.total-P.endAt));
     g.fillStyle=B.endBg;g.globalAlpha=e;g.fillRect(0,HEAD,W,BAND);
@@ -158,7 +169,7 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   const tl=lines.reduce((a,l)=>a+len(l),0)||1;
   const durs=lines.map((l,i)=>nar?nar.duration*len(l)/tl-0.001:bufs[i]?bufs[i].duration:Math.max(1.6,len(l)*0.19));
   const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,own:A.own,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
-  const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw};
+  const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion};
   const music=await bgmBuffer(ac,o.bgm,P.total);
   const cv=o.canvas||document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");
   drawFrame(g,0,S);
@@ -186,7 +197,7 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
 /* 미리보기: 소리 없이 화면만 그려 봄 */
 async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra});
   const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,own:A.own});
-  const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw});return P;}
+  const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion});return P;}
 
 root.ShortsMaker={make,still,brandOf,titleOf,BRAND,bgmBuffer,queryOf};
 })(window);

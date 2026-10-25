@@ -39,8 +39,9 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     </select></label>
     <label>말 빠르기<select id="rate"><option value="1.0">보통</option><option value="1.1" selected>조금 빠르게</option><option value="1.2">빠르게</option></select></label>
   </div>
-  <div class="grid" style="grid-template-columns:1fr 1fr auto;margin-top:8px;align-items:end">
+  <div class="grid" style="grid-template-columns:1fr 1fr 1.3fr auto;margin-top:8px;align-items:end">
     <label>배경음악<select id="bgm"><option value="calm">잔잔하게</option><option value="bright">밝게</option><option value="file">내 음악 파일 고르기…</option><option value="none">없이</option></select></label>
+    <label>사진 움직임<select id="motion"><option value="1">보통</option><option value="2">크게</option><option value="0">조용히</option></select></label>
     <label>사진<select id="phmode"><option value="match">대본에 맞는 사진 섞기</option><option value="brand">업체 사진만</option></select></label>
     <button class="btn small" id="bgmtry" style="height:38px">음악 들어 보기</button>
   </div><input type="file" id="bgmfile" accept="audio/*" hidden><div class="muted" id="bgminfo" style="margin-top:4px"></div>
@@ -134,7 +135,7 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   if(hit)$("client").value=hit.id;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
-  [["bgm","gs-video-bgm"],["phmode","gs-video-ph"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
+  [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
   renderKws();fill();auto();preview();await loadList();poll();}
 $("client").onchange=()=>{renderKws();fill();auto();};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
@@ -168,7 +169,7 @@ function bgmSpec(){const v=$("bgm").value;return v==="file"?BGMF:v;}
 function lines(){return $("text").value.split("\n").map(x=>x.trim()).filter(Boolean);}
 function titleNow(){const L=lines(),d=ShortsMaker.titleOf(L[0]||"");const a=$("t1").value.trim(),b=$("t2").value.trim();return a||b?[a||d[0],b]:d;}
 async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
-  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow()});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
+  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),motion:+$("motion").value});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
 $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
@@ -182,7 +183,7 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
         if(!r.ok)throw new Error(r.error||"목소리를 만들지 못했어요.");audios=r.audios.map(b64ab);}
       else msg("구글 음성 키가 아직 없어서 이번에는 목소리 없이 만들어요.","warn");}
     msg("영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 창을 앞에 띄워 두세요.","warn");
-    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,bgm:bgmSpec(),canvas:$("pv"),seed:SEEDV,title:titleNow(),
+    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,bgm:bgmSpec(),motion:+$("motion").value,canvas:$("pv"),seed:SEEDV,title:titleNow(),
       onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
     const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
     const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;
@@ -195,6 +196,7 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
   busy=false;$("go").disabled=false;};
 $("pnext").onclick=async()=>{SEEDV++;try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
+$("motion").onchange=()=>ls.set("gs-video-motion",$("motion").value);
 $("phmode").onchange=async()=>{ls.set("gs-video-ph",$("phmode").value);try{await findPhotos(false);}catch(e){msg(esc(e.message),"warn");}preview();};
 $("bgm").onchange=()=>{ls.set("gs-video-bgm",$("bgm").value==="file"?"calm":$("bgm").value);if($("bgm").value==="file"&&!BGMF)$("bgmfile").click();};
 $("bgmfile").onchange=async()=>{const f=$("bgmfile").files[0];if(!f){if(!BGMF)$("bgm").value="calm";return;}BGMF=await f.arrayBuffer();$("bgminfo").textContent="배경음악: "+f.name+" (이 화면을 닫으면 다시 골라야 해요)";};
