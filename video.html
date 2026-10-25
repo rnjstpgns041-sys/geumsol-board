@@ -39,6 +39,11 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     </select></label>
     <label>말 빠르기<select id="rate"><option value="1.0">보통</option><option value="1.1" selected>조금 빠르게</option><option value="1.2">빠르게</option></select></label>
   </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr auto;margin-top:8px;align-items:end">
+    <label>배경음악<select id="bgm"><option value="calm">잔잔하게</option><option value="bright">밝게</option><option value="file">내 음악 파일 고르기…</option><option value="none">없이</option></select></label>
+    <label>사진<select id="phmode"><option value="match">대본에 맞는 사진 섞기</option><option value="brand">업체 사진만</option></select></label>
+    <button class="btn small" id="bgmtry" style="height:38px">음악 들어 보기</button>
+  </div><input type="file" id="bgmfile" accept="audio/*" hidden><div class="muted" id="bgminfo" style="margin-top:4px"></div>
   <div id="kws" class="row" style="margin-top:8px"></div>
   <details id="fbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">업체 특징 보기·고치기 (대본에 들어가요)</summary>
     <div class="grid" style="grid-template-columns:200px 1fr;margin-top:8px"><label>지역<input id="farea" placeholder="예: 부산 동래"></label><label>특징 (한 줄에 하나, 위에서부터 3~4개가 들어가요)<textarea id="ffeat" style="min-height:110px"></textarea></label></div>
@@ -51,7 +56,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
   <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px"><label>영상 위 제목 첫 줄<input id="t1" placeholder="비워 두면 대본 첫 문장으로 채워요"></label><label>제목 둘째 줄 (강조 색)<input id="t2" placeholder=""></label></div>
   <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
   <div class="row" style="margin-top:10px;justify-content:space-between">
-    <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 한 줄이 한 장면이에요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
+    <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
     <button class="btn primary" id="go">영상 만들기</button>
   </div>
   <div id="msg" style="margin-top:10px"></div>
@@ -106,7 +111,7 @@ function findTpls(probes){const out=[],seen=new Set();
 /* 키워드·업체가 바뀌면 대본 칸이 비었거나 아직 자동으로 쓴 그대로일 때만 새로 쓴다 (직접 고친 대본은 건드리지 않음) */
 function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$("text").value.trim();if(!force&&cur&&cur!==LAST)return;if(!$("client").value&&!$("kw").value.trim())return;
   const r=ScriptGen.make($("kw").value,$("client").value?cname():"",prof(),++SEED);$("text").value=LAST=r.text;cnt();
-  if(typeof preview==="function")preview();msg(`1분 분량(${r.chars}자) 대본을 자동으로 썼어요. 읽어 보고 고칠 곳만 고쳐 주세요.`+(force?" 다시 누르면 다른 버전이 나와요.":""),"ok");}
+  if(typeof preview==="function"){preview();if(force&&typeof findPhotos==="function")findPhotos(true).then(x=>{if(x)preview();}).catch(()=>{});}msg(`1분 분량(${r.chars}자) 대본을 자동으로 썼어요. 읽어 보고 고칠 곳만 고쳐 주세요.`+(force?" 다시 누르면 다른 버전이 나와요.":""),"ok");}
 function cname(){const o=$("client").selectedOptions[0];return o?o.textContent:"";}
 function renderKws(){const cid=$("client").value,ks=KW.filter(k=>k.cid===cid);
   $("kws").innerHTML=ks.length?`<span class="muted">이 업체 키워드:</span>`+ks.map(k=>`<button class="chip" data-kw="${esc(k.kw)}" aria-pressed="${k.kw===$("kw").value}">${esc(k.kw)}</button>`).join(""):"";}
@@ -129,6 +134,7 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   if(hit)$("client").value=hit.id;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
+  [["bgm","gs-video-bgm"],["phmode","gs-video-ph"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
   renderKws();fill();auto();preview();await loadList();poll();}
 $("client").onchange=()=>{renderKws();fill();auto();};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
@@ -145,11 +151,24 @@ $("ffind").onclick=async()=>{$("fmsg").textContent="슈퍼쇼츠에 디자인 �
     tplOpts($("ftpl").value);$("fmsg").textContent=TPLS.length?`디자인 ${TPLS.length}개를 찾았어요. 이 업체 디자인을 고르고 [특징 저장]을 눌러 주세요.`:"목록을 찾지 못했어요. 아래 '슈퍼쇼츠 응답 원문'을 펼쳐 화면을 찍어 보내 주세요.";}
   catch(e){$("fmsg").textContent="연결하지 못했어요.";}finally{$("ffind").disabled=false;}};
 /* 영상 만들기: 구글 음성으로 문장마다 목소리를 받고, 이 화면에서 바로 영상 파일을 만든다 */
-let TTS=null,SEEDV=Date.now()%1000,PVT=0;
+let TTS=null,PH=null,EXTRA=null,BGMF=null,SEEDV=Date.now()%1000,PVT=0;
+async function caps(){if(TTS===null||PH===null){const p=await fn({action:"ping"});TTS=!!p.tts;PH=!!p.photos;}}
+/* 대본에 맞는 사진: 문장마다 검색어를 만들어 무료 사진(Pexels)을 하나씩 받아 둠 (상담·예약 문장은 업체 사진) */
+const exKey=L=>SEEDV+"|"+L.join("\n");
+function extraNow(){const L=lines();return $("phmode").value==="match"&&EXTRA&&EXTRA.k===exKey(L)?EXTRA.list:null;}
+async function findPhotos(quiet){const L=lines();if($("phmode").value!=="match"||!L.length)return null;
+  try{await caps();}catch(e){return null;}
+  if(!PH){if(!quiet)msg("대본에 맞는 사진 키(PEXELS_KEY)가 아직 없어서 이번에는 업체 사진만 써요.","warn");return null;}
+  const k=exKey(L);if(EXTRA&&EXTRA.k===k)return EXTRA.list;
+  const qs=L.map(l=>ShortsMaker.queryOf(l));if(!qs.some(Boolean))return null;
+  $("pinfo").textContent="대본에 맞는 사진을 찾는 중이에요…";
+  const r=await fn({action:"photos",queries:qs,pick:SEEDV});if(!r.ok)throw new Error(r.error||"사진을 찾지 못했어요.");
+  EXTRA={k,list:(r.photos||[]).map(x=>x&&x.src)};return EXTRA.list;}
+function bgmSpec(){const v=$("bgm").value;return v==="file"?BGMF:v;}
 function lines(){return $("text").value.split("\n").map(x=>x.trim()).filter(Boolean);}
 function titleNow(){const L=lines(),d=ShortsMaker.titleOf(L[0]||"");const a=$("t1").value.trim(),b=$("t2").value.trim();return a||b?[a||d[0],b]:d;}
 async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
-  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
+  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow()});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
 $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
@@ -157,12 +176,13 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
   if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요. (유당한의원, 수월한의원, 정용균변호사)","err");return;}
   busy=true;$("go").disabled=true;ls.set("gs-video-voice",$("voice").value);
   try{let audios=[];const v=$("voice").value;
-    if(v!=="none"){if(TTS===null){const p=await fn({action:"ping"});TTS=!!p.tts;}
+    let extra=null;try{extra=await findPhotos(false);}catch(e){msg(esc(e.message)+" 이번에는 업체 사진만 써요.","warn");}
+    if(v!=="none"){await caps();
       if(TTS){msg("구글 음성으로 목소리를 만드는 중이에요…","warn");const r=await fn({action:"tts",lines:L,voice:v,rate:$("rate").value});
         if(!r.ok)throw new Error(r.error||"목소리를 만들지 못했어요.");audios=r.audios.map(b64ab);}
       else msg("구글 음성 키가 아직 없어서 이번에는 목소리 없이 만들어요.","warn");}
     msg("영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 창을 앞에 띄워 두세요.","warn");
-    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,canvas:$("pv"),seed:SEEDV,title:titleNow(),
+    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,bgm:bgmSpec(),canvas:$("pv"),seed:SEEDV,title:titleNow(),
       onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
     const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
     const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;
@@ -174,7 +194,14 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
     msg(`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`,"ok");}
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
   busy=false;$("go").disabled=false;};
-$("pnext").onclick=()=>{SEEDV++;preview();};
+$("pnext").onclick=async()=>{SEEDV++;try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
+$("phmode").onchange=async()=>{ls.set("gs-video-ph",$("phmode").value);try{await findPhotos(false);}catch(e){msg(esc(e.message),"warn");}preview();};
+$("bgm").onchange=()=>{ls.set("gs-video-bgm",$("bgm").value==="file"?"calm":$("bgm").value);if($("bgm").value==="file"&&!BGMF)$("bgmfile").click();};
+$("bgmfile").onchange=async()=>{const f=$("bgmfile").files[0];if(!f){if(!BGMF)$("bgm").value="calm";return;}BGMF=await f.arrayBuffer();$("bgminfo").textContent="배경음악: "+f.name+" (이 화면을 닫으면 다시 골라야 해요)";};
+let TRY=null;$("bgmtry").onclick=async()=>{if(TRY){try{TRY.close();}catch(e){}TRY=null;$("bgmtry").textContent="음악 들어 보기";return;}
+  const sp=bgmSpec();if(!sp||sp==="none"){msg("배경음악을 '없이'로 골랐어요.","warn");return;}
+  const ac=new (window.AudioContext||window.webkitAudioContext)();TRY=ac;$("bgmtry").textContent="멈추기";
+  const b=await ShortsMaker.bgmBuffer(ac,sp,15);if(!b||TRY!==ac){return;}const n=ac.createBufferSource();n.buffer=b;n.connect(ac.destination);n.onended=()=>{if(TRY===ac){ac.close();TRY=null;$("bgmtry").textContent="음악 들어 보기";}};n.start();};
 ["text","t1","t2"].forEach(id=>$(id).addEventListener("input",preview));$("client").addEventListener("change",()=>{$("t1").value="";$("t2").value="";preview();});
 $("logout").onclick=()=>{PW="";ls.set("gs-video-pw","");gate();};
 document.addEventListener("click",e=>{const t=e.target;
