@@ -53,10 +53,38 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const key = (Deno.env.get("SUPERSHORTS_KEY") || "").trim();
   const pw = (Deno.env.get("VIDEO_PW") || "").trim();
-  if (!key || !pw) return j({ ok: false, error: "Supabase 비밀값(SUPERSHORTS_KEY, VIDEO_PW)이 아직 없어요." }, 500);
+  if (!pw) return j({ ok: false, error: "Supabase 비밀값 VIDEO_PW가 아직 없어요." }, 500);
   if ((req.headers.get("x-video-key") || "") !== pw) return j({ ok: false, auth: false, error: "영상 비밀번호가 맞지 않아요." }, 401);
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return j({ ok: false, error: "요청이 비어 있어요." }, 400); }
+
+  if (b.action === "ping") return j({ ok: true, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim() });
+
+  // 구글 음성: 문장마다 mp3를 만들어 돌려줌 (사이트에서 영상에 붙임). 비밀값 GOOGLE_TTS_KEY
+  if (b.action === "tts") {
+    const gk = (Deno.env.get("GOOGLE_TTS_KEY") || "").trim();
+    if (!gk) return j({ ok: false, error: "구글 음성 키(GOOGLE_TTS_KEY)가 아직 없어요." }, 500);
+    const lines = (Array.isArray(b.lines) ? b.lines : []).map((x) => String(x || "").trim().slice(0, 400)).filter(Boolean).slice(0, 40);
+    if (!lines.length) return j({ ok: false, error: "읽을 문장이 없어요." }, 400);
+    const voice = /^ko-KR-[\w-]{1,40}$/.test(String(b.voice)) ? String(b.voice) : "ko-KR-Neural2-C";
+    const rate = Math.min(1.5, Math.max(0.7, Number(b.rate) || 1.1));
+    const out: string[] = [];
+    for (const text of lines) {
+      const r = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + encodeURIComponent(gk), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: { text }, voice: { languageCode: "ko-KR", name: voice }, audioConfig: { audioEncoding: "MP3", speakingRate: rate, sampleRateHertz: 44100 } }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.audioContent) {
+        const m = String(d?.error?.message || r.status).split(gk).join("[키]").slice(0, 200);
+        return j({ ok: false, error: r.status === 403 ? "구글에서 음성 기능이 꺼져 있거나 키 권한이 없어요. (" + m + ")" : "구글 음성을 만들지 못했어요. (" + m + ")" });
+      }
+      out.push(d.audioContent);
+    }
+    return j({ ok: true, audios: out });
+  }
+
+  if (!key) return j({ ok: false, error: "Supabase 비밀값 SUPERSHORTS_KEY가 아직 없어요." }, 500);
 
   async function call(method: string, path: string, body?: unknown) {
     const h: Record<string, string> = { Authorization: `Bearer ${key}` };
@@ -160,7 +188,6 @@ Deno.serve(async (req) => {
     return j({ ok: true, status: "completed", files, credits: st.settled_credits ?? null });
   }
 
-  if (b.action === "ping") return j({ ok: true });
 
   // 디자인 목록 찾기: 슈퍼쇼츠에 저장된 업체별 디자인 번호를 알아내려고 후보 주소를 차례로 물어봄 (읽기만 함, 크레딧 안 씀)
   if (b.action === "options") {
