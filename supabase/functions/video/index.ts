@@ -1,6 +1,6 @@
 // 금솔 팀 사이트 영상 만들기: 슈퍼쇼츠 키를 Supabase 비밀값(SUPERSHORTS_KEY)에 숨겨 두고 대신 불러 주는 함수.
 // 필요한 비밀값(Edge Functions > Secrets): SUPERSHORTS_KEY (ss_live_...), VIDEO_PW (영상 비밀번호)
-// 있으면 쓰는 비밀값: GOOGLE_TTS_KEY (구글 음성), PEXELS_KEY (대본에 맞는 무료 사진)
+// 있으면 쓰는 비밀값: GOOGLE_TTS_KEY (구글 음성), PIXABAY_KEY 또는 PEXELS_KEY (대본에 맞는 무료 사진)
 // 함수 설정에서 "Verify JWT"는 꺼 두세요 (사이트는 로그인 없이 부름, 대신 VIDEO_PW로 막음).
 const SS = "https://www.supershorts.co.kr/api/business";
 const cors = {
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return j({ ok: false, error: "요청이 비어 있어요." }, 400); }
 
-  if (b.action === "ping") return j({ ok: true, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim(), photos: !!(Deno.env.get("PEXELS_KEY") || "").trim() });
+  if (b.action === "ping") return j({ ok: true, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim(), photos: !!((Deno.env.get("PIXABAY_KEY") || "").trim() || (Deno.env.get("PEXELS_KEY") || "").trim()) });
 
   // 구글 음성: 문장마다 mp3를 만들어 돌려줌 (사이트에서 영상에 붙임). 비밀값 GOOGLE_TTS_KEY
   if (b.action === "tts") {
@@ -85,28 +85,41 @@ Deno.serve(async (req) => {
     return j({ ok: true, audios: out });
   }
 
-  // 대본에 맞는 사진: 검색어마다 Pexels 무료 사진 하나를 골라 그림 자체(data URL)로 돌려줌. 비밀값 PEXELS_KEY
+  // 대본에 맞는 사진: 검색어마다 무료 사진(Pixabay, 없으면 Pexels) 하나를 골라 그림 자체(data URL)로 돌려줌.
+  // 비밀값 PIXABAY_KEY (pixabay.com/api/docs 에서 가입하면 바로 보임) 또는 PEXELS_KEY
   if (b.action === "photos") {
-    const pk = (Deno.env.get("PEXELS_KEY") || "").trim();
-    if (!pk) return j({ ok: false, error: "사진 키(PEXELS_KEY)가 아직 없어요." }, 500);
+    const xk = (Deno.env.get("PIXABAY_KEY") || "").trim(), pk = (Deno.env.get("PEXELS_KEY") || "").trim();
+    if (!xk && !pk) return j({ ok: false, error: "사진 키(PIXABAY_KEY)가 아직 없어요." }, 500);
     const qs = (Array.isArray(b.queries) ? b.queries : []).slice(0, 30).map((x) => String(x || "").trim().slice(0, 80));
     const skip = new Set((Array.isArray(b.skip) ? b.skip : []).map(String));
     const pick = Math.max(0, Math.floor(Number(b.pick) || 0));
     const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+    // 검색 결과를 {id, url, by} 목록으로
+    async function search(q: string): Promise<{ id: string; url: string; by: string }[] | "badkey"> {
+      if (xk) {
+        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=horizontal&safesearch=true&per_page=20&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
+        if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/key/i.test(t)) return "badkey"; return []; }
+        const d = await r.json().catch(() => ({}));
+        return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; user: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || "") }));
+      }
+      const r = await fetch("https://api.pexels.com/v1/search?per_page=15&orientation=landscape&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
+      if (r.status === 401 || r.status === 403) return "badkey";
+      const d = await r.json().catch(() => ({}));
+      return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string }; photographer: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || "") }));
+    }
     const out: (null | { id: string; src: string; by: string })[] = [];
     for (const q of qs) {
       if (!q) { out.push(null); continue; }
       try {
-        const r = await fetch("https://api.pexels.com/v1/search?per_page=15&orientation=landscape&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
-        if (r.status === 401 || r.status === 403) return j({ ok: false, error: "사진 키(PEXELS_KEY)가 틀렸어요. Supabase 비밀값을 확인해 주세요." });
-        const d = await r.json().catch(() => ({}));
-        const list = (Array.isArray(d.photos) ? d.photos : []).filter((p: { id: number }) => !skip.has(String(p.id)));
+        const res = await search(q);
+        if (res === "badkey") return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
+        const list = res.filter((p) => !skip.has(p.id));
         if (!list.length) { out.push(null); continue; }
         const p = list[(pick + out.length) % Math.min(list.length, 6)];
-        const im = await fetch(String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop");
+        const im = await fetch(p.url);
         if (!im.ok) { out.push(null); continue; }
-        skip.add(String(p.id));
-        out.push({ id: String(p.id), src: "data:image/jpeg;base64," + b64(new Uint8Array(await im.arrayBuffer())), by: String(p.photographer || "") });
+        skip.add(p.id);
+        out.push({ id: p.id, src: "data:image/jpeg;base64," + b64(new Uint8Array(await im.arrayBuffer())), by: p.by });
       } catch { out.push(null); }
     }
     return j({ ok: true, photos: out });

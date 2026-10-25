@@ -153,12 +153,12 @@ $("ffind").onclick=async()=>{$("fmsg").textContent="슈퍼쇼츠에 디자인 �
 /* 영상 만들기: 구글 음성으로 문장마다 목소리를 받고, 이 화면에서 바로 영상 파일을 만든다 */
 let TTS=null,PH=null,EXTRA=null,BGMF=null,SEEDV=Date.now()%1000,PVT=0;
 async function caps(){if(TTS===null||PH===null){const p=await fn({action:"ping"});TTS=!!p.tts;PH=!!p.photos;}}
-/* 대본에 맞는 사진: 문장마다 검색어를 만들어 무료 사진(Pexels)을 하나씩 받아 둠 (상담·예약 문장은 업체 사진) */
+/* 대본에 맞는 사진: 문장마다 검색어를 만들어 무료 사진(Pixabay)을 하나씩 받아 둠 (상담·예약 문장은 업체 사진) */
 const exKey=L=>SEEDV+"|"+L.join("\n");
 function extraNow(){const L=lines();return $("phmode").value==="match"&&EXTRA&&EXTRA.k===exKey(L)?EXTRA.list:null;}
 async function findPhotos(quiet){const L=lines();if($("phmode").value!=="match"||!L.length)return null;
   try{await caps();}catch(e){return null;}
-  if(!PH){if(!quiet)msg("대본에 맞는 사진 키(PEXELS_KEY)가 아직 없어서 이번에는 업체 사진만 써요.","warn");return null;}
+  if(!PH){if(!quiet)msg("대본에 맞는 사진 키(PIXABAY_KEY)가 아직 없어서 이번에는 업체 사진만 써요.","warn");return null;}
   const k=exKey(L);if(EXTRA&&EXTRA.k===k)return EXTRA.list;
   const qs=L.map(l=>ShortsMaker.queryOf(l));if(!qs.some(Boolean))return null;
   $("pinfo").textContent="대본에 맞는 사진을 찾는 중이에요…";
