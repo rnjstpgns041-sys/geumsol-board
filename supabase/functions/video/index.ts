@@ -99,10 +99,43 @@ Deno.serve(async (req) => {
   };
   const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
   const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept-Language": "ko-KR,ko;q=0.9" };
+  // 쓸 수 있는 모델을 구글 목록에서 찾음 (오래된 모델은 새 사용자에게 막힘). kind: text | image
+  let MODELS: string[] | null = null;
+  async function models(kind: "text" | "image") {
+    if (!MODELS) {
+      MODELS = [];
+      try {
+        let tok = "";
+        for (let i = 0; i < 5; i++) {
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=" + encodeURIComponent(gemk) + (tok ? "&pageToken=" + tok : ""));
+          const d = await r.json().catch(() => ({}));
+          for (const m of d.models || []) if ((m.supportedGenerationMethods || []).includes("generateContent")) MODELS.push(String(m.name).replace(/^models\//, ""));
+          tok = d.nextPageToken || ""; if (!tok) break;
+        }
+      } catch { /* 목록을 못 받으면 아래 기본값 */ }
+    }
+    const ver = (n: string) => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+    const bad = /tts|audio|live|embedding|thinking|exp|preview|robotics|computer|learnlm|gemma|nano/i;
+    const list = MODELS.filter((n) => /^gemini-/.test(n) && (kind === "image" ? /image/.test(n) && !/tts|audio|live/.test(n) : !/image/.test(n) && !bad.test(n) && /flash/.test(n)));
+    // 같은 버전이면 lite 아닌 것, 이름이 짧은 것(정식판) 먼저
+    list.sort((a, b) => ver(b) - ver(a) || Number(/lite/.test(a)) - Number(/lite/.test(b)) || a.length - b.length);
+    const pre = kind === "image" ? MODELS.filter((n) => /^gemini-.*image/.test(n) && /preview/.test(n) && !list.includes(n)).sort((a, b) => ver(b) - ver(a)) : [];
+    return [...list, ...pre, ...(kind === "image" ? ["gemini-2.5-flash-image"] : ["gemini-flash-latest", "gemini-2.5-flash"])];
+  }
+  async function gemAuto(kind: "text" | "image", body: unknown) {
+    let last: unknown = null;
+    for (const m of (await models(kind)).slice(0, 5)) {
+      try { return await gem(m, body); } catch (e) {
+        last = e; const t = String((e as Error).message || e);
+        if (!/not found|no longer|not available|not supported|deprecated|unsupported|404/i.test(t)) throw e;
+      }
+    }
+    throw last || new Error("쓸 수 있는 제미나이 모델을 찾지 못했어요.");
+  }
   async function gem(model: string, body: unknown) {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240));
+    if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240) + (r.status === 404 ? " (404)" : ""));
     return d;
   }
 
@@ -162,7 +195,7 @@ room.on은 입원실이 실제로 있을 때만 true.
 ----
 ${text}`;
       try {
-        const d = await gem("gemini-2.5-flash", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } });
+        const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } });
         const t = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
         const g = JSON.parse(t.replace(/^```json|```$/g, "").trim());
         info = { ...info, ...Object.fromEntries(Object.entries(g).filter(([, v]) => v !== "" && v != null && !(Array.isArray(v) && !v.length))) };
@@ -191,7 +224,7 @@ ${text}`;
     const what = String(b.prompt || "").slice(0, 500);
     if (!what) return j({ ok: false, error: "무엇을 그릴지 비어 있어요." });
     const prompt = `A natural, photorealistic photo for a Korean clinic's blog: ${what}. Korean people if people appear, bright clean modern Korean clinic interior, soft natural light, warm and trustworthy mood, landscape 4:3. Absolutely no text, letters, watermarks or logos in the image.`;
-    const tryOnce = (cfg: Record<string, unknown>) => gem("gemini-2.5-flash-image", { contents: [{ parts: [{ text: prompt }] }], generationConfig: cfg });
+    const tryOnce = (cfg: Record<string, unknown>) => gemAuto("image", { contents: [{ parts: [{ text: prompt }] }], generationConfig: cfg });
     try {
       let d;
       try { d = await tryOnce({ responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "4:3" } }); }
