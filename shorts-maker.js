@@ -27,21 +27,35 @@ function fitText(g,t,max,size,weight){let s=size;do{g.font=`${weight||900} ${s}p
 function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
 const ease=t=>t<0?0:t>1?1:1-Math.pow(1-t,3);
 
-/* 영상 설계: 문장별 길이(목소리 길이나 글자 수)로 장면·자막·끝 화면 시간을 정함 */
-function plan(lines,durs,opt){const T=[],scenes=[];let t=0.25;const r=rng(opt.seed||1);
-  const order=[...Array(opt.nPhotos).keys()].sort(()=>r()-.5);let pi=0;
+/* 영상 설계: 문장별 길이(목소리 길이나 글자 수)로 자막·장면·끝 화면 시간을 정함.
+   사진이 문장보다 적으면 이웃 문장을 한 장면으로 묶어서 같은 사진이 다시 나오지 않게 함.
+   own[i]: i번째 문장에 맞춰 찾은 사진 번호(없으면 -1), nBrand: 업체 사진 수 */
+function plan(lines,durs,opt){const T=[],L=[];let t=0.25;const gap=opt.gap==null?0.18:opt.gap,r=rng(opt.seed||1);
   lines.forEach((ln,i)=>{const d=durs[i],cs=chunks(ln),tot=cs.reduce((a,c)=>a+len(c),0)||1;let u=t;
-    cs.forEach(c=>{const cd=d*len(c)/tot;T.push({t:u,d:cd,c});u+=cd;});
-    scenes.push({t,d,photo:order[pi++%order.length],fx:i%3});t+=d+(opt.gap||0.18);});
-  const total=t+0.9,endAt=Math.max(scenes.length>1?scenes[scenes.length-1].t:total-3.5,total-6);
-  return {subs:T,scenes,total,endAt};}
+    cs.forEach(c=>{const cd=d*len(c)/tot;T.push({t:u,d:cd,c});u+=cd;});L.push({t,d});t+=d+gap;});
+  const total=t+0.9,own=opt.own||[],nB=opt.nBrand==null?opt.nPhotos:opt.nBrand;
+  const n=Math.max(1,Math.min(lines.length,nB+own.filter(x=>x>=0).length));
+  const sum=L.reduce((a,x)=>a+x.d,0)||1,G=[];let cum=0;
+  L.forEach((x,i)=>{const g=Math.min(n-1,Math.floor((cum+x.d/2)/sum*n));cum+=x.d;
+    if(G.length&&G[G.length-1].g===g)G[G.length-1].i.push(i);else G.push({g,i:[i]});});
+  const order=[...Array(nB).keys()].sort(()=>r()-.5),used=new Set();let bi=0;
+  const next=()=>{while(bi<order.length&&used.has(order[bi]))bi++;return bi<order.length?order[bi++]:-1;};
+  const scenes=G.map((gr,k)=>{const a=L[gr.i[0]],z=L[gr.i[gr.i.length-1]];
+    let ph=gr.i.map(i=>own[i]).find(x=>x>=0&&!used.has(x));if(ph==null)ph=next();
+    if(ph<0)ph=own.find(x=>x>=0&&!used.has(x));if(ph==null||ph<0)ph=k%Math.max(1,opt.nPhotos);
+    used.add(ph);return {t:a.t,d:z.t+z.d-a.t,photo:ph,fx:k%3};});
+  const endAt=Math.max(scenes.length>1?scenes[scenes.length-1].t:total-3.5,total-6);
+  return {subs:T,lines:L,scenes,total,endAt};}
 
 async function prepare(o){const B=o.brand,base=o.base||"";
   await Promise.all(["900 80px "+FONT,"700 50px "+FONT].map(f=>document.fonts&&document.fonts.load?document.fonts.load(f).catch(()=>{}):0));
   const photos=[];for(const src of (o.photos&&o.photos.length?o.photos:[...Array(B.photos)].map((_,i)=>`${base}vbrand/${B.dir}/p${String(i+1).padStart(2,"0")}.jpg`))){try{photos.push(await load(src));}catch(e){}}
+  const nBrand=photos.length,own=[];
+  /* 대본 문장에 맞춰 찾은 사진 (문장마다 하나, 없으면 null) */
+  for(const src of (o.extra||[])){if(!src){own.push(-1);continue;}try{photos.push(await load(src));own.push(photos.length-1);}catch(e){own.push(-1);}}
   if(!photos.length)throw new Error("쓸 사진이 없어요.");
   const foot=await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
-  return {photos,foot,logo};}
+  return {photos,foot,logo,own,nBrand};}
 
 function drawFrame(g,t,S){const {B,P,A,title,kw}=S;
   /* 위 제목 */
@@ -85,18 +99,67 @@ function drawFrame(g,t,S){const {B,P,A,title,kw}=S;
 function pickMime(){const c=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
   return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||"";}
 
+/* 대본 한 줄 → 무료 사진 검색어(영어). 상담·예약·위치 문장은 업체 사진을 쓰도록 null */
+const CTA=/상담|예약|문의|전화|위치|찾아|오시|방문|내원|연락|출구|주차|토요일|평일|일요일|점심시간|진료 시간|진료시간/;
+const WEAK=new Set(["pain","clock","money","steps","checklist","warning","therapy","healthy lifestyle","relaxed smile","doctor patient"]);
+const QW=[[/한의사|원장|의사|전문의|변호사가/,"doctor"],[/교통사고|접촉사고|추돌/,"car accident"],[/운전|자동차|차량/,"driving car"],[/보험/,"insurance paperwork"],
+  [/허리/,"back pain"],[/거북목|목디스크|목이|목과|목 통증|뒷목/,"neck pain"],[/어깨/,"shoulder pain"],[/무릎/,"knee pain"],[/손목/,"wrist pain"],[/디스크|척추/,"spine"],[/근육|인대|뼈|뻣뻣|뭉치/,"muscle stiffness"],
+  [/두통|머리가/,"headache"],[/어지러|어지럼/,"dizziness"],[/불면|잠을|수면|잠이/,"insomnia"],[/피로|피곤|무기력|기운/,"tired person"],[/스트레스/,"stressed person"],[/우울|불안/,"anxious woman"],
+  [/소화|위장|속쓰림|더부룩/,"stomach ache"],[/비염|코막힘|콧물|재채기/,"runny nose"],[/기침|감기/,"cold cough"],[/다이어트|체중|살이|살을/,"healthy diet"],[/피부|여드름/,"skin care"],[/탈모/,"hair loss"],
+  [/아이|어린이|성장|키가|자녀/,"child"],[/수험생|학생|공부/,"student studying"],[/직장인|사무실|업무/,"office worker"],[/어르신|부모님|노인|할머니|할아버지/,"senior"],[/산후|출산|임신/,"pregnant woman"],[/갱년기|생리|여성/,"woman health"],
+  [/약침|침 치료|침치료|침을/,"acupuncture"],[/한약|탕약|약재/,"herbal medicine"],[/추나|교정|자세/,"posture"],[/뜸/,"moxibustion"],[/부항/,"cupping therapy"],[/물리치료|재활/,"physical therapy"],[/운동|스트레칭/,"stretching"],[/걷기|산책/,"walking"],
+  [/진료|진단|검사|진찰/,"doctor patient"],[/통증|아프|아픔|쑤시|결리|저리/,"pain"],[/회복|좋아지|나아지|편안/,"relaxed smile"],[/예방|관리|습관/,"healthy lifestyle"],[/치료/,"therapy"],
+  [/변호사|법률|법적/,"lawyer"],[/소송|재판|법원|판결/,"court"],[/이혼/,"divorce"],[/상속|유산/,"family"],[/계약|서류|합의|문서/,"contract signing"],[/사기|피해/,"fraud"],[/형사|경찰|고소|처벌/,"police"],
+  [/시간|미루|방치|늦기|늦으/,"clock"],[/비용|돈|금액/,"money"],[/방법|단계|순서/,"steps"],[/체크|확인|점검/,"checklist"],[/주의|조심|위험|놓치/,"warning"]];
+function queryOf(line){const s=String(line||"");if(CTA.test(s))return null;let w=[];for(const [re,en] of QW)if(re.test(s)&&!w.includes(en))w.push(en);
+  if(w.some(x=>!WEAK.has(x)))w=w.filter(x=>!WEAK.has(x));return w.length?w.slice(0,2).join(" "):null;}
+/* 배경음악: 저작권 걱정 없게 코드로 직접 연주해서 만든다 (calm 잔잔하게 / bright 밝게), 또는 올린 음악 파일(ArrayBuffer) */
+const hz=m=>440*Math.pow(2,(m-69)/12);
+const PROG={calm:[[53,57,60,64],[48,55,60,64],[50,57,60,65],[46,53,58,62]],bright:[[48,55,60,64],[55,59,62,67],[57,60,64,69],[53,57,60,65]]};
+async function synth(kind,sec,sr){const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext,oc=new OC(2,Math.ceil(sr*sec),sr);
+  const bright=kind==="bright",beat=60/(bright?100:72),bar=beat*4,out=oc.createGain();out.connect(oc.destination);
+  const lp=oc.createBiquadFilter();lp.type="lowpass";lp.frequency.value=bright?1400:900;lp.connect(out);
+  const tone=(m,t,d,v,type,to)=>{const o=oc.createOscillator(),g=oc.createGain();o.type=type;o.frequency.value=hz(m);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g).connect(to||out);o.start(t);o.stop(t+d+0.05);};
+  const key=(m,t,v)=>{tone(m,t,bright?0.7:1.8,v,"sine");tone(m+12,t,bright?0.35:0.9,v*0.3,"sine");tone(m,t,0.4,v*0.25,"triangle");};
+  const pad=(ch,t,d)=>ch.forEach(m=>[-7,7].forEach(dt=>{const o=oc.createOscillator(),g=oc.createGain();o.type="sawtooth";o.frequency.value=hz(m);o.detune.value=dt;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(bright?0.010:0.016,t+d*0.35);g.gain.linearRampToValueAtTime(0,t+d+0.35);o.connect(g).connect(lp);o.start(t);o.stop(t+d+0.4);}));
+  let noise=null;if(bright){noise=oc.createBuffer(1,sr*0.2,sr);const c=noise.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=Math.random()*2-1;}
+  const hat=t=>{const n=oc.createBufferSource(),f=oc.createBiquadFilter(),g=oc.createGain();n.buffer=noise;f.type="highpass";f.frequency.value=7000;
+    g.gain.setValueAtTime(0.05,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.06);n.connect(f).connect(g).connect(out);n.start(t);n.stop(t+0.1);};
+  const kick=t=>{const o=oc.createOscillator(),g=oc.createGain();o.frequency.setValueAtTime(130,t);o.frequency.exponentialRampToValueAtTime(45,t+0.15);
+    g.gain.setValueAtTime(0.5,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);o.connect(g).connect(out);o.start(t);o.stop(t+0.3);};
+  const arp=bright?[0,2,1,3,2,1,3,2]:[0,1,2,3,2,1,2,3];
+  for(let b=0,t=0.05;t<sec;b++,t+=bar){const ch=PROG[bright?"bright":"calm"][b%4];pad(ch,t,bar);tone(ch[0]-12,t,bar*0.95,0.14,"sine");
+    arp.forEach((k,i)=>{const tt=t+i*beat/2;if(tt>=sec)return;if(bright||i%2===0||b%2)key(ch[k]+12,tt,(i%2?0.05:0.08)*(bright?0.8:1));});
+    if(bright)for(let i=0;i<4;i++){const tt=t+i*beat;if(i%2===0)kick(tt);hat(tt+beat/2);}}
+  return oc.startRendering();}
+async function bgmBuffer(ac,spec,sec){if(!spec||spec==="none")return null;let buf;
+  try{if(spec==="calm"||spec==="bright")buf=await synth(spec,sec,ac.sampleRate);
+    else{const src=await ac.decodeAudioData(spec.slice(0)),n=Math.ceil(sec*ac.sampleRate);buf=ac.createBuffer(2,n,ac.sampleRate);
+      for(let c=0;c<2;c++){const o=buf.getChannelData(c),i=src.getChannelData(Math.min(c,src.numberOfChannels-1));for(let k=0;k<n;k++)o[k]=i[k%i.length];}}}
+  catch(e){return null;}
+  /* 소리 크기 맞추기 + 앞뒤 부드럽게 */
+  let ss=0,cnt=0;const d0=buf.getChannelData(0);for(let k=0;k<d0.length;k+=7){ss+=d0[k]*d0[k];cnt++;}
+  const g=0.07/Math.max(1e-4,Math.sqrt(ss/Math.max(1,cnt))),sr=buf.sampleRate,fi=sr*1.0,fo=sr*2.0;
+  for(let c=0;c<buf.numberOfChannels;c++){const d=buf.getChannelData(c),N=d.length;for(let k=0;k<N;k++){let v=d[k]*g;if(k<fi)v*=k/fi;if(N-k<fo)v*=(N-k)/fo;d[k]=Math.max(-0.9,Math.min(0.9,v));}}
+  return buf;}
+/* 목소리 나오는 동안 배경음악을 줄였다가, 끝 화면에서 다시 키움 */
+function duck(gp,P,t0,voice){gp.setValueAtTime(1,t0);if(!voice||!P.lines.length)return;const a=P.lines[0].t,z=P.lines[P.lines.length-1];
+  gp.setValueAtTime(1,t0+Math.max(0,a-0.3));gp.linearRampToValueAtTime(0.4,t0+a);gp.setValueAtTime(0.4,t0+z.t+z.d);gp.linearRampToValueAtTime(1,t0+z.t+z.d+0.6);}
 /* o: {name, kw, lines[], audios[ArrayBuffer|null], canvas, base, seed, onProgress(p,msg)} → {blob,mime,ext,seconds} */
 async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모양이 없는 업체예요.");
   const lines=o.lines.map(s=>s.trim()).filter(Boolean);if(!lines.length)throw new Error("대본이 비어 있어요.");
-  const A=await prepare({brand:B,base:o.base,photos:o.photos});
+  const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra});
   const ac=new (window.AudioContext||window.webkitAudioContext)();const bufs=[];
   for(const a of (o.audios||[])){try{bufs.push(a?await ac.decodeAudioData(a.slice(0)):null);}catch(e){bufs.push(null);}}
   /* 직접 녹음한 목소리 하나: 문장 길이 비율로 나눔 */
   let nar=null;if(o.narration){try{nar=await ac.decodeAudioData(o.narration.slice(0));}catch(e){throw new Error("녹음한 소리를 읽지 못했어요. 다시 녹음해 주세요.");}}
   const tl=lines.reduce((a,l)=>a+len(l),0)||1;
   const durs=lines.map((l,i)=>nar?nar.duration*len(l)/tl-0.001:bufs[i]?bufs[i].duration:Math.max(1.6,len(l)*0.19));
-  const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
+  const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,own:A.own,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
   const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw};
+  const music=await bgmBuffer(ac,o.bgm,P.total);
   const cv=o.canvas||document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");
   drawFrame(g,0,S);
   const mime=pickMime();if(!mime)throw new Error("이 브라우저는 영상 저장을 못 해요. 크롬이나 엣지로 열어 주세요.");
@@ -109,8 +172,10 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   /* 무음 하나를 깔아 두면 목소리가 없어도 소리 트랙이 생겨서 어디서나 재생됨 */
   const sil=ac.createConstantSource?ac.createConstantSource():null;if(sil){const gz=ac.createGain();gz.gain.value=0;sil.connect(gz).connect(dest);sil.start();}
   rec.start(500);const t0=ac.currentTime+0.05;
-  if(nar){const n=ac.createBufferSource();n.buffer=nar;n.connect(dest);if(o.monitor)n.connect(ac.destination);n.start(t0+P.scenes[0].t);}
-  P.scenes.forEach((s,i)=>{if(bufs[i]){const n=ac.createBufferSource();n.buffer=bufs[i];n.connect(dest);if(o.monitor)n.connect(ac.destination);n.start(t0+s.t);}});
+  if(nar){const n=ac.createBufferSource();n.buffer=nar;n.connect(dest);if(o.monitor)n.connect(ac.destination);n.start(t0+P.lines[0].t);}
+  P.lines.forEach((s,i)=>{if(bufs[i]){const n=ac.createBufferSource();n.buffer=bufs[i];n.connect(dest);if(o.monitor)n.connect(ac.destination);n.start(t0+s.t);}});
+  /* 배경음악: 목소리 나올 때는 작게 */
+  if(music){const n=ac.createBufferSource(),gm=ac.createGain();n.buffer=music;duck(gm.gain,P,t0,bufs.some(Boolean)||!!nar);n.connect(gm).connect(dest);if(o.monitor)gm.connect(ac.destination);n.start(t0);}
   await new Promise(ok=>{let last=-1;const tick=()=>{const t=ac.currentTime-t0;if(t>=P.total){ok();return;}
       if(t>=0){drawFrame(g,t,S);const p=Math.floor(t/P.total*100);if(p!==last){last=p;o.onProgress&&o.onProgress(p,t,P.total);}}
       setTimeout(tick,1000/FPS/2);};tick();});
@@ -119,9 +184,9 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   return {blob,mime,ext:mime.startsWith("video/mp4")?"mp4":"webm",seconds:P.total};}
 
 /* 미리보기: 소리 없이 화면만 그려 봄 */
-async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos});
-  const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length});
+async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra});
+  const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,own:A.own});
   const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw});return P;}
 
-root.ShortsMaker={make,still,brandOf,titleOf,BRAND};
+root.ShortsMaker={make,still,brandOf,titleOf,BRAND,bgmBuffer,queryOf};
 })(window);
