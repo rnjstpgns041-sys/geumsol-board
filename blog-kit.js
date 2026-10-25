@@ -193,8 +193,18 @@ const ph=(key,src,cls)=>`<div class="ph ${cls||""}" data-ph="${esc(key)}">${src?
 const H=(t,cls)=>`<div class="h ${cls||""}"><i class="bar"></i><div class="t1" ${E}>${em(t[0])}</div><div class="t2" ${E}>${em(t[1]||"")}</div></div>`;
 const logo=c=>c.logo?`<img class="logo" src="${esc(c.logo)}" alt="">`:`<div class="logot" ${E}>${esc(c.name)}</div>`;
 
+/* 홈페이지에서 읽은 진료 항목 → 치료 줄 [아이콘, 이름, 설명, 사진 검색어] */
+const TMAP=[[/약침|침 ?치료|^침|전침/,"needle","통증 부위에 [[맞춰]] 진행","acupuncture"],[/추나|교정|도수/,"posture","[[균형·움직임]] 관리","chiropractic"],[/한약|탕약|보약|공진단|경옥고/,"herb","체질과 [[상태]]에 맞춰","herbal medicine"],
+  [/부항|뜸/,"drop","[[순환]] 관리","cupping therapy"],[/입원|재활/,"bedplus","회복을 위한 [[집중 관리]]","hospital room"],[/물리|온열|고주파|레이저|충격파/,"wave","[[통증 부위]] 관리","physiotherapy"],
+  [/검사|엑스|x-?ray|MRI|초음파/i,"xray","[[상태]] 먼저 확인","x-ray doctor"],[/주사|약물|수액/,"pill","증상에 [[맞춰]] 진료","doctor injection"],[/다이어트|비만|체중/,"scale","[[생활 습관]]까지 함께","healthy diet food"],
+  [/피부|여드름|아토피/,"sparkle","[[피부 상태]]에 맞춰","skin care"],[/성장|키/,"child","[[성장 단계]]에 맞춰","child growth"],[/비염|호흡|코/,"nose","[[호흡]] 편하게","nose breathing"],
+  [/여성|산후|갱년기|난임/,"woman","[[여성 건강]] 관리","asian woman health"],[/운동|필라테스/,"walk","[[재발]] 관리","rehabilitation exercise"],[/상담|진료|진단/,"doctor","원인·[[상태]] 확인","asian doctor consultation"]];
+function treatRows(p,c){const own=(c.treats||[]).map(x=>String(x||"").trim()).filter(Boolean);
+  if(own.length>=2)return own.slice(0,4).map(t=>{const m=TMAP.find(x=>x[0].test(t))||[0,"check","증상에 [[맞춰]] 진행","korean medicine clinic"];return [m[1],t,m[2],m[3]];});
+  return (c.km?p.treat.km.map(k=>KM_ROWS[k]):p.treat.wm.map(k=>WM_ROWS[k])).filter(Boolean);}
+function featIcon(t){return /보험/.test(t)?"shield":/입원|병실/.test(t)?"bedplus":/야간|365|주말|일요일|공휴일|연중/.test(t)?"calendar":/상담|1:1|일대일|소통/.test(t)?"chat":/검사|진단|원인/.test(t)?"clipboard":/주차/.test(t)?"parking":/여성|여의사/.test(t)?"woman":/원장|의료진|전문|한의사/.test(t)?"doctor":/한약|탕전/.test(t)?"herb":/침/.test(t)?"needle":/추나|교정/.test(t)?"posture":"check";}
 const S={
-  hero:(p,c)=>`<section class="s s-hero">${logo(c)}<div class="row2">${H(p.hero.t,"big")}${art(p.hero.art,"check")}</div>
+  hero:(p,c,kick)=>`<section class="s s-hero">${logo(c)}${kick?`<div class="kick"><span ${E}>${esc(kick)}</span></div>`:""}<div class="row2">${H(p.hero.t,"big")}${art(p.hero.art,"check")}</div>
     <div class="ilist">${p.hero.items.map(([i,t])=>`<div class="il"><span class="ci">${icon(i)}</span>${tx(t,"ilt")}</div>`).join("")}</div></section>`,
   warn:(p)=>`<section class="s s-warn alt">${H(p.warn.t,"big")}<div class="sub" ${E}>${esc(p.warn.sub)}</div>
     <div class="cards2">${p.warn.cards.map(([i,a,b])=>`<div class="cd"><span class="cdi">${icon(i)}</span><div><div class="cda" ${E}>${esc(a)}</div><div class="cdb" ${E}>${esc(b)}</div></div></div>`).join("")}</div>
@@ -206,10 +216,10 @@ const S={
     <div class="pgrid">${ph("person",img.person,"pp")}<div class="psym">${p.person.sym.map(([i,t])=>`<div class="ps"><span class="ci sm">${icon(i)}</span>${tx(t)}</div>`).join("")}</div></div>
     ${c.badges&&c.badges.length?`<div class="badges">${c.badges.slice(0,3).map((b,k)=>`<div class="bd">${icon(["shield","calendar","bedplus"][k%3])}${tx(b)}</div>`).join("")}</div>`:""}</section>`,
   clinic:(p,c)=>`<section class="s s-clinic alt"><div class="cname" ${E}>${esc(c.name)}</div><div class="ctitle" ${E}>${em(p.clinic.title)}</div>
-    <div class="cards2 tall">${p.clinic.feats.map(([i,t])=>`<div class="cd v"><span class="cdi big">${icon(i)}</span><i class="dash"></i><div class="cdt" ${E}>${em(t)}</div></div>`).join("")}</div></section>`,
+    <div class="cards2 tall">${((c.feats||[]).filter(Boolean).length>=2?c.feats.filter(Boolean).slice(0,4).map(t=>[featIcon(t),t]):p.clinic.feats).map(([i,t])=>`<div class="cd v"><span class="cdi big">${icon(i)}</span><i class="dash"></i><div class="cdt" ${E}>${em(t)}</div></div>`).join("")}</div></section>`,
   time:(p,c)=>`<section class="s s-time">${H(p.time.t,"big")}<div class="tl">${p.time.steps.map(([a,i,t,ar])=>`<div class="ts"><div class="tdot"></div><div class="tb"><div class="tla" ${E}>${esc(a)} —</div><div class="tlr"><span class="ci sm">${icon(i)}</span>${tx(t)}</div></div><div class="tart">${icon(ar,"ic")}</div></div>`).join("")}</div>
     <div class="box" ${E}>${esc(p.time.note)}</div>${c.logo?`<div class="center">${logo(c)}</div>`:""}</section>`,
-  treat:(p,c,img)=>{const rows=(c.km?p.treat.km.map(k=>KM_ROWS[k]):p.treat.wm.map(k=>WM_ROWS[k])).filter(Boolean);
+  treat:(p,c,img)=>{const rows=treatRows(p,c);
     return `<section class="s s-treat">${H(p.treat.t,"big")}<div class="trs">${rows.map(([i,a,b],k)=>`<div class="tr"><span class="ci lg">${icon(i)}</span><div class="trt"><div class="trn">${String(k+1).padStart(2,"0")}</div><div class="tra" ${E}>${esc(a)}</div><div class="trb" ${E}>— ${em(b)}</div></div>${ph("treat"+k,img["treat"+k],"tph")}</div>`).join("")}</div>
     <div class="box ic1">${icon("alert")}<span ${E}>${esc(p.treat.note)}</span></div></section>`;},
   doctor:(d,k)=>`<section class="s s-doc ${k%2?"alt":""}"><div class="dgrid"><div class="dl"><i class="vbar"></i><div class="dn" ${E}>${esc(d.name)}</div><div class="dt" ${E}>${esc(d.title||"원장")}</div><div class="dr" ${E}>${esc(d.role||"")}</div></div>${ph("doc"+k,d.photo,"dph")}</div>
@@ -240,13 +250,13 @@ function map(c){return `<div class="map"><svg viewBox="0 0 800 300" width="100%"
 /* 전체 이미지: 구역 순서대로 */
 function build(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
-  add("hero",S.hero(p,c));add("warn",S.warn(p,c));add("list",S.list(p,c));add("person",S.person(p,c,img));add("clinic",S.clinic(p,c));
+  add("hero",S.hero(p,c,o.kick));add("warn",S.warn(p,c));add("list",S.list(p,c));add("person",S.person(p,c,img));add("clinic",S.clinic(p,c));
   add("time",S.time(p,c));add("treat",S.treat(p,c,img));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,S.doctor(d,k)));
   if(c.room&&c.room.on)add("room",S.room(c,img));add("facility",S.facility(c));add("info",S.info(c));
   return out.join("");}
 /* 사진 자리마다 무료 사진 검색어 (영어) */
 function photoQueries(o){const p=T[o.topic]||T["기본"],c=o.clinic,q={person:p.person.q};
-  (c.km?p.treat.km.map(k=>KM_ROWS[k]):p.treat.wm.map(k=>WM_ROWS[k])).forEach((r,k)=>{if(r)q["treat"+k]=r[3];});return q;}
+  treatRows(p,c).forEach((r,k)=>{if(r)q["treat"+k]=r[3];});if(c.room&&c.room.on)q.room="hospital inpatient room";return q;}
 
 /* 이미지 안의 디자인 (가로 860px). --m 진한 색, --a 강조 색 */
 const CSS=`.bi{width:860px;background:#fff;color:var(--m);font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Malgun Gothic",sans-serif;letter-spacing:-.02em;line-height:1.35;word-break:keep-all}
@@ -297,7 +307,7 @@ const CSS=`.bi{width:860px;background:#fff;color:var(--m);font-family:"Pretendar
 .bi .mwk{position:absolute;left:36%;top:28%;display:flex;gap:8px;align-items:center;background:var(--m);color:#fff;border-radius:12px;padding:8px 14px;font-size:22px;font-weight:700}.bi .mwk .ic{width:28px;height:28px}
 .bi .mcl{position:absolute;right:4%;top:18%;background:var(--m);color:#fff;border-radius:12px;padding:10px 16px;font-size:24px;font-weight:800}
 .bi .ipark{display:flex;align-items:center;gap:18px;background:var(--soft2);border-radius:16px;padding:22px 28px;margin-top:20px;font-size:30px}.bi .ipark>.ic{width:50px;height:50px;color:var(--a)}.bi .ipark b{color:var(--a);border-right:2px solid #d0d8d4;padding-right:18px}
-.bi .foot{margin-top:40px}.bi .foot .logo{margin:0 auto}.bi .ic{width:1em;height:1em}`;
+.bi .kick{display:none}.bi .foot{margin-top:40px}.bi .foot .logo{margin:0 auto}.bi .ic{width:1em;height:1em}`;
 
 /* ── 이미지로 저장: 화면 구역을 그대로 SVG(foreignObject)에 담아 canvas에 그림. 사진·글꼴은 data URL로 넣음 ── */
 const blob2url=b=>new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(b);});
@@ -311,9 +321,9 @@ async function snap(el,o){o=o||{};const scale=o.scale||1.5,w=el.offsetWidth,h=el
   const cl=el.cloneNode(true);cl.querySelectorAll("[contenteditable]").forEach(x=>x.removeAttribute("contenteditable"));
   cl.querySelectorAll(".phe").forEach(x=>x.parentNode.remove());cl.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
   for(const im of cl.querySelectorAll("img")){const d=await dataURL(im.getAttribute("src"));if(d)im.setAttribute("src",d);else im.remove();}
-  const css=(await fontCSS(o.font))+CSS+(o.vars||"");
+  const css=(await fontCSS(o.font))+CSS+STYLE_CSS+(o.vars||"");
   const html=new XMLSerializer().serializeToString(cl);
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="bi" style="${esc(o.style||"")}"><style>${css}</style>${html}</div></foreignObject></svg>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="bi ${esc(o.cls||"")}" style="${esc(o.style||"")}"><style>${css}</style>${html}</div></foreignObject></svg>`;
   const img=new Image();img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);await img.decode();
   const cv=document.createElement("canvas");cv.width=Math.round(w*scale);cv.height=Math.round(h*scale);const g=cv.getContext("2d");
   g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);g.drawImage(img,0,0,cv.width,cv.height);
@@ -333,5 +343,37 @@ async function zip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
   const cs=cen.reduce((a,b)=>a+(b.byteLength||b.length),0),end=new DataView(new ArrayBuffer(22));end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cs,true);end.setUint32(16,off,true);
   return new Blob([...parts,...cen,end.buffer],{type:"application/zip"});}
 
-root.BlogKit={T,topicOf,build,photoQueries,CSS,snap,toBlob,zip,icon,IC,esc,em};
+/* ── 디자인: 네이버 상위 블로그 이미지에서 본 모양 몇 가지 (st-*) ── */
+const STYLES={
+  basic:{name:"깔끔 네이비",m:"#16325c",a:"#1f9d6b",css:""},
+  pastel:{name:"파스텔 인포그래픽",m:"#1d3b53",a:"#16a3a0",css:`.bi.st-pastel{background:#e6f4f2}.bi.st-pastel .blk{padding:16px 26px}.bi.st-pastel .blk:first-child{padding-top:30px}.bi.st-pastel .blk:last-child{padding-bottom:30px}
+.bi.st-pastel .s{border-radius:40px;background:#fff!important;padding:60px 52px;box-shadow:0 8px 0 rgba(22,163,160,.12)}.bi.st-pastel .sep{display:none}
+.bi.st-pastel .h{text-align:center}.bi.st-pastel .h .bar{margin:0 auto 22px;width:40px;height:40px;border-radius:50%;background:var(--soft);border:10px solid var(--a)}
+.bi.st-pastel .row2{flex-direction:column-reverse}.bi.st-pastel .art{width:170px;height:170px}.bi.st-pastel .artic{width:150px;height:150px}
+.bi.st-pastel .cd{background:#f2faf9;border:3px solid var(--soft)}.bi.st-pastel .cd.v{background:#f2faf9}.bi.st-pastel .ci{background:var(--a);color:#fff}
+.bi.st-pastel .il{background:#f2faf9;border-radius:24px;border:0;padding:18px 26px;margin-bottom:14px}.bi.st-pastel .ilist{margin:46px 0 0}
+.bi.st-pastel .nl{background:#f2faf9;border-radius:22px;border:0;padding:14px 22px;margin-bottom:12px}.bi.st-pastel .nn{width:52px;height:52px;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center;font-size:22px}.bi.st-pastel .vl{display:none}
+.bi.st-pastel .cname,.bi.st-pastel .ctitle{text-align:center}.bi.st-pastel .box{background:var(--a);color:#fff}.bi.st-pastel .box.ic1 .ic{color:#fff}.bi.st-pastel .tr{border:0;background:#f2faf9;border-radius:24px;padding:18px;margin-bottom:12px}`},
+  paper:{name:"베이지 차분",m:"#3b2a20",a:"#b23a2c",css:`.bi.st-paper{background:#f7f2ea;--bg2:#efe6da!important;--soft:#f3dcd4!important;--soft2:#fffaf3!important}
+.bi.st-paper .kick{display:flex;margin-bottom:26px}.bi.st-paper .kick span{border:2px solid var(--a);color:var(--a);border-radius:99px;padding:8px 24px;font-size:26px;font-weight:700}
+.bi.st-paper .h .bar{width:100%;height:2px;background:#d9cbb8;margin-bottom:34px}.bi.st-paper .h .t1,.bi.st-paper .h .t2{font-weight:800;font-size:66px}
+.bi.st-paper .cd{background:#fffaf3;border:1px solid #e3d6c4;border-radius:6px}.bi.st-paper .cd.v{background:#fffaf3}.bi.st-paper .ci{background:transparent;border:2px solid #d9cbb8}
+.bi.st-paper .il,.bi.st-paper .nl,.bi.st-paper .ps,.bi.st-paper .tr,.bi.st-paper .ts,.bi.st-paper .ri{border-color:#e3d6c4}.bi.st-paper .sep{height:2px;background:#d9cbb8;margin:0 64px}
+.bi.st-paper .box{background:#fffaf3;border-left:6px solid var(--a);border-radius:0;text-align:left}.bi.st-paper .ph{border-radius:4px}.bi.st-paper .artb{border-color:#f7f2ea}`},
+  forest:{name:"자연 그린",m:"#1f3d2b",a:"#3d8b5a",css:`.bi.st-forest{--gold:#d9b35a}.bi.st-forest .s-clinic,.bi.st-forest .s-info .ihead{background:var(--m)}.bi.st-forest .s-clinic .cname,.bi.st-forest .s-clinic .ctitle{color:#fff}
+.bi.st-forest .s-clinic .ac,.bi.st-forest .ihead .ac{color:var(--gold)}.bi.st-forest .s-info .ihead{margin:0 -64px;padding:34px 64px;border:0}.bi.st-forest .ihead .ctitle{color:#fff}.bi.st-forest .ibadge{color:#fff;border-color:rgba(255,255,255,.4)}
+.bi.st-forest .sep{background:linear-gradient(90deg,var(--m),var(--a))}.bi.st-forest .h .bar{background:var(--gold)}.bi.st-forest .ci{background:#e4efe3}.bi.st-forest .artb{background:var(--gold)}
+.bi.st-forest .cd{border-radius:28px}.bi.st-forest .nn{color:var(--gold)}.bi.st-forest .box{background:#eef4ea;border-radius:99px}.bi.st-forest .foot{background:var(--m);margin:40px -64px -70px;padding:36px}.bi.st-forest .foot .logot{color:#fff;margin:0}`},
+  blue:{name:"블루 메디컬",m:"#14213d",a:"#1e5bd8",css:`.bi.st-blue .h{text-align:center}.bi.st-blue .h .bar{margin:0 auto 22px;width:120px;height:8px;background:linear-gradient(90deg,var(--a),#7fb0ff)}
+.bi.st-blue .h .t2{color:var(--a)}.bi.st-blue .row2{flex-direction:column-reverse}.bi.st-blue .kick{display:flex;justify-content:center;margin-bottom:20px}.bi.st-blue .kick span{background:var(--a);color:#fff;border-radius:10px;padding:8px 22px;font-size:26px;font-weight:800}
+.bi.st-blue .ci{background:#e8f0ff;color:var(--a)}.bi.st-blue .cd{background:#f4f8ff;border-top:6px solid var(--a);border-radius:14px}.bi.st-blue .cd.v{background:#f4f8ff}
+.bi.st-blue .nn{width:56px;height:56px;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center;font-size:22px}.bi.st-blue .vl{display:none}
+.bi.st-blue .cname,.bi.st-blue .ctitle{text-align:center}.bi.st-blue .alt{background:#f2f6fd}.bi.st-blue .box{background:#14213d;color:#fff}.bi.st-blue .box.ic1 .ic{color:#7fb0ff}.bi.st-blue .sep{background:linear-gradient(90deg,var(--a),#7fb0ff)}`},
+  warm:{name:"따뜻한 코랄",m:"#4a2c2a",a:"#e0674f",css:`.bi.st-warm{--bg2:#fff4ee!important;--soft:#fde3da!important;--soft2:#fff7f3!important}.bi.st-warm .h .bar{width:22px;height:22px;border-radius:50%}
+.bi.st-warm .cd,.bi.st-warm .box,.bi.st-warm .ih,.bi.st-warm .itel,.bi.st-warm .ipark,.bi.st-warm .fi{border-radius:32px}.bi.st-warm .ph{border-radius:32px}.bi.st-warm .fph{border-radius:0}
+.bi.st-warm .ci{background:var(--soft);color:var(--a)}.bi.st-warm .il,.bi.st-warm .nl{border-bottom:2px dashed #f2c9bb}.bi.st-warm .sep{height:10px;background:repeating-linear-gradient(90deg,var(--a) 0 30px,transparent 30px 44px)}
+.bi.st-warm .kick{display:flex;margin-bottom:20px}.bi.st-warm .kick span{background:var(--soft);color:var(--a);border-radius:99px;padding:8px 24px;font-size:26px;font-weight:800}`}
+};
+const STYLE_CSS=Object.values(STYLES).map(x=>x.css).join("\n");
+root.BlogKit={T,topicOf,build,photoQueries,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
 })(window);
