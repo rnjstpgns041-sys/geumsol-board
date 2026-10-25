@@ -23,6 +23,8 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
 .it .t{font-weight:700}.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:1px 9px;background:var(--soft);color:var(--accent)}
 .pill.run{background:var(--warnbg);color:var(--warn)}.pill.bad{background:var(--badbg);color:var(--bad)}
 .mk{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}@media(max-width:820px){.mk{grid-template-columns:minmax(0,1fr)}}
+.cog{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px}.cog>div{position:relative}.cog img{width:100%;aspect-ratio:1080/920;object-fit:cover;border-radius:8px;display:block}.cog .x{position:absolute;top:4px;right:4px;border:0;border-radius:99px;width:24px;height:24px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
+.sc{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;border-top:1px solid var(--line);padding:8px 0}.sc .th{aspect-ratio:1080/920;border-radius:6px;overflow:hidden;background:var(--bg);display:grid;place-items:center;font-size:11px;color:var(--muted);text-align:center}.sc .th img{width:100%;height:100%;object-fit:cover;display:block}.sc .tx{min-width:0;font-size:13px;display:flex;flex-direction:column;gap:4px}.sc input{flex:1;min-width:0;height:32px}
 .pv{display:flex;flex-direction:column;gap:8px;position:sticky;top:12px}.pv canvas{width:100%;aspect-ratio:9/16;border-radius:12px;background:#111;display:block}
 .bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0}
 .ph{aspect-ratio:9/16;border-radius:8px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 10px,var(--line) 10px,var(--line) 20px);display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
@@ -46,6 +48,9 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     <button class="btn small" id="bgmtry" style="height:38px">음악 들어 보기</button>
   </div><input type="file" id="bgmfile" accept="audio/*" hidden><div class="muted" id="bgminfo" style="margin-top:4px"></div>
   <div id="kws" class="row" style="margin-top:8px"></div>
+  <details id="cobox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">업체 사진 올리기 (<span id="cocnt">0</span>장) · 업체 소개·위치·상담 장면에 들어가요</summary>
+    <div class="row" style="margin-top:8px"><button class="btn small" id="coadd">사진 올리기</button><input type="file" id="cofile" accept="image/*" multiple hidden><span class="muted" id="comsg">여러 장을 한 번에 골라도 돼요. 가로 사진이 잘 맞아요. 팀 모두 같이 써요.</span></div>
+    <div id="colist" class="cog"></div></details>
   <details id="fbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">업체 특징 보기·고치기 (대본에 들어가요)</summary>
     <div class="grid" style="grid-template-columns:200px 1fr;margin-top:8px"><label>지역<input id="farea" placeholder="예: 부산 동래"></label><label>특징 (한 줄에 하나, 위에서부터 3~4개가 들어가요)<textarea id="ffeat" style="min-height:110px"></textarea></label></div>
     <div hidden><div class="grid" style="grid-template-columns:1fr auto;margin-top:8px;align-items:end"><label>슈퍼쇼츠 디자인 (업체 전용 템플릿)<select id="ftpl"><option value="">슈퍼쇼츠 기본값 그대로</option></select></label><button class="btn small" id="ffind" style="height:38px">디자인 목록 불러오기</button></div>
@@ -61,6 +66,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     <button class="btn primary" id="go">영상 만들기</button>
   </div>
   <div id="msg" style="margin-top:10px"></div>
+  <details id="scbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
 </div><div class="pv"><canvas id="pv"></canvas><div class="bar"><i id="pbar"></i></div><div class="row" style="justify-content:space-between"><span class="muted" id="pinfo">미리보기</span><button class="btn small" id="pnext">사진 바꿔 보기</button></div></div>
 </div>
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
@@ -127,7 +133,7 @@ async function poll(){let ch=false;for(const j of LIST.filter(x=>x.status!=="com
   if(r.status!==j.status||r.files){j.status=r.status;if(r.files)j.files=r.files;if(r.credits!=null)j.credits=r.credits;if(r.error)j.error=r.error;await save(j);ch=true;if(r.status==="completed")msg(`${esc(j.client)} ${esc(j.kw)} 영상이 완성됐어요.`);}}catch(e){}}if(ch)render();}
 async function start(){$("gate").innerHTML="";$("main").hidden=false;
   try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");const all=(cs||[]).filter(c=>c.name);CL=VDCL.map(([n,k])=>{const h=all.find(c=>c.name.replace(/\s/g,"").includes(k));return {id:h?h.id:"n:"+k,name:n};});
-    try{const fs=await rest("docs?coll=eq.videocfg&select=id,data");(fs||[]).forEach(x=>{PROF[x.id]=x.data;});}catch(e){}
+    try{const fs=await rest("docs?coll=eq.videocfg&select=id,data");(fs||[]).forEach(x=>{PROF[x.id]=x.data;if(x.id.startsWith("ph_"))COPH[x.id.slice(3)]=(x.data&&x.data.photos)||[];});}catch(e){}
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}catch(e){msg("업체 목록을 불러오지 못했어요. 업체 이름은 비워도 돼요.","warn");}
   const want=(P.get("client")||"").replace(/\s/g,"");
   $("client").innerHTML=`<option value="">(업체 고르기)</option>`+CL.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
@@ -136,7 +142,7 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
   [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
-  renderKws();fill();auto();preview();await loadList();poll();}
+  renderKws();fill();auto();renderCo();preview();await loadList();poll();}
 $("client").onchange=()=>{renderKws();fill();auto();};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
 $("text").addEventListener("input",cnt);
@@ -154,22 +160,37 @@ $("ffind").onclick=async()=>{$("fmsg").textContent="슈퍼쇼츠에 디자인 �
 /* 영상 만들기: 구글 음성으로 문장마다 목소리를 받고, 이 화면에서 바로 영상 파일을 만든다 */
 let TTS=null,PH=null,EXTRA=null,BGMF=null,SEEDV=Date.now()%1000,PVT=0;
 async function caps(){if(TTS===null||PH===null){const p=await fn({action:"ping"});TTS=!!p.tts;PH=!!p.photos;}}
-/* 대본에 맞는 사진: 문장마다 검색어를 만들어 무료 사진(Pixabay)을 하나씩 받아 둠 (상담·예약 문장은 업체 사진) */
-const exKey=L=>SEEDV+"|"+L.join("\n");
-function extraNow(){const L=lines();return $("phmode").value==="match"&&EXTRA&&EXTRA.k===exKey(L)?EXTRA.list:null;}
-async function findPhotos(quiet){const L=lines();if($("phmode").value!=="match"||!L.length)return null;
+/* 대본에 맞는 사진: 문장마다 검색어를 만들어 무료 사진(Pixabay)을 하나씩 받아 둠. 업체 소개·위치·상담 문장은 업체 사진.
+   CACHE[문장]={q,src,id}, OVQ[문장]=직접 고친 검색어("" 이면 업체 사진), COPH[업체 폴더]=팀이 올린 업체 사진 주소 */
+const CACHE={},OVQ={},COPH={};
+function bdir(){const b=window.ShortsMaker&&ShortsMaker.brandOf(cname());return b?b.dir:"";}
+function coPhotos(){return COPH[bdir()]||[];}
+function qsNow(L){const a=ShortsMaker.sceneQueries(L,cname(),$("kw").value.trim());return L.map((l,i)=>OVQ[l]!=null?(OVQ[l]||null):a[i]);}
+function extraNow(){if($("phmode").value!=="match")return null;const L=lines(),Q=qsNow(L);return L.map((l,i)=>Q[i]&&CACHE[l]&&CACHE[l].q===Q[i]?CACHE[l].src:null);}
+async function fetchFor(idx,L,Q,pick){const used=Object.values(CACHE).map(c=>c.id).filter(Boolean);
+  const r=await fn({action:"photos",queries:idx.map(i=>Q[i]),skip:used,pick});if(!r.ok)throw new Error(r.error||"사진을 찾지 못했어요.");
+  idx.forEach((i,k)=>{const p=(r.photos||[])[k];CACHE[L[i]]={q:Q[i],src:p?p.src:null,id:p?p.id:null};});}
+async function findPhotos(quiet){const L=lines();if($("phmode").value!=="match"||!L.length){renderScenes();return null;}
   try{await caps();}catch(e){return null;}
   if(!PH){if(!quiet)msg("대본에 맞는 사진 키(PIXABAY_KEY)가 아직 없어서 이번에는 업체 사진만 써요.","warn");return null;}
-  const k=exKey(L);if(EXTRA&&EXTRA.k===k)return EXTRA.list;
-  const qs=L.map(l=>ShortsMaker.queryOf(l));if(!qs.some(Boolean))return null;
-  $("pinfo").textContent="대본에 맞는 사진을 찾는 중이에요…";
-  const r=await fn({action:"photos",queries:qs,pick:SEEDV});if(!r.ok)throw new Error(r.error||"사진을 찾지 못했어요.");
-  EXTRA={k,list:(r.photos||[]).map(x=>x&&x.src)};return EXTRA.list;}
+  const Q=qsNow(L),need=L.map((l,i)=>i).filter(i=>Q[i]&&!(CACHE[L[i]]&&CACHE[L[i]].q===Q[i]));
+  if(need.length){$("pinfo").textContent="대본에 맞는 사진을 찾는 중이에요…";await fetchFor(need,L,Q,SEEDV);}
+  renderScenes();return extraNow();}
+function renderScenes(){const box=$("sclist");if(!box||!window.ShortsMaker)return;const L=lines(),on=$("phmode").value==="match",Q=on?qsNow(L):L.map(()=>null);
+  box.innerHTML=L.map((l,i)=>{const c=CACHE[l],img=Q[i]&&c&&c.q===Q[i]&&c.src;
+    return `<div class="sc"><div class="th">${img?`<img src="${img}" alt="">`:`<span>${Q[i]?(c&&c.q===Q[i]?"맞는 사진 없음<br>(업체 사진)":"사진 찾기 전"):"업체 사진<br>(위로 올라가기)"}</span>`}</div><div class="tx"><div>${i+1}. ${esc(l)}</div>${on?`<div class="row"><input data-q="${i}" value="${esc(Q[i]||"")}" placeholder="비우면 업체 사진"><button class="btn small" data-swap="${i}">다른 사진</button></div>`:""}</div></div>`;}).join("")||'<div class="muted">대본을 넣으면 장면이 보여요.</div>';}
+/* 업체 사진 올리기: 1600px로 줄여서 Supabase 저장소 files/vphotos/<업체>/ 에 올리고, 목록은 videocfg/ph_<업체> 에 */
+async function shrink(f){const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error("그림을 못 읽었어요"));i.src=URL.createObjectURL(f);});
+  const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+  return new Promise(ok=>c.toBlob(ok,"image/jpeg",0.86));}
+async function saveCo(d){await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:"ph_"+d,data:{photos:COPH[d]||[]}})});}
+function renderCo(){const d=bdir(),a=COPH[d]||[];$("cocnt").textContent=a.length;
+  $("colist").innerHTML=d?a.map((u,i)=>`<div><img src="${esc(u)}" loading="lazy" alt=""><button class="x" data-codel="${i}" title="빼기">✕</button></div>`).join(""):'<div class="muted">업체를 먼저 골라 주세요.</div>';}
 function bgmSpec(){const v=$("bgm").value;return v==="file"?BGMF:v;}
 function lines(){return $("text").value.split("\n").map(x=>x.trim()).filter(Boolean);}
 function titleNow(){const L=lines(),d=ShortsMaker.titleOf(L[0]||"");const a=$("t1").value.trim(),b=$("t2").value.trim();return a||b?[a||d[0],b]:d;}
-async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
-  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),motion:+$("motion").value});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
+async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();renderScenes();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
+  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:coPhotos(),motion:+$("motion").value});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
 $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
@@ -183,7 +204,7 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
         if(!r.ok)throw new Error(r.error||"목소리를 만들지 못했어요.");audios=r.audios.map(b64ab);}
       else msg("구글 음성 키가 아직 없어서 이번에는 목소리 없이 만들어요.","warn");}
     msg("영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 창을 앞에 띄워 두세요.","warn");
-    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,bgm:bgmSpec(),motion:+$("motion").value,canvas:$("pv"),seed:SEEDV,title:titleNow(),
+    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,coPhotos:coPhotos(),bgm:bgmSpec(),motion:+$("motion").value,canvas:$("pv"),seed:SEEDV,title:titleNow(),
       onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
     const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
     const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;
@@ -195,8 +216,21 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
     msg(`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`,"ok");}
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
   busy=false;$("go").disabled=false;};
-$("pnext").onclick=async()=>{SEEDV++;try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
+$("pnext").onclick=async()=>{SEEDV++;lines().forEach(l=>{delete CACHE[l];});try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
 $("motion").onchange=()=>ls.set("gs-video-motion",$("motion").value);
+$("coadd").onclick=()=>{if(!bdir()){msg("업체를 먼저 골라 주세요.","warn");return;}$("cofile").click();};
+$("cofile").onchange=async()=>{const d=bdir(),fs=[...$("cofile").files];$("cofile").value="";if(!d||!fs.length)return;let ok=0;
+  for(const f of fs){$("comsg").textContent=`올리는 중이에요… ${ok+1}/${fs.length}`;
+    try{const b=await shrink(f),name=`${Date.now()}_${Math.random().toString(36).slice(2,7)}.jpg`;
+      const r=await fetch(`${SB}/storage/v1/object/files/vphotos/${d}/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":"image/jpeg"},body:b});if(!r.ok)throw new Error("올리기 "+r.status);
+      (COPH[d]=COPH[d]||[]).push(`${SB}/storage/v1/object/public/files/vphotos/${d}/${name}`);ok++;}catch(e){}}
+  try{await saveCo(d);$("comsg").textContent=ok===fs.length?`${ok}장 올렸어요. 팀 모두 같이 써요.`:`${fs.length}장 중 ${ok}장만 올렸어요.`;}catch(e){$("comsg").textContent="목록을 저장하지 못했어요. ("+e.message+")";}
+  renderCo();preview();};
+$("colist").onclick=async e=>{const b=e.target.closest("[data-codel]");if(!b)return;const d=bdir();(COPH[d]||[]).splice(+b.dataset.codel,1);try{await saveCo(d);}catch(err){}renderCo();preview();};
+$("sclist").addEventListener("change",async e=>{const i=e.target.dataset.q;if(i==null)return;const L=lines(),l=L[+i];if(!l)return;OVQ[l]=e.target.value.trim();
+  try{await findPhotos(false);}catch(err){msg(esc(err.message),"warn");}renderScenes();preview();});
+$("sclist").addEventListener("click",async e=>{const b=e.target.closest("[data-swap]");if(!b)return;const i=+b.dataset.swap,L=lines(),Q=qsNow(L);if(!Q[i])return;
+  b.disabled=true;b.textContent="찾는 중…";try{await caps();if(!PH)throw new Error("사진 키(PIXABAY_KEY)가 아직 없어요.");await fetchFor([i],L,Q,Math.floor(Math.random()*6));}catch(err){msg(esc(err.message),"warn");}renderScenes();preview();});
 $("phmode").onchange=async()=>{ls.set("gs-video-ph",$("phmode").value);try{await findPhotos(false);}catch(e){msg(esc(e.message),"warn");}preview();};
 $("bgm").onchange=()=>{ls.set("gs-video-bgm",$("bgm").value==="file"?"calm":$("bgm").value);if($("bgm").value==="file"&&!BGMF)$("bgmfile").click();};
 $("bgmfile").onchange=async()=>{const f=$("bgmfile").files[0];if(!f){if(!BGMF)$("bgm").value="calm";return;}BGMF=await f.arrayBuffer();$("bgminfo").textContent="배경음악: "+f.name+" (이 화면을 닫으면 다시 골라야 해요)";};
@@ -204,7 +238,7 @@ let TRY=null;$("bgmtry").onclick=async()=>{if(TRY){try{TRY.close();}catch(e){}TR
   const sp=bgmSpec();if(!sp||sp==="none"){msg("배경음악을 '없이'로 골랐어요.","warn");return;}
   const ac=new (window.AudioContext||window.webkitAudioContext)();TRY=ac;$("bgmtry").textContent="멈추기";
   const b=await ShortsMaker.bgmBuffer(ac,sp,15);if(!b||TRY!==ac){return;}const n=ac.createBufferSource();n.buffer=b;n.connect(ac.destination);n.onended=()=>{if(TRY===ac){ac.close();TRY=null;$("bgmtry").textContent="음악 들어 보기";}};n.start();};
-["text","t1","t2"].forEach(id=>$(id).addEventListener("input",preview));$("client").addEventListener("change",()=>{$("t1").value="";$("t2").value="";preview();});
+["text","t1","t2"].forEach(id=>$(id).addEventListener("input",preview));$("client").addEventListener("change",()=>{$("t1").value="";$("t2").value="";renderCo();preview();});
 $("logout").onclick=()=>{PW="";ls.set("gs-video-pw","");gate();};
 document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.kw){$("kw").value=t.dataset.kw;renderKws();auto();}
