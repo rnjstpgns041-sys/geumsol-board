@@ -28,36 +28,44 @@ function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,
 const ease=t=>t<0?0:t>1?1:1-Math.pow(1-t,3);
 
 /* 영상 설계: 문장별 길이(목소리 길이나 글자 수)로 자막·장면·끝 화면 시간을 정함.
-   사진이 문장보다 적으면 이웃 문장을 한 장면으로 묶어서 같은 사진이 다시 나오지 않게 함.
-   own[i]: i번째 문장에 맞춰 찾은 사진 번호(없으면 -1), nBrand: 업체 사진 수 */
+   own[i]: i번째 문장에 맞춰 찾은 사진 번호(-1이면 업체 사진 문장). nBrand: 업체 사진 수(앞의 nUp장은 팀이 올린 사진).
+   같은 사진은 다시 나오지 않게, 업체 사진이 모자라면 이웃한 업체 문장끼리 한 장면으로 묶음.
+   업체 사진 장면은 늘 '위로 올라가기'(mv 4, fx 3) */
 function plan(lines,durs,opt){const T=[],L=[];let t=0.25;const gap=opt.gap==null?0.18:opt.gap,r=rng(opt.seed||1);
   lines.forEach((ln,i)=>{const d=durs[i],cs=chunks(ln),tot=cs.reduce((a,c)=>a+len(c),0)||1;let u=t;
     cs.forEach(c=>{const cd=d*len(c)/tot;T.push({t:u,d:cd,c});u+=cd;});L.push({t,d});t+=d+gap;});
-  const total=t+0.9,own=opt.own||[],nB=opt.nBrand==null?opt.nPhotos:opt.nBrand;
-  const n=Math.max(1,Math.min(lines.length,nB+own.filter(x=>x>=0).length));
-  const sum=L.reduce((a,x)=>a+x.d,0)||1,G=[];let cum=0;
-  L.forEach((x,i)=>{const g=Math.min(n-1,Math.floor((cum+x.d/2)/sum*n));cum+=x.d;
-    if(G.length&&G[G.length-1].g===g)G[G.length-1].i.push(i);else G.push({g,i:[i]});});
-  const order=[...Array(nB).keys()].sort(()=>r()-.5),used=new Set();let bi=0;
-  const next=()=>{while(bi<order.length&&used.has(order[bi]))bi++;return bi<order.length?order[bi++]:-1;};
-  const scenes=G.map((gr,k)=>{const a=L[gr.i[0]],z=L[gr.i[gr.i.length-1]];
-    let ph=gr.i.map(i=>own[i]).find(x=>x>=0&&!used.has(x));if(ph==null)ph=next();
-    if(ph<0)ph=own.find(x=>x>=0&&!used.has(x));if(ph==null||ph<0)ph=k%Math.max(1,opt.nPhotos);
-    used.add(ph);return {t:a.t,d:z.t+z.d-a.t,photo:ph};});
-  /* 장면마다 사진 움직임(mv 6가지)과 바뀔 때 효과(fx 6가지)를 고르되, 바로 앞과 같은 건 피함 */
-  let lm=-1,lf=-1;scenes.forEach(sc=>{let m,f;do m=Math.floor(r()*6);while(m===lm);do f=Math.floor(r()*6);while(f===lf);sc.mv=lm=m;sc.fx=lf=f;});
+  const total=t+0.9,own=opt.own||[],nB=Math.max(0,opt.nBrand==null?opt.nPhotos:opt.nBrand),nUp=Math.min(nB,opt.nUp||0);
+  const dur=g=>g.i.reduce((a,i)=>a+L[i].d,0);let G;
+  if(!own.some(x=>x>=0)){const n=Math.max(1,Math.min(lines.length,nB||1)),sum=L.reduce((a,x)=>a+x.d,0)||1;let cum=0;G=[];
+    L.forEach((x,i)=>{const g=Math.min(n-1,Math.floor((cum+x.d/2)/sum*n));cum+=x.d;if(G.length&&G[G.length-1].g===g)G[G.length-1].i.push(i);else G.push({g,co:true,i:[i]});});}
+  else{G=L.map((x,i)=>({co:!(own[i]>=0),i:[i]}));let coN=G.filter(g=>g.co).length;
+    while(coN>nB){let best=-1,bd=1e9;for(let k=0;k+1<G.length;k++)if(G[k].co&&G[k+1].co){const d=dur(G[k])+dur(G[k+1]);if(d<bd){bd=d;best=k;}}
+      if(best>=0){G[best].i.push(...G[best+1].i);G.splice(best+1,1);coN--;continue;}
+      const k=G.findIndex(g=>g.co);if(k<0)break;if(k>0)G[k-1].i.push(...G[k].i);else G[1].i.unshift(...G[0].i);G.splice(k,1);coN--;}}
+  const shuf=a=>a.sort(()=>r()-.5),order=[...shuf([...Array(nUp).keys()]),...shuf([...Array(nB-nUp).keys()].map(x=>x+nUp))];let bi=0;
+  const allCo=G.every(g=>g.co);
+  const scenes=G.map(gr=>{const a=L[gr.i[0]],z=L[gr.i[gr.i.length-1]];let ph=gr.co?order[bi++]:own[gr.i[0]];
+    if(ph==null||ph<0)ph=gr.i.map(i=>own[i]).find(x=>x>=0);if(ph==null||ph<0)ph=0;
+    return {t:a.t,d:z.t+z.d-a.t,photo:ph,co:gr.co&&(!allCo||ph<nUp)};});
+  /* 업체 사진은 위로 올라가기로 고정, 나머지는 바로 앞과 다른 움직임·효과 */
+  if(allCo&&scenes.length)scenes[scenes.length-1].co=true;
+  let lm=-1,lf=-1;const MV=[0,1,2,3,5],FX=[0,1,2,4,5];
+  scenes.forEach(sc=>{if(sc.co){sc.mv=4;sc.fx=3;lm=4;lf=3;return;}let m,f;do m=MV[Math.floor(r()*MV.length)];while(m===lm);do f=FX[Math.floor(r()*FX.length)];while(f===lf);sc.mv=lm=m;sc.fx=lf=f;});
   const endAt=Math.max(scenes.length>1?scenes[scenes.length-1].t:total-3.5,total-6);
   return {subs:T,lines:L,scenes,total,endAt};}
 
 async function prepare(o){const B=o.brand,base=o.base||"";
   await Promise.all(["900 80px "+FONT,"700 50px "+FONT].map(f=>document.fonts&&document.fonts.load?document.fonts.load(f).catch(()=>{}):0));
-  const photos=[];for(const src of (o.photos&&o.photos.length?o.photos:[...Array(B.photos)].map((_,i)=>`${base}vbrand/${B.dir}/p${String(i+1).padStart(2,"0")}.jpg`))){try{photos.push(await load(src));}catch(e){}}
+  const photos=[];let nUp=0;
+  /* 팀이 올린 업체 사진(먼저 씀) + 기본 업체 사진 */
+  for(const src of (o.coPhotos||[])){try{photos.push(await load(src));nUp++;}catch(e){}}
+  for(const src of (o.photos&&o.photos.length?o.photos:[...Array(B.photos)].map((_,i)=>`${base}vbrand/${B.dir}/p${String(i+1).padStart(2,"0")}.jpg`))){try{photos.push(await load(src));}catch(e){}}
   const nBrand=photos.length,own=[];
-  /* 대본 문장에 맞춰 찾은 사진 (문장마다 하나, 없으면 null) */
+  /* 대본 문장에 맞춰 찾은 사진 (문장마다 하나, 없으면 null = 업체 사진 문장) */
   for(const src of (o.extra||[])){if(!src){own.push(-1);continue;}try{photos.push(await load(src));own.push(photos.length-1);}catch(e){own.push(-1);}}
   if(!photos.length)throw new Error("쓸 사진이 없어요.");
   const foot=await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
-  return {photos,foot,logo,own,nBrand};}
+  return {photos,foot,logo,own,nBrand,nUp};}
 
 function drawFrame(g,t,S){const {B,P,A,title,kw}=S;
   /* 위 제목 */
@@ -110,20 +118,25 @@ function drawFrame(g,t,S){const {B,P,A,title,kw}=S;
 function pickMime(){const c=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
   return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||"";}
 
-/* 대본 한 줄 → 무료 사진 검색어(영어). 상담·예약·위치 문장은 업체 사진을 쓰도록 null */
-const CTA=/상담|예약|문의|전화|위치|찾아|오시|방문|내원|연락|출구|주차|토요일|평일|일요일|점심시간|진료 시간|진료시간/;
-const WEAK=new Set(["pain","clock","money","steps","checklist","warning","therapy","healthy lifestyle","relaxed smile","doctor patient"]);
-const QW=[[/한의사|원장|의사|전문의|변호사가/,"doctor"],[/교통사고|접촉사고|추돌/,"car accident"],[/운전|자동차|차량/,"driving car"],[/보험/,"insurance paperwork"],
-  [/허리/,"back pain"],[/거북목|목디스크|목이|목과|목 통증|뒷목/,"neck pain"],[/어깨/,"shoulder pain"],[/무릎/,"knee pain"],[/손목/,"wrist pain"],[/디스크|척추/,"spine"],[/근육|인대|뼈|뻣뻣|뭉치/,"muscle stiffness"],
-  [/두통|머리가/,"headache"],[/어지러|어지럼/,"dizziness"],[/불면|잠을|수면|잠이/,"insomnia"],[/피로|피곤|무기력|기운/,"tired person"],[/스트레스/,"stressed person"],[/우울|불안/,"anxious woman"],
-  [/소화|위장|속쓰림|더부룩/,"stomach ache"],[/비염|코막힘|콧물|재채기/,"runny nose"],[/기침|감기/,"cold cough"],[/다이어트|체중|살이|살을/,"healthy diet"],[/피부|여드름/,"skin care"],[/탈모/,"hair loss"],
-  [/아이|어린이|성장|키가|자녀/,"child"],[/수험생|학생|공부/,"student studying"],[/직장인|사무실|업무/,"office worker"],[/어르신|부모님|노인|할머니|할아버지/,"senior"],[/산후|출산|임신/,"pregnant woman"],[/갱년기|생리|여성/,"woman health"],
-  [/약침|침 치료|침치료|침을/,"acupuncture"],[/한약|탕약|약재/,"herbal medicine"],[/추나|교정|자세/,"posture"],[/뜸/,"moxibustion"],[/부항/,"cupping therapy"],[/물리치료|재활/,"physical therapy"],[/운동|스트레칭/,"stretching"],[/걷기|산책/,"walking"],
-  [/진료|진단|검사|진찰/,"doctor patient"],[/통증|아프|아픔|쑤시|결리|저리/,"pain"],[/회복|좋아지|나아지|편안/,"relaxed smile"],[/예방|관리|습관/,"healthy lifestyle"],[/치료/,"therapy"],
+/* 대본 한 줄 → 무료 사진 검색어(영어, 한 가지 뜻만). 사람이 나오는 주제는 asian을 붙여 우리 시청자에게 맞춤.
+   업체 소개·위치·상담·진료 시간 문장은 업체 사진을 쓰도록 null */
+const CO=/상담|예약|문의|전화|위치|찾아|오시|방문|내원|연락|출구|주차|토요일|평일|일요일|공휴일|점심시간|진료 ?시간|한의사|원장|대표 ?변호사|저희|우리 (한의원|병원|사무소)/;
+const PPL=s=>"asian "+s;
+const QW=[[/엑스레이|MRI|x-?ray/i,"x-ray"],[/교통사고|접촉사고|추돌/,"car accident"],[/운전|자동차|차량/,"driving car"],[/보험/,"insurance document"],
+  [/거북목|목디스크|목이|목과|목 통증|뒷목|목,/,PPL("neck pain")],[/허리/,PPL("back pain")],[/어깨/,PPL("shoulder pain")],[/무릎/,PPL("knee pain")],[/손목/,PPL("wrist pain")],[/디스크|척추/,"spine x-ray"],[/근육|인대|뼈|뻣뻣|뭉치/,PPL("neck massage")],
+  [/두통|머리가/,PPL("headache")],[/어지러|어지럼/,PPL("dizzy")],[/불면|잠을|수면|잠이/,PPL("insomnia")],[/피로|피곤|무기력|기운/,PPL("tired")],[/스트레스/,PPL("stress")],[/우울|불안/,PPL("worried woman")],
+  [/소화|위장|속쓰림|더부룩/,PPL("stomach ache")],[/비염|코막힘|콧물|재채기/,PPL("runny nose")],[/기침|감기/,PPL("cough")],[/다이어트|체중|살이|살을/,"healthy diet"],[/피부|여드름/,PPL("skin care")],[/탈모/,"hair loss"],
+  [/아이|어린이|성장|키가|자녀/,PPL("child")],[/수험생|학생|공부/,PPL("student studying")],[/직장인|사무실|업무/,PPL("office worker")],[/어르신|부모님|노인|할머니|할아버지/,PPL("senior")],[/산후|출산|임신/,PPL("pregnant")],[/갱년기|생리|여성/,PPL("woman")],
+  [/사고/,"car crash"],
+  [/약침|침 치료|침치료|침을|침,/,"acupuncture"],[/한약|탕약|약재/,"herbal medicine"],[/추나|교정|자세/,"posture"],[/뜸/,"moxibustion"],[/부항/,"cupping therapy"],[/물리치료|재활/,"physical therapy"],[/운동|스트레칭/,PPL("stretching")],[/걷기|산책/,"walking"],
   [/변호사|법률|법적/,"lawyer"],[/소송|재판|법원|판결/,"court"],[/이혼/,"divorce"],[/상속|유산/,"family"],[/계약|서류|합의|문서/,"contract signing"],[/사기|피해/,"fraud"],[/형사|경찰|고소|처벌/,"police"],
-  [/시간|미루|방치|늦기|늦으/,"clock"],[/비용|돈|금액/,"money"],[/방법|단계|순서/,"steps"],[/체크|확인|점검/,"checklist"],[/주의|조심|위험|놓치/,"warning"]];
-function queryOf(line){const s=String(line||"");if(CTA.test(s))return null;let w=[];for(const [re,en] of QW)if(re.test(s)&&!w.includes(en))w.push(en);
-  if(w.some(x=>!WEAK.has(x)))w=w.filter(x=>!WEAK.has(x));return w.length?w.slice(0,2).join(" "):null;}
+  [/진료|진단|검사|진찰/,PPL("doctor patient")],[/통증|아프|아픔|쑤시|결리|저리/,PPL("pain")],[/회복|좋아지|나아지|편안/,PPL("smile")],[/예방|관리|습관/,"healthy lifestyle"],[/치료/,"therapy"],
+  [/시간|미루|방치|늦기|늦으|며칠/,"calendar"],[/비용|돈|금액/,"money"],[/방법|단계|순서/,"steps"],[/체크|확인|점검|상태/,"checklist"],[/주의|조심|위험|놓치/,"warning"]];
+function queryOf(line){const s=String(line||"");if(CO.test(s))return null;for(const [re,en] of QW)if(re.test(s))return en;return null;}
+/* 대본 전체 → 문장별 검색어. 업체 문장(업체 이름이 들어간 문장 포함)은 null, 맞는 말이 없으면 키워드 주제로 */
+function sceneQueries(lines,name,kw){const short=String(name||"").replace(/\s/g,"").replace(/(한방병원|한의원|병원|의원|법률사무소|변호사)$/,"");
+  const topic=queryOf(kw)||queryOf(lines.join(" "));
+  return lines.map(l=>{const t=String(l||"");if(CO.test(t)||(short.length>1&&t.replace(/\s/g,"").includes(short)))return null;return queryOf(t)||topic||null;});}
 /* 배경음악: 저작권 걱정 없게 코드로 직접 연주해서 만든다 (calm 잔잔하게 / bright 밝게), 또는 올린 음악 파일(ArrayBuffer) */
 const hz=m=>440*Math.pow(2,(m-69)/12);
 const PROG={calm:[[53,57,60,64],[48,55,60,64],[50,57,60,65],[46,53,58,62]],bright:[[48,55,60,64],[55,59,62,67],[57,60,64,69],[53,57,60,65]]};
@@ -161,14 +174,14 @@ function duck(gp,P,t0,voice){gp.setValueAtTime(1,t0);if(!voice||!P.lines.length)
 /* o: {name, kw, lines[], audios[ArrayBuffer|null], canvas, base, seed, onProgress(p,msg)} → {blob,mime,ext,seconds} */
 async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모양이 없는 업체예요.");
   const lines=o.lines.map(s=>s.trim()).filter(Boolean);if(!lines.length)throw new Error("대본이 비어 있어요.");
-  const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra});
+  const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
   const ac=new (window.AudioContext||window.webkitAudioContext)();const bufs=[];
   for(const a of (o.audios||[])){try{bufs.push(a?await ac.decodeAudioData(a.slice(0)):null);}catch(e){bufs.push(null);}}
   /* 직접 녹음한 목소리 하나: 문장 길이 비율로 나눔 */
   let nar=null;if(o.narration){try{nar=await ac.decodeAudioData(o.narration.slice(0));}catch(e){throw new Error("녹음한 소리를 읽지 못했어요. 다시 녹음해 주세요.");}}
   const tl=lines.reduce((a,l)=>a+len(l),0)||1;
   const durs=lines.map((l,i)=>nar?nar.duration*len(l)/tl-0.001:bufs[i]?bufs[i].duration:Math.max(1.6,len(l)*0.19));
-  const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,own:A.own,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
+  const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
   const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion};
   const music=await bgmBuffer(ac,o.bgm,P.total);
   const cv=o.canvas||document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");
@@ -195,9 +208,9 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   return {blob,mime,ext:mime.startsWith("video/mp4")?"mp4":"webm",seconds:P.total};}
 
 /* 미리보기: 소리 없이 화면만 그려 봄 */
-async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra});
-  const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,own:A.own});
+async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
+  const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own});
   const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion});return P;}
 
-root.ShortsMaker={make,still,brandOf,titleOf,BRAND,bgmBuffer,queryOf};
+root.ShortsMaker={make,still,brandOf,titleOf,BRAND,bgmBuffer,queryOf,sceneQueries};
 })(window);

@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     // 검색 결과를 {id, url, by} 목록으로
     async function search(q: string): Promise<{ id: string; url: string; by: string }[] | "badkey"> {
       if (xk) {
-        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=horizontal&safesearch=true&per_page=20&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
+        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=horizontal&safesearch=true&per_page=20&lang=" + (/[가-힣]/.test(q) ? "ko" : "en") + "&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
         if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/key/i.test(t)) return "badkey"; return []; }
         const d = await r.json().catch(() => ({}));
         return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; user: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || "") }));
@@ -111,7 +111,12 @@ Deno.serve(async (req) => {
     for (const q of qs) {
       if (!q) { out.push(null); continue; }
       try {
-        const res = await search(q);
+        // 결과가 없으면 'asian'을 빼고, 그래도 없으면 첫 낱말만으로 다시 찾음
+        let res = await search(q);
+        for (const q2 of [q.replace(/^asian /, ""), q.replace(/^asian /, "").split(" ")[0]]) {
+          if (res === "badkey" || (Array.isArray(res) && res.filter((p) => !skip.has(p.id)).length) || q2 === q) continue;
+          res = await search(q2);
+        }
         if (res === "badkey") return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
         const list = res.filter((p) => !skip.has(p.id));
         if (!list.length) { out.push(null); continue; }
