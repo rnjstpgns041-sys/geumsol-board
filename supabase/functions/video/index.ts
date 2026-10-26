@@ -124,13 +124,14 @@ Deno.serve(async (req) => {
     const extra = kind === "image" ? ["gemini-2.5-flash-image"] : ["gemini-flash-latest", "gemini-flash-lite-latest", ...pro];
     return [...new Set([...list, ...pre, ...extra])];
   }
-  async function gemAuto(kind: "text" | "image", body: unknown) {
+  async function gemAuto(kind: "text" | "image", body: unknown, until = 0) {
     let last: unknown = null; const tried: string[] = [];
     // 없는 모델이면 다음 모델로, 붐비면(503·429) 잠깐 쉬고 한 번 더 한 뒤 다음 모델로
     for (const m of (await models(kind)).slice(0, 8)) {
+      if (until && Date.now() > until - 4000) break; // 시간이 다 되면 그만 (함수가 통째로 끊기지 않게)
       tried.push(m);
       for (let k = 0; k < 2; k++) {
-        try { return await gem(m, body); } catch (e) {
+        try { return await gem(m, body, until); } catch (e) {
           last = e; const t = String((e as Error).message || e);
           if (/high demand|overloaded|unavailable|try again|503|429|RESOURCE_EXHAUSTED|rate/i.test(t)) { if (k === 0) { await new Promise((r) => setTimeout(r, 2500)); continue; } break; }
           if (/not found|no longer|not available|not supported|deprecated|unsupported|404/i.test(t)) break;
@@ -141,8 +142,9 @@ Deno.serve(async (req) => {
     const msg = String((last as Error)?.message || last || "쓸 수 있는 제미나이 모델을 찾지 못했어요.");
     throw new Error(msg.slice(0, 120) + " [시도한 모델: " + tried.join(", ") + "]");
   }
-  async function gem(model: string, body: unknown) {
-    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  async function gem(model: string, body: unknown, until = 0) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), until ? Math.max(3000, Math.min(45000, until - Date.now())) : 90000);
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal }).catch((e) => { throw new Error(ctl.signal.aborted ? "제미나이 응답이 너무 늦어요 (503)" : String((e as Error).message || e)); }).finally(() => clearTimeout(tm));
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240) + (r.status === 404 || r.status === 503 || r.status === 429 ? " (" + r.status + ")" : ""));
     return d;
@@ -156,41 +158,68 @@ Deno.serve(async (req) => {
       .replace(/<br\s*\/?>|<\/(p|div|li|tr|h\d|dt|dd|section)>/gi, "\n").replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
       .replace(/[ \t\r\f]+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
-    async function get(u: URL) {
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
+    const t0 = Date.now();
+    const host = (h: string) => h.toLowerCase().replace(/^www\./, "");
+    const HDR = { ...UA, Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" };
+    async function get(u: URL, ms = 12000) {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
       try {
-        const r = await fetch(u, { headers: UA, signal: ctl.signal, redirect: "follow" });
+        const r = await fetch(u, { headers: HDR, signal: ctl.signal, redirect: "follow" });
         if (!r.ok) return "";
-        const buf = new Uint8Array(await r.arrayBuffer()).subarray(0, 1_500_000);
+        const buf = new Uint8Array(await r.arrayBuffer()).subarray(0, 2_000_000);
         let txt = new TextDecoder("utf-8").decode(buf);
-        if (/charset=["']?euc-kr/i.test(txt) || /euc-kr/i.test(r.headers.get("content-type") || "")) txt = new TextDecoder("euc-kr").decode(buf);
+        if (/charset=["']?euc-kr/i.test(txt.slice(0, 3000)) || /euc-kr/i.test(r.headers.get("content-type") || "")) txt = new TextDecoder("euc-kr").decode(buf);
         return txt;
       } catch { return ""; } finally { clearTimeout(t); }
     }
-    const home = await get(u0);
-    if (!home) return j({ ok: false, error: "홈페이지를 열지 못했어요. 주소가 맞는지 확인해 주세요." });
-    const pages: string[] = [strip(home)], imgs = new Set<string>(), seen = new Set([u0.href]);
-    const WANT = /의료진|원장|소개|진료\s*시간|진료안내|오시는|찾아오|위치|시설|둘러|입원|병실|진료과목|클리닉|치료|about|doctor|location|map|info/i;
-    const links: URL[] = [];
-    for (const m of home.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    // 화면을 자바스크립트로 그리는 홈페이지(아임웹·윅스·모두 등)나 막힌 곳은 r.jina.ai가 브라우저로 열어 본 글을 받음
+    async function reader(u: URL) {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 30000);
       try {
-        const u = new URL(m[1], u0); const label = strip(m[2]);
-        if (u.hostname !== u0.hostname || seen.has(u.href) || !/^https?:$/.test(u.protocol)) continue;
-        if (WANT.test(label) || WANT.test(u.pathname)) { seen.add(u.href); links.push(u); }
-      } catch { /* 잘못된 링크 */ }
+        const r = await fetch("https://r.jina.ai/" + u.href, { headers: { Accept: "text/plain", "X-Timeout": "20", "X-With-Images-Summary": "true", "X-With-Links-Summary": "true" }, signal: ctl.signal });
+        if (!r.ok) return "";
+        return (await r.text()).slice(0, 400_000);
+      } catch { return ""; } finally { clearTimeout(t); }
     }
-    const subs = await Promise.all(links.slice(0, 6).map(get));
-    subs.forEach((h) => { if (h) pages.push(strip(h)); });
-    for (const h of [home, ...subs]) for (const m of h.matchAll(/<img\b[^>]*?(?:data-src|src)=["']([^"']+)["']/gi)) {
-      try { const u = new URL(m[1], u0); if (/^https?:$/.test(u.protocol) && !/logo|icon|btn|blank|sprite|banner_s|\.gif|\.svg/i.test(u.pathname)) imgs.add(u.href); } catch { /* */ }
+    type Pg = { url: URL; html: string; text: string; md: string };
+    async function read(u: URL, ms?: number): Promise<Pg> {
+      const html = await get(u, ms);
+      const text = html ? strip(html) : "";
+      // 글자가 너무 적으면(대부분 자바스크립트로 그리는 화면) 브라우저로 읽은 글로 바꿈
+      if (text.replace(/\s/g, "").length >= 300 || Date.now() - t0 > 60000) return { url: u, html, text, md: "" };
+      const md = await reader(u);
+      return { url: u, html, text: md && md.length > text.length ? md.replace(/!\[[^\]]*\]\([^)]*\)/g, " ").replace(/\]\([^)]*\)/g, "]") : text, md };
+    }
+    const home = await read(u0);
+    if (!home.text) return j({ ok: false, error: "홈페이지를 열지 못했어요. 주소가 맞는지 확인해 주세요." });
+    const pages: string[] = [home.text], imgs = new Set<string>(), seen = new Set([u0.href]);
+    const WANT = /의료진|원장|소개|진료\s*시간|진료안내|오시는|찾아오|위치|시설|둘러|입원|병실|진료과목|클리닉|치료|프로그램|센터|about|doctor|location|map|info|clinic|program/i;
+    const links: URL[] = [];
+    const addLink = (href: string, label: string) => {
+      try {
+        const u = new URL(href, u0); u.hash = "";
+        if (host(u.hostname) !== host(u0.hostname) || seen.has(u.href) || !/^https?:$/.test(u.protocol) || /\.(jpe?g|png|gif|webp|pdf|zip)$/i.test(u.pathname)) return;
+        if (WANT.test(label) || WANT.test(decodeURIComponent(u.pathname))) { seen.add(u.href); links.push(u); }
+      } catch { /* 잘못된 링크 */ }
+    };
+    for (const m of home.html.matchAll(/<a\b[^>]*?href=["']([^"'#]+)["'][^>]*>([\s\S]{0,400}?)<\/a>/gi)) addLink(m[1], strip(m[2]));
+    for (const m of home.md.matchAll(/(?<!!)\[([^\]]{0,80})\]\((https?:[^)\s]+)\)/g)) addLink(m[2], m[1]);
+    const subs = await Promise.all(links.slice(0, 6).map((u) => read(u, 9000)));
+    subs.forEach((p) => { if (p.text) pages.push(p.text); });
+    for (const p of [home, ...subs]) {
+      for (const m of p.html.matchAll(/<img\b[^>]*?(?:data-src|data-original|src)=["']([^"']+)["']/gi)) addImg(m[1]);
+      for (const m of p.md.matchAll(/!\[[^\]]*\]\((https?:[^)\s]+)\)/g)) addImg(m[1]);
+    }
+    function addImg(src: string) {
+      try { const u = new URL(src, u0); if (/^https?:$/.test(u.protocol) && !/logo|icon|btn|blank|sprite|banner_s|\.gif|\.svg/i.test(u.pathname)) imgs.add(u.href); } catch { /* */ }
     }
     const text = pages.join("\n----\n").slice(0, 24000);
-    const logo = (home.match(/<img\b[^>]*(?:src)=["']([^"']*logo[^"']*)["']/i) || [])[1];
+    const logo = (home.html.match(/<img\b[^>]*(?:src)=["']([^"']*logo[^"']*)["']/i) || [])[1];
     // 키가 없을 때: 전화·주소·진료시간만 글자 규칙으로
     const tel = (text.match(/0\d{1,2}[-.)\s]\d{3,4}[-.\s]\d{4}|1[5-9]\d{2}-\d{4}/) || [""])[0];
     const hours: string[][] = [];
-    for (const m of text.matchAll(/(평일|월[~\-–]금|월요일[^\n]{0,8}금요일|토요일|토|일요일|일·공휴일|공휴일|일요일·공휴일|야간[^\n]{0,8})\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*(?:분)?\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2}\s*(?:분)?)/g)) {
-      if (hours.length < 4 && !hours.some((h) => h[0] === m[1])) hours.push([m[1], m[2].replace(/\s+/g, " ")]);
+    for (const m of text.matchAll(/(평일\s*매일|평일|주말\s*[·,및]?\s*공휴일|주말|월[~\-–]금|월요일[^\n]{0,8}금요일|토요일|토|일요일|일·공휴일|공휴일|일요일·공휴일|야간[^\n]{0,8})\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*(?:분)?\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2}\s*(?:분)?)/g)) {
+      if (hours.length < 4 && !hours.some((h) => h[0] === m[1])) hours.push([m[1].trim(), m[2].replace(/\s+/g, " ").trim()]);
     }
     const lunch = ((text.match(/점심\s*시간\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2})/) || [])[1] || "");
     const addr = ((text.match(/((?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n]{4,60}?(?:로|길)\s?\d+[^\n]{0,30})/) || [])[1] || "").trim();
@@ -204,7 +233,7 @@ room.on은 입원실이 실제로 있을 때만 true.
 ----
 ${text}`;
       try {
-        const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } });
+        const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } }, t0 + 125000);
         const t = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
         const g = JSON.parse(t.replace(/^```json|```$/g, "").trim());
         info = { ...info, ...Object.fromEntries(Object.entries(g).filter(([, v]) => v !== "" && v != null && !(Array.isArray(v) && !v.length))) };
