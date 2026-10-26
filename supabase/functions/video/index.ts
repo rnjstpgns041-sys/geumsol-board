@@ -133,6 +133,7 @@ Deno.serve(async (req) => {
       for (let k = 0; k < 2; k++) {
         try { return await gem(m, body, until); } catch (e) {
           last = e; const t = String((e as Error).message || e);
+          if (/quota|exceeded/i.test(t)) break; // 이 모델 사용량이 다 됨: 기다리지 말고 다음 모델로
           if (/high demand|overloaded|unavailable|try again|503|429|RESOURCE_EXHAUSTED|rate/i.test(t)) { if (k === 0) { await new Promise((r) => setTimeout(r, 2500)); continue; } break; }
           if (/not found|no longer|not available|not supported|deprecated|unsupported|404/i.test(t)) break;
           throw e;
@@ -387,38 +388,47 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
       const d = await r.json().catch(() => ({}));
       return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string; tiny?: string }; photographer: string; alt?: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || ""), pv: String(p.src.tiny || ""), tags: String(p.alt || "") }));
     }
-    // 후보 10장을 작게 받아 제미나이에게 보여 주고 조건에 맞는 번호만 받음. 맞는 게 없으면 []
-    async function judge(cands: Ph[], want: string): Promise<number[] | null> {
+    // 모든 사진 자리 후보를 한 번에 제미나이에게 보여 주고 자리마다 점수를 받음 (무료 사용량을 아끼려고 요청은 한두 번만)
+    const LET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    async function judgeAll(slots: { qi: number; cands: Ph[]; want: string }[]): Promise<Map<number, number[]> | null> {
       try {
-        const ims = await Promise.all(cands.map(async (c) => { try { const r = await fetch(c.pv); return r.ok ? b64(new Uint8Array(await r.arrayBuffer())) : ""; } catch { return ""; } }));
-        const parts: unknown[] = [{ text: `사진 ${cands.length}장이 0번부터 순서대로 있어요. 병원·한의원 블로그 그림에 넣을 사진을 고르려고 해요.
-조건: ${want}
+        const ims = await Promise.all(slots.map((sl) => Promise.all(sl.cands.map(async (c) => { try { const r = await fetch(c.pv); return r.ok ? b64(new Uint8Array(await r.arrayBuffer())) : ""; } catch { return ""; } }))));
+        const head = `병원·한의원 블로그 그림에 넣을 사진을 고르려고 해요. 사진 자리가 ${slots.length}곳이고, 자리마다 조건과 후보 사진이 있어요.
 공통으로 빼야 할 사진: 문신, 흑백 예술 사진, 성적이거나 무섭거나 피가 보이는 사진, 글자·로고가 큰 사진, 조건과 주제가 다른 사진.
-사진마다 조건에 얼마나 맞는지 0~10점으로 매겨 JSON 하나로 답해 주세요: {"s":[0번 점수, 1번 점수, ...]}
-10 = 조건 그대로(주제·사람·동작이 딱 맞음), 7 = 블로그에 넣어도 자연스러움, 4 이하 = 주제가 다르거나 어색함(커플·풍경·음식·운동복 화보 등). 애매하면 낮게 주세요.` }];
-        ims.forEach((d, i) => { if (d) parts.push({ text: "사진 " + i }, { inline_data: { mime_type: "image/jpeg", data: d } }); });
-        const until = Math.min(t0 + 110000, Date.now() + 20000);
+후보마다 그 자리 조건에 얼마나 맞는지 0~10점을 매겨요. 10 = 조건 그대로(주제·사람·동작이 딱 맞음), 7 = 블로그에 넣어도 자연스러움, 4 이하 = 주제가 다르거나 어색함(커플·풍경·음식·운동복 화보 등). 애매하면 낮게 주세요.
+JSON 하나로만 답해요: {${slots.map((_, i) => `"${LET[i]}":[0번 점수, 1번 점수, ...]`).join(", ")}}`;
+        const until = Math.min(t0 + 100000, Date.now() + 40000);
         const safety = ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"].map((category) => ({ category, threshold: "BLOCK_ONLY_HIGH" }));
-        // 답이 비거나(사진 때문에 막힘 등) 깨지면 사진 대신 사진 설명 낱말(태그)로 한 번 더 물어봄
         const ask = async (ps: unknown[]) => { const d = await gemAuto("text", { contents: [{ parts: ps }], safetySettings: safety, generationConfig: { responseMimeType: "application/json", temperature: 0 } }, until); return looseJson(d); };
+        const parts: unknown[] = [{ text: head }];
+        slots.forEach((sl, i) => { parts.push({ text: `\n[자리 ${LET[i]}] 조건: ${sl.want}` }); ims[i].forEach((d, k) => { if (d) parts.push({ text: `자리 ${LET[i]} 사진 ${k}` }, { inline_data: { mime_type: "image/jpeg", data: d } }); }); });
         let g: any;
         try { g = await ask(parts); } catch (e) {
-          if (Date.now() > until - 5000) throw e;
-          g = await ask([{ text: String((parts[0] as { text: string }).text).replace("사진 " + cands.length + "장이 0번부터 순서대로 있어요.", "사진 " + cands.length + "장의 설명 낱말(영어 태그)이 0번부터 있어요. 낱말만 보고 판단해 주세요.") + "\n" + cands.map((c, i) => i + ": " + c.tags.slice(0, 160)).join("\n") }]);
+          // 사용량 초과면 다시 물어도 같으니 그만. 답이 비거나 깨졌으면 사진 대신 설명 낱말(영어 태그)로 한 번 더
+          if (/quota|exceeded|429|RESOURCE_EXHAUSTED/i.test(String((e as Error).message || e)) || Date.now() > until - 5000) throw e;
+          g = await ask([{ text: head + "\n사진 대신 사진 설명 낱말(영어 태그)만 있어요. 낱말만 보고 판단해 주세요.\n" + slots.map((sl, i) => `[자리 ${LET[i]}] 조건: ${sl.want}\n` + sl.cands.map((c, k) => `${k}: ${c.tags.slice(0, 160)}`).join("\n")).join("\n") }]);
         }
-        // 8점 이상 먼저, 없으면 7점. 높은 점수 순서
-        const sc = (Array.isArray(g.s) ? g.s : []).map(Number);
-        const idx = sc.map((v: number, i: number) => [v, i]).filter(([v, i]: number[]) => v >= 7 && i < cands.length && ims[i]).sort((a: number[], b: number[]) => b[0] - a[0]);
-        const top = idx.filter(([v]: number[]) => v >= 8);
-        return (top.length ? top : idx).map(([, i]: number[]) => i);
-      } catch (e) { vetErr = String((e as Error).message || e).slice(0, 160); return null; } // 제미나이가 안 되면 태그로만 고름
+        const res = new Map<number, number[]>();
+        slots.forEach((sl, i) => {
+          const sc = (Array.isArray(g[LET[i]]) ? g[LET[i]] : []).map(Number);
+          // 8점 이상 먼저, 없으면 7점. 높은 점수 순서
+          const idx = sc.map((v: number, k: number) => [v, k]).filter(([v, k]: number[]) => v >= 7 && k < sl.cands.length).sort((x: number[], y: number[]) => y[0] - x[0]);
+          const top = idx.filter(([v]: number[]) => v >= 8);
+          res.set(sl.qi, (top.length ? top : idx).map(([, k]: number[]) => k));
+        });
+        return res;
+      } catch (e) {
+        const m = String((e as Error).message || e);
+        vetErr = /quota|exceeded|RESOURCE_EXHAUSTED/i.test(m) ? "제미나이 무료 사용량을 다 써서 잠시 쉬는 중이에요. 1분쯤 뒤에 [다른 사진]을 누르면 다시 확인해요" : m.slice(0, 160);
+        return null;
+      }
     }
-    // 사진 자리마다 동시에 찾음 (한 번에 6개씩): 제미나이 확인이 있어도 오래 걸리지 않게
+    // 1) 자리마다 동시에 검색하고 태그로 거름
     type Got = null | "badkey" | { id: string; src: string; by: string };
-    async function one(q: string, qi: number): Promise<Got> {
+    async function gather(q: string, qi: number): Promise<Ph[] | "badkey" | null> {
       if (!q) return null;
       try {
-        const s0 = Date.now(), ori = orient[qi] || "";
+        const ori = orient[qi] || "";
         // 결과가 없으면 'asian'을 빼고, 그래도 없으면 앞 두 낱말만으로 다시 찾음
         let res = await search(q, 1, ori);
         for (const q2 of [q.replace(/^asian /, ""), q.replace(/^asian /, "").split(" ").slice(0, 2).join(" ")]) {
@@ -437,31 +447,34 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
           if (!ok.length) { const more = await search(q, 2, ori); if (Array.isArray(more)) ok = more.filter((p) => !skip.has(p.id) && nd.test(p.tags)); }
           list = ok;
         }
-        if (!list.length) return null;
-        // 잘 맞는 앞쪽 12장 안에서 골고루 (같은 검색어라도 영상마다 다른 사진)
-        let p = list[(pick + qi * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
-        // 조건이 있으면 제미나이가 본 사진 중 어울리는 것만 (앞 12장, 빨리 끝났을 때만 다음 12장). 끝까지 없으면 빈칸으로 둠
-        if (gemk && vet[qi] && Date.now() - t0 < 80000) {
-          let chosen: Ph | null = null, judged = false;
-          for (let k = 0; k < 2 && !chosen && k * 12 < list.length && (k === 0 || Date.now() - s0 < 15000); k++) {
-            const cands = list.slice(k * 12, k * 12 + 12).filter((c) => c.pv);
-            const good = await judge(cands, vet[qi]);
-            if (good === null) break;
-            judged = true;
-            if (good.length) chosen = cands[good[(pick + Math.floor(Math.random() * 1000)) % Math.min(good.length, 2)]];
-          }
-          if (chosen) p = chosen; else if (judged) return null;
-        }
-        skip.add(p.id);
-        const im = await fetch(p.url);
-        if (!im.ok) return null;
-        return { id: p.id, src: "data:image/jpeg;base64," + b64(new Uint8Array(await im.arrayBuffer())), by: p.by };
+        return list.length ? list : null;
       } catch { return null; }
     }
-    const out: Got[] = [];
-    for (let i = 0; i < qs.length; i += 6) out.push(...await Promise.all(qs.slice(i, i + 6).map((q, k) => one(q, i + k))));
-    if (out.includes("badkey")) return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
-    return j({ ok: true, ver: 36, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
+    const lists = await Promise.all(qs.map((q, i) => gather(q, i)));
+    if (lists.includes("badkey")) return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
+    // 2) 조건이 있는 자리는 제미나이 한 번에 확인 (앞 8장씩, 못 고른 자리만 다음 8장으로 한 번 더)
+    const chosen = new Map<number, Ph | null>(), PER = 8;
+    if (gemk) {
+      for (let round = 0; round < 2; round++) {
+        const slots = lists.map((l, qi) => ({ qi, l: Array.isArray(l) ? l : [] })).filter(({ qi, l }) => vet[qi] && !chosen.get(qi) && l.length > round * PER)
+          .map(({ qi, l }) => ({ qi, cands: l.slice(round * PER, round * PER + PER).filter((c) => c.pv), want: vet[qi] })).filter((x) => x.cands.length);
+        if (!slots.length || (round > 0 && Date.now() - t0 > 45000)) break;
+        const r = await judgeAll(slots);
+        if (!r) break;
+        for (const sl of slots) { const good = r.get(sl.qi) || []; chosen.set(sl.qi, good.length ? sl.cands[good[(pick + Math.floor(Math.random() * 1000)) % Math.min(good.length, 2)]] : null); }
+      }
+    }
+    // 3) 고른 사진 받기. 제미나이가 보고도 맞는 게 없던 자리는 빈칸, 확인을 못 한 자리는 앞쪽 12장 안에서 골고루
+    const out: Got[] = await Promise.all(lists.map(async (l, qi) => {
+      if (!Array.isArray(l)) return null;
+      let p: Ph | null | undefined = chosen.get(qi);
+      if (p === null) return null;
+      if (!p) p = l[(pick + qi * 7 + Math.floor(Math.random() * 1000)) % Math.min(l.length, 12)];
+      if (skip.has(p.id) && l.length > 1) { const alt = l.find((x) => !skip.has(x.id)); if (alt && !chosen.get(qi)) p = alt; }
+      skip.add(p.id);
+      try { const im = await fetch(p.url); if (!im.ok) return null; return { id: p.id, src: "data:image/jpeg;base64," + b64(new Uint8Array(await im.arrayBuffer())), by: p.by }; } catch { return null; }
+    }));
+    return j({ ok: true, ver: 37, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
   }
 
   if (!key) return j({ ok: false, error: "Supabase 비밀값 SUPERSHORTS_KEY가 아직 없어요." }, 500);
