@@ -362,20 +362,23 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
     // vet[i] = 사진이 맞아야 할 조건(한국어). 있으면 제미나이가 작은 사진들을 보고 어울리는 것만 고름
     const vet = (Array.isArray(b.vet) ? b.vet : []).map((x) => String(x || "").slice(0, 300));
     const orient = (Array.isArray(b.orient) ? b.orient : []).map((x) => String(x || ""));
+    // need[i] = 사진 태그(영어)에 꼭 있어야 할 낱말 (예: pain|ache). 제미나이가 안 될 때도 엉뚱한 사진을 거름
+    const need = (Array.isArray(b.need) ? b.need : []).map((x) => { try { return x ? new RegExp(String(x).slice(0, 300), "i") : null; } catch { return null; } });
+    let vetErr = "";
     const t0 = Date.now();
-    type Ph = { id: string; url: string; by: string; pv: string };
+    type Ph = { id: string; url: string; by: string; pv: string; tags: string };
     // 검색 결과를 {id, url, by, pv(작은 사진)} 목록으로
     async function search(q: string, page = 1, ori = ""): Promise<Ph[] | "badkey"> {
       if (xk) {
         const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=" + (ori === "vertical" ? "vertical" : ori === "all" ? "all" : "horizontal") + "&safesearch=true&per_page=60&page=" + page + "&lang=" + (/[가-힣]/.test(q) ? "ko" : "en") + "&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
         if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/key/i.test(t)) return "badkey"; return []; } // 400 = 없는 쪽(page)
         const d = await r.json().catch(() => ({}));
-        return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; previewURL: string; user: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || ""), pv: String(h.previewURL || "") }));
+        return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; previewURL: string; user: string; tags?: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || ""), pv: String(h.previewURL || ""), tags: String(h.tags || "") }));
       }
       const r = await fetch("https://api.pexels.com/v1/search?per_page=40&page=" + page + "&orientation=" + (ori === "vertical" ? "portrait" : "landscape") + "&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
       if (r.status === 401 || r.status === 403) return "badkey";
       const d = await r.json().catch(() => ({}));
-      return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string; tiny?: string }; photographer: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || ""), pv: String(p.src.tiny || "") }));
+      return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string; tiny?: string }; photographer: string; alt?: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || ""), pv: String(p.src.tiny || ""), tags: String(p.alt || "") }));
     }
     // 후보 10장을 작게 받아 제미나이에게 보여 주고 조건에 맞는 번호만 받음. 맞는 게 없으면 []
     async function judge(cands: Ph[], want: string): Promise<number[] | null> {
@@ -389,7 +392,7 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
         const d = await gemAuto("text", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } }, Math.min(t0 + 110000, Date.now() + 20000));
         const g = gemJson(d);
         return (Array.isArray(g.good) ? g.good : []).map(Number).filter((n: number) => Number.isInteger(n) && n >= 0 && n < cands.length && ims[n]);
-      } catch { return null; } // 제미나이가 안 되면 예전처럼 고름
+      } catch (e) { vetErr = String((e as Error).message || e).slice(0, 160); return null; } // 제미나이가 안 되면 태그로만 고름
     }
     // 사진 자리마다 동시에 찾음 (한 번에 6개씩): 제미나이 확인이 있어도 오래 걸리지 않게
     type Got = null | "badkey" | { id: string; src: string; by: string };
@@ -408,6 +411,13 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
         // 앞쪽(검색어에 잘 맞는 사진)이 다 쓰였으면 다음 쪽에서 찾음
         if (list.length < 3) { const more = await search(q, 2, ori); if (Array.isArray(more)) list = list.concat(more.filter((p) => !skip.has(p.id))); }
         if (!list.length) list = res; // 정말 다 썼으면 그때만 다시 씀
+        // 태그에 꼭 있어야 할 낱말이 있으면 맞는 사진만 (2쪽까지 찾아봄). 하나도 없으면 빈칸
+        const nd = need[qi];
+        if (nd) {
+          let ok = list.filter((p) => nd.test(p.tags));
+          if (!ok.length) { const more = await search(q, 2, ori); if (Array.isArray(more)) ok = more.filter((p) => !skip.has(p.id) && nd.test(p.tags)); }
+          list = ok;
+        }
         if (!list.length) return null;
         // 잘 맞는 앞쪽 12장 안에서 골고루 (같은 검색어라도 영상마다 다른 사진)
         let p = list[(pick + qi * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
@@ -432,7 +442,7 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
     const out: Got[] = [];
     for (let i = 0; i < qs.length; i += 6) out.push(...await Promise.all(qs.slice(i, i + 6).map((q, k) => one(q, i + k))));
     if (out.includes("badkey")) return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
-    return j({ ok: true, photos: out });
+    return j({ ok: true, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
   }
 
   if (!key) return j({ ok: false, error: "Supabase 비밀값 SUPERSHORTS_KEY가 아직 없어요." }, 500);
