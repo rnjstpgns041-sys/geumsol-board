@@ -124,7 +124,7 @@ function findTpls(probes){const out=[],seen=new Set();
 /* 홈페이지에서 읽은 업체 정보: 블로그 이미지 만들기와 같은 칸(blogcfg/<업체 id>)을 같이 쓴다 */
 let HP=null,HPCID="";
 const HPK=["homepage","name","intro","slogan","treats","tdesc","why","equip","doctors","hours","lunch","addr","station","walk","parking","tel","way"];
-async function hpLoad(){const cid=$("client").value;HPCID=cid;HP=null;$("hpurl").value="";hpShow();if(!cid||cid.startsWith("n:"))return;
+async function hpLoad(){const cid=$("client").value;HPCID=cid;HP=null;$("hpurl").value="";hpShow();if(!cid)return;
   try{const r=await rest(`docs?coll=eq.blogcfg&id=eq.${encodeURIComponent(cid)}&select=data`);if(HPCID!==cid)return;HP=(r&&r[0]&&r[0].data)||null;}catch(e){}
   $("hpurl").value=(HP&&HP.homepage)||"";hpShow();}
 function hpFacts(){const h=HP||{},o=[],A=x=>Array.isArray(x)?x.map(String).filter(Boolean):[];
@@ -196,7 +196,7 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
   await loadUsed();renderKws();fill();await hpLoad();auto();renderCo();preview();await loadList();poll();}
 $("client").onchange=async()=>{$("t1").value="";$("t2").value="";renderKws();fill();await hpLoad();auto();};
-$("hpgo").onclick=async()=>{const cid=$("client").value;if(!cid||cid.startsWith("n:")){$("hpmsg").textContent="업체를 먼저 골라 주세요.";return;}
+$("hpgo").onclick=async()=>{const cid=$("client").value;if(!cid){$("hpmsg").textContent="업체를 먼저 골라 주세요.";return;}
   const url=$("hpurl").value.trim();if(!url){$("hpmsg").textContent="홈페이지 주소를 넣어 주세요.";return;}
   $("hpgo").disabled=true;$("hpmsg").textContent="홈페이지를 읽는 중이에요… (조금 걸려요)";
   try{let pre=null;try{pre=await hpRead(url);}catch(e){}
