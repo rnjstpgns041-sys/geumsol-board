@@ -265,6 +265,12 @@ ${text}`;
     if (!kw) return j({ ok: false, error: "키워드를 넣어 주세요." });
     const law = b.type === "law";
     const feats = (Array.isArray(b.feats) ? b.feats : []).map((x) => String(x || "").trim().slice(0, 120)).filter(Boolean).slice(0, 8);
+    // 만들 때마다 다른 영상이 되도록: 최근에 쓴 제목·첫 문장은 피하고, 이야기 각도를 매번 하나 골라 줌
+    const avoid = (Array.isArray(b.avoid) ? b.avoid : []).map((x) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 12);
+    const angles = law
+      ? ["처음 연락을 받았을 때 바로 할 일", "많이들 하는 실수와 오해", "준비하면 좋은 자료", "절차가 어떻게 흘러가는지", "혼자 대응하면 생기는 일", "상담 전에 정리할 것"]
+      : ["왜 생기는지 원인", "흔한 오해와 사실", "언제 진료를 받아야 하는지 신호", "생활 속 관리 습관", "진료는 어떻게 진행되는지", "이런 분은 꼭 확인할 것", "참고 넘기면 생기는 일"];
+    const angle = angles[Math.floor(Math.random() * angles.length)];
     const prompt = `${law ? "법률사무소(변호사)" : "한의원·병원"} 홍보용 1분 세로 쇼츠 영상 대본을 써 주세요.
 키워드: ${kw}
 업체: ${name || "(없음)"}${b.area ? " / 지역: " + String(b.area).slice(0, 30) : ""}
@@ -276,12 +282,15 @@ ${feats.map((f) => "- " + f).join("\n") || "- (없음)"}
 - 한 줄에 한 문장, 12~16줄, 각 문장은 공백 빼고 15~35자, 전체는 공백 빼고 320~380자. 말하듯 쉬운 존댓말(~요).
 - ${law ? "변호사 광고 규칙: 승소 보장, 최고, 100%, 무조건 같은 말 금지." : "의료광고법: 최고, 최초, 유일, 완치, 100%, 부작용 없음, 보장, 치료 후기, 효과 단정 금지. '도움이 될 수 있어요'처럼 조심스럽게."}
 - 없는 사실(가격, 할인, 경력, 장비)을 지어내지 말 것.
-JSON 하나로만: {"lines":["문장1","문장2"]}`;
+- 이번 영상은 "${angle}" 쪽으로 풀어 주세요.
+- 영상 위에 크게 들어갈 제목 두 줄도 써 주세요. 첫 줄 공백 빼고 4~10자, 둘째 줄 공백 빼고 6~13자. 키워드 주제가 들어가게. 대본 첫 문장을 그대로 쓰지 말 것.${avoid.length ? "\n- 아래는 전에 쓴 제목과 첫 문장이에요. 이것들과 다른 제목, 다른 첫 문장으로 쓰세요:\n" + avoid.map((a) => "  · " + a).join("\n") : ""}
+JSON 하나로만: {"title":["제목 첫 줄","제목 둘째 줄"],"lines":["문장1","문장2"]}`;
     try {
-      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.9 } }, Date.now() + 60000);
+      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 1.0 } }, Date.now() + 60000);
       const lines = (gemJson(d).lines || []).map((x: unknown) => String(x || "").trim()).filter(Boolean).slice(0, 24);
       if (lines.length < 4) throw new Error("대본이 너무 짧게 나왔어요");
-      return j({ ok: true, lines });
+      const g = gemJson(d), title = (Array.isArray(g.title) ? g.title : []).map((x: unknown) => String(x || "").trim().slice(0, 24)).filter(Boolean).slice(0, 2);
+      return j({ ok: true, lines, title });
     } catch (e) { return j({ ok: false, error: "대본을 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
   }
   // 업체 사진 설명 달기: 팀이 올린 사진(우리 저장소)만 보고 무엇이 찍혔는지 짧게

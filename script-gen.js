@@ -81,13 +81,14 @@ function topicOf(kw){return String(kw||"").split(/\s+/).map(w=>{let s=w,p;do{p=s
   .filter(w=>w&&!/(시|구|동|역|읍|면|군)$/.test(w)||w.length>3&&w).join(" ").trim();}
 function disp(name){return String(name||"").replace(/\s*변호사$/," 변호사").trim();}
 /* 대본 만들기: 공백 뺀 글자 수 min~max (1분 ≈ 320~380자)에 맞춰 문장 수를 조절한다 */
-function make(kw,name,prof,seed,min,max){min=min||320;max=max||380;const r=rng(seed||Date.now());
+function make(kw,name,prof,seed,min,max,avoid){min=min||320;max=max||380;const r=rng(seed||Date.now());
   kw=String(kw||"").trim();name=disp(name);prof=prof||profileOf(name);
   const law=prof.type==="law",tp=topicOf(kw),bank=(law?LAW:CLINIC).find(b=>b.re.test(kw))||(law?LAW_DEF:CLINIC_DEF);
   const t=tp||kw||(law?"법률 문제":"이 증상");
   const k=s=>s.replace(/\{t\}/g,t).replace(/\{k\}/g,kw||t);
   const hooks=bank.hook.filter(h=>kw||!/\{k\}/.test(h));
-  const hook=k(pick(hooks.length?hooks:bank.hook,r));
+  const av=new Set((avoid||[]).map(x=>String(x||"").replace(/\s/g,""))),hk=(hooks.length?hooks:bank.hook).filter(h=>!av.has(k(h).replace(/\s/g,"")));
+  const hook=k(pick(hk.length?hk:(hooks.length?hooks:bank.hook),r));
   const info=bank.info.slice();
   const feats=(prof.feats||[]).map(s=>String(s).trim()).filter(Boolean);
   const who=name?(prof.area?`${prof.area} ${name}`:name):"";
@@ -102,6 +103,17 @@ function make(kw,name,prof,seed,min,max){min=min||320;max=max||380;const r=rng(s
   while(len(build().join(""))<min&&nFeat<feats.length&&len(build().join("")+feats[nFeat])<=max)nFeat++;
   const out=build();
   return {lines:out,text:out.join("\n"),chars:len(out.join("")),short:len(out.join(""))<min,topic:tp};}
-const API={VDF,make,profileOf,len,josa:j,topicOf};
+/* 영상 위 제목 두 줄 (둘째 줄은 강조 색). {t}=주제, {n}=업체 이름. 만들 때마다 최근에 쓴 제목은 피해서 고른다 */
+const TT_CLINIC=[["{t}","이것부터 확인하세요"],["{t} 때문에","고생하고 계신가요?"],["{t},","그냥 두면 안 되는 이유"],["{t}","언제 진료받아야 할까요?"],
+  ["자꾸 반복되는 {t}","원인부터 살펴보세요"],["{t} 관리,","생활 습관부터 바꿔 보세요"],["{t}","미루면 안 되는 신호"],["{t} 고민이라면","끝까지 봐 주세요"],
+  ["{t},","한의원에서는 이렇게 봐요"],["{t}","혼자 참고 계신가요?"],["{t}","왜 생기는 걸까요?"],["{t}","{n}에서 알려 드려요"],["쉬어도 낫지 않는 {t}","몸 상태부터 확인하세요"],["{t}","이런 분은 꼭 보세요"]];
+const TT_LAW=[["{t} 문제","혼자 고민하지 마세요"],["{t},","첫 대응이 중요해요"],["{t}","지금 무엇부터 해야 할까요?"],["{t} 사건","변호사와 먼저 정리하세요"],
+  ["{t},","미리 알아 두실 것"],["{t} 고민이라면","끝까지 봐 주세요"],["{t}","자료부터 정리하세요"],["{t}","{n}이 알려 드려요"],["{t},","늦기 전에 확인하세요"],["{t}","이런 분은 꼭 보세요"]];
+function title(kw,name,prof,seed,avoid){const r=rng(seed||Date.now());prof=prof||profileOf(name);name=disp(name);
+  const law=prof.type==="law",t=topicOf(kw)||String(kw||"").trim()||(law?"법률 문제":"이 증상");
+  const norm=x=>String(x||"").replace(/\s/g,""),av=new Set((avoid||[]).map(norm));
+  const all=(law?TT_LAW:TT_CLINIC).filter(a=>name||!/\{n\}/.test(a.join(""))).map(a=>a.map(x=>x.replace(/\{t\}/g,t).replace(/\{n\}이/g,name?j(name,"이","가"):"").replace(/\{n\}/g,name)));
+  const fresh=all.filter(a=>!av.has(norm(a.join(""))));return pick(fresh.length?fresh:all,r);}
+const API={VDF,make,title,profileOf,len,josa:j,topicOf};
 if(typeof module!=="undefined")module.exports=API;else root.ScriptGen=API;
 })(typeof window!=="undefined"?window:globalThis);
