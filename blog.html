@@ -94,7 +94,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
 </div>
 </div>
 <input type="file" id="file1" accept="image/*" hidden><input type="file" id="filen" accept="image/*" multiple hidden>
-<script src="blog-kit.js?v=38"></script>
+<script src="blog-kit.js?v=39"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video",PUB=SB+"/storage/v1/object/public/files/";
@@ -111,7 +111,7 @@ async function fn(b){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort
   /* Supabase가 함수를 중간에 끊으면 {code,message}만 옴: 원인을 그대로 보여 줌 */
   if(!d.ok&&!d.error)d.error=(r.status===546||/WORKER|LIMIT|resource/i.test(String(d.code||d.message||""))?"함수가 시간·자원 한도에 걸렸어요":"함수 오류")+" ("+r.status+(d.message||d.msg?" "+String(d.message||d.msg).slice(0,80):"")+")";if(r.status===401&&d.auth===false){PW="";ls.set("gs-video-pw","");}return d;}
 function msg(t,k){$("msg").innerHTML=t?`<div class="msg ${k||"ok"}">${t}</div>`:"";}
-const SECS=[["hero","첫 화면"],["warn","주의"],["list","체크 목록"],["person","증상·사진"],["clinic","업체 소개"],["time","시기별"],["treat","치료 방법"],["doc","의료진"],["room","입원실"],["facility","시설"],["info","진료시간·길"]];
+const SECS=[["hero","첫 화면"],["about","병원 소개"],["warn","주의"],["list","체크 목록"],["person","증상·사진"],["clinic","업체 소개"],["time","시기별"],["treat","치료 방법"],["doc","의료진"],["room","입원실"],["facility","시설"],["info","진료시간·길"]];
 let ON={};try{ON=JSON.parse(ls.get("gs-blog-on")||"{}")}catch(e){}
 
 /* ── 업체 정보: docs blogcfg/<cid>. 처음엔 순위판 업체 정보(전화·주소·분류)로 채움 ── */
@@ -168,7 +168,7 @@ function clinicPhotos(){const c=client()||{},i=c.info||{},out=[...(CFG.coPhotos|
 function mix(h,w,t){const a=parseInt(h.slice(1),16),b=parseInt(w.slice(1),16),f=s=>Math.round(((a>>s)&255)*(1-t)+((b>>s)&255)*t);return "#"+[16,8,0].map(s=>f(s).toString(16).padStart(2,"0")).join("");}
 function vars(){const m=$("cm").value,a=$("ca").value,st=BK.STYLES[STY]||{},a2=st.a2&&st.a.toLowerCase()===a.toLowerCase()?st.a2:mix(a,"#5fd6ff",.55);return `--m:${m};--a:${a};--a2:${a2};--bg2:${mix(a,"#ffffff",.93)};--soft:${mix(a,"#ffffff",.84)};--soft2:${mix(m,"#ffffff",.95)}`;}
 function onMap(){const o={};SECS.forEach(([k])=>{if(ON[k]===false)o[k]=false;});(CFG.doctors||[]).forEach((d,i)=>{if(ON.doc===false)o["doc"+i]=false;});return o;}
-function clinicObj(){return Object.assign({},CFG,{km:$("km").value==="1",name:CFG.name||(client()||{}).name||"",photos:(CFG.photos||[]).filter(p=>p.url)});}
+function clinicObj(){return Object.assign({},CFG,{mapImg:IMG.map||"",km:$("km").value==="1",name:CFG.name||(client()||{}).name||"",photos:(CFG.photos||[]).filter(p=>p.url)});}
 let STY="basic",LOOK=null;
 /* 만들 때마다 바뀌게 = 네이버 카드형 색만 바뀜. 고정한 디자인에서 '다른 디자인'은 같은 종류 안에서 바꿈 */
 /* 종류: 네이버 실제형(real) / 카드형(card) / 예전 모양. '만들 때마다'는 실제형 안에서 고름 */
@@ -178,7 +178,7 @@ function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;
   const st=BK.STYLES[STY];$("cm").value=st.m;$("ca").value=st.a;}
 function lcls(){return BK.lookCls&&(BK.STYLES[STY]||{}).card?BK.lookCls(LOOK):"";}
 function kick(){const t=$("topic").value;return (t==="기본"?"건강":t)+" 가이드";}
-function render(){const c=clinicObj(),root=$("bi");root.className="bi st-"+STY+" "+lcls();root.setAttribute("style",vars());
+function render(){if(!IMG.map&&CFG.addr&&MAPS[CFG.addr])IMG.map=MAPS[CFG.addr];else if(!IMG.map&&CFG.addr&&MAPTRY!==CFG.addr)setTimeout(autoMap,0);const c=clinicObj(),root=$("bi");root.className="bi st-"+STY+" "+lcls();root.setAttribute("style",vars());
   root.innerHTML=BK.build({topic:$("topic").value,clinic:c,img:IMG,on:onMap(),kick:kick(),style:STY,look:LOOK});
   root.querySelectorAll(".blk").forEach(b=>{b.insertAdjacentHTML("afterbegin",`<div class="bx"><button data-save="${b.dataset.k}">이 구역만 저장</button><button data-hide="${b.dataset.k}">빼기</button></div>`);
     const k=b.dataset.k,ed=EDITS[k]||{};b.querySelectorAll("[contenteditable]").forEach((el,i)=>{el.dataset.o=el.textContent;const e=ed[i];if(e&&e.o===el.textContent)el.innerHTML=e.n;});});}
@@ -220,6 +220,30 @@ async function autoPhotos(force){const mode=$("phsrc").value,slots=SLOTS();let w
   if(!want.length||mode==="co")return;if(!PW&&!force)return;
   const gen=mode.endsWith("gen");msg(gen?"나노바나나가 그리는 중이에요…":"어울리는 사진을 고르는 중이에요… 사진을 하나씩 확인해서 20~30초쯤 걸려요.","ok");
   try{if(gen?await genPhotos(want,force):await freePhotos(want,force)){render();msg("");}}catch(e){msg("사진을 가져오지 못했어요. 사진 자리를 눌러 직접 넣어도 돼요.","warn");}}
+
+/* ── 오시는 길 지도: 주소로 위치를 찾아(오픈스트리트맵) 지도 그림을 만들고 업체 자리에 핀과 이름 ── */
+async function geo(addr){const a=String(addr||"").replace(/\(.*?\)/g," ").replace(/\s*\d+\s*(?:,\s*\d+\s*)*층.*$/,"").replace(/,/g," ").replace(/\s+/g," ").trim();if(!a)return null;
+  const tries=[a],m=a.match(/^(.*?(?:로|길)\s*\d+(?:-\d+)?)/);if(m)tries.push(m[1]);const r=a.match(/^(.*?(?:로|길))(?:\s|\d|$)/);if(r)tries.push(r[1]);const d=a.match(/^(.*?[동읍면])(?:\s|$)/);if(d)tries.push(d[1]);
+  for(const t of [...new Set(tries)]){try{const j=await (await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=kr&accept-language=ko&q="+encodeURIComponent(t))).json();
+    if(j&&j[0])return {lat:+j[0].lat,lon:+j[0].lon,addr,near:t!==tries[0]};}catch(e){}}return null;}
+function tileImg(u){return new Promise(ok=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>ok(im);im.onerror=()=>ok(null);im.src=u;});}
+async function mapImg(g,name,color){const z=17,W=1720,H=1000,n=2**z,px=(g.lon+180)/360*n*256,la=g.lat*Math.PI/180,py=(1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*n*256,x0=px-W/2,y0=py-H/2;
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");x.fillStyle="#eef1f3";x.fillRect(0,0,W,H);const jobs=[];
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)jobs.push(tileImg(`https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`).then(im=>{if(im)x.drawImage(im,tx*256-x0,ty*256-y0);}));
+  await Promise.all(jobs);
+  try{x.getImageData(0,0,1,1);}catch(e){return "";}   // 지도 그림을 못 쓰면(보안 막힘) 그만
+  const cx=W/2,cy=H/2+30;x.fillStyle="rgba(255,255,255,.12)";x.fillRect(0,0,W,H);
+  x.beginPath();x.ellipse(cx,cy+8,26,9,0,0,7);x.fillStyle="rgba(0,0,0,.25)";x.fill();
+  x.beginPath();x.moveTo(cx,cy);x.bezierCurveTo(cx-40,cy-60,cx-52,cy-80,cx-52,cy-104);x.arc(cx,cy-104,52,Math.PI,0);x.bezierCurveTo(cx+52,cy-80,cx+40,cy-60,cx,cy);x.fillStyle=color;x.fill();
+  x.beginPath();x.arc(cx,cy-104,20,0,7);x.fillStyle="#fff";x.fill();
+  if(name){x.font='800 46px "Pretendard Variable",Pretendard,sans-serif';const tw=x.measureText(name).width+64,bx=cx-tw/2,by=cy-250;
+    x.fillStyle="#fff";x.shadowColor="rgba(0,0,0,.25)";x.shadowBlur=18;x.beginPath();x.roundRect(bx,by,tw,84,42);x.fill();x.shadowBlur=0;x.strokeStyle=color;x.lineWidth=5;x.stroke();
+    x.fillStyle="#1d2026";x.textAlign="center";x.textBaseline="middle";x.fillText(name,cx,by+44);}
+  x.font='500 22px sans-serif';x.textAlign="right";x.textBaseline="bottom";x.fillStyle="rgba(0,0,0,.55)";x.fillText("© OpenStreetMap",W-14,H-10);
+  return cv.toDataURL("image/jpeg",.9);}
+let MAPTRY="",MAPS={};
+async function autoMap(){if(IMG.map||!CFG.addr)return;if(MAPS[CFG.addr]){IMG.map=MAPS[CFG.addr];return render();}if(MAPTRY===CFG.addr)return;MAPTRY=CFG.addr;try{let g=CFG.geo&&CFG.geo.addr===CFG.addr?CFG.geo:await geo(CFG.addr);if(!g)return;CFG.geo=g;
+  const u=await mapImg(g,clinicObj().name,$("ca").value||"#0b5ccc");if(u){MAPS[CFG.addr]=u;if(!IMG.map){IMG.map=u;render();}}}catch(e){}}
 
 /* ── 사진 자리 누르기 ── */
 let MENU=null;function closeMenu(){if(MENU){MENU.remove();MENU=null;}}
@@ -340,7 +364,10 @@ $("sitego").onclick=async()=>{readForm();const url=CFG.homepage;if(!url)return $
     const put=(k,v)=>{if(v!=null&&v!==""&&!(Array.isArray(v)&&!v.length))CFG[k]=v;};
     ["tel","addr","lunch","way","station","walk","parking"].forEach(k=>put(k,typeof g[k]==="string"?g[k].trim():""));
     if(Array.isArray(g.hours))put("hours",g.hours.filter(h=>Array.isArray(h)&&h[1]).map(h=>[String(h[0]),String(h[1])]));
-    ["badges","feats","treats"].forEach(k=>{if(Array.isArray(g[k]))put(k,g[k].map(String).filter(Boolean));});
+    ["badges","feats","treats","why","equip"].forEach(k=>{if(Array.isArray(g[k]))put(k,g[k].map(String).filter(Boolean));});
+    ["intro","slogan"].forEach(k=>put(k,typeof g[k]==="string"?g[k].trim():""));
+    if(g.tdesc&&typeof g.tdesc==="object")put("tdesc",Object.fromEntries(Object.entries(g.tdesc).filter(([a,b])=>a&&typeof b==="string"&&b.trim()).slice(0,12)));
+    if(CFG.addr!==(CFG.geo||{}).addr){delete IMG.map;}
     if(Array.isArray(g.doctors)&&g.doctors.some(d=>d&&d.name)){const old=CFG.doctors||[];CFG.doctors=g.doctors.filter(d=>d&&d.name).slice(0,4).map(d=>({name:String(d.name),title:String(d.title||"원장"),role:String(d.role||""),fields:(d.fields||[]).map(String),history:(d.history||[]).map(String),photo:(old.find(o=>o.name===d.name)||{}).photo||""}));}
     if(g.room&&g.room.on){CFG.room={on:true,title:String(g.room.title||"[[입원실]] 안내"),items:(g.room.items||[]).filter(Array.isArray).slice(0,6).map((x,i)=>[RICON[i%RICON.length],String(x[0]||""),String(x[1]||"")]),note:String(g.room.note||"")};}
     /* 홈페이지 로고를 찾으면 바로 업체 로고로 넣음 (그림 맨 아래 업체 이름 자리) */
