@@ -359,37 +359,69 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
     // skip = 이번 영상에 쓴 사진 + 팀이 예전 영상에 쓴 사진 (최대한 다시 안 씀)
     const skip = new Set((Array.isArray(b.skip) ? b.skip : []).slice(0, 5000).map(String));
     const pick = Math.max(0, Math.floor(Number(b.pick) || 0));
-    // 검색 결과를 {id, url, by} 목록으로
-    async function search(q: string, page = 1): Promise<{ id: string; url: string; by: string }[] | "badkey"> {
+    // vet[i] = 사진이 맞아야 할 조건(한국어). 있으면 제미나이가 작은 사진들을 보고 어울리는 것만 고름
+    const vet = (Array.isArray(b.vet) ? b.vet : []).map((x) => String(x || "").slice(0, 300));
+    const orient = (Array.isArray(b.orient) ? b.orient : []).map((x) => String(x || ""));
+    const t0 = Date.now();
+    type Ph = { id: string; url: string; by: string; pv: string };
+    // 검색 결과를 {id, url, by, pv(작은 사진)} 목록으로
+    async function search(q: string, page = 1, ori = ""): Promise<Ph[] | "badkey"> {
       if (xk) {
-        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=horizontal&safesearch=true&per_page=60&page=" + page + "&lang=" + (/[가-힣]/.test(q) ? "ko" : "en") + "&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
+        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=" + (ori === "vertical" ? "vertical" : ori === "all" ? "all" : "horizontal") + "&safesearch=true&per_page=60&page=" + page + "&lang=" + (/[가-힣]/.test(q) ? "ko" : "en") + "&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
         if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/key/i.test(t)) return "badkey"; return []; } // 400 = 없는 쪽(page)
         const d = await r.json().catch(() => ({}));
-        return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; user: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || "") }));
+        return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; previewURL: string; user: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || ""), pv: String(h.previewURL || "") }));
       }
-      const r = await fetch("https://api.pexels.com/v1/search?per_page=40&page=" + page + "&orientation=landscape&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
+      const r = await fetch("https://api.pexels.com/v1/search?per_page=40&page=" + page + "&orientation=" + (ori === "vertical" ? "portrait" : "landscape") + "&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
       if (r.status === 401 || r.status === 403) return "badkey";
       const d = await r.json().catch(() => ({}));
-      return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string }; photographer: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || "") }));
+      return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string; tiny?: string }; photographer: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || ""), pv: String(p.src.tiny || "") }));
+    }
+    // 후보 10장을 작게 받아 제미나이에게 보여 주고 조건에 맞는 번호만 받음. 맞는 게 없으면 []
+    async function judge(cands: Ph[], want: string): Promise<number[] | null> {
+      try {
+        const ims = await Promise.all(cands.map(async (c) => { try { const r = await fetch(c.pv); return r.ok ? b64(new Uint8Array(await r.arrayBuffer())) : ""; } catch { return ""; } }));
+        const parts: unknown[] = [{ text: `사진 ${cands.length}장이 0번부터 순서대로 있어요. 병원·한의원 블로그 그림에 넣을 사진을 고르려고 해요.
+조건: ${want}
+공통으로 빼야 할 사진: 문신, 흑백 예술 사진, 성적이거나 무섭거나 피가 보이는 사진, 글자·로고가 큰 사진, 조건과 주제가 다른 사진.
+조건에 잘 맞는 번호만 잘 맞는 순서로 JSON 하나로 답해 주세요: {"good":[번호,...]} (하나도 없으면 {"good":[]})` }];
+        ims.forEach((d, i) => { if (d) parts.push({ text: "사진 " + i }, { inline_data: { mime_type: "image/jpeg", data: d } }); });
+        const d = await gemAuto("text", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } }, t0 + 110000);
+        const g = gemJson(d);
+        return (Array.isArray(g.good) ? g.good : []).map(Number).filter((n: number) => Number.isInteger(n) && n >= 0 && n < cands.length && ims[n]);
+      } catch { return null; } // 제미나이가 안 되면 예전처럼 고름
     }
     const out: (null | { id: string; src: string; by: string })[] = [];
     for (const q of qs) {
       if (!q) { out.push(null); continue; }
       try {
         // 결과가 없으면 'asian'을 빼고, 그래도 없으면 첫 낱말만으로 다시 찾음
-        let res = await search(q);
-        for (const q2 of [q.replace(/^asian /, ""), q.replace(/^asian /, "").split(" ")[0]]) {
+        const qi = out.length, ori = orient[qi] || "";
+        let res = await search(q, 1, ori);
+        for (const q2 of [q.replace(/^asian /, ""), q.replace(/^asian /, "").split(" ").slice(0, 2).join(" ")]) {
           if (res === "badkey" || (Array.isArray(res) && res.filter((p) => !skip.has(p.id)).length) || q2 === q) continue;
-          res = await search(q2);
+          res = await search(q2, 1, ori);
         }
         if (res === "badkey") return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
         let list = res.filter((p) => !skip.has(p.id));
         // 앞쪽(검색어에 잘 맞는 사진)이 다 쓰였으면 다음 쪽에서 찾음
-        if (list.length < 3) { const more = await search(q, 2); if (Array.isArray(more)) list = list.concat(more.filter((p) => !skip.has(p.id))); }
+        if (list.length < 3) { const more = await search(q, 2, ori); if (Array.isArray(more)) list = list.concat(more.filter((p) => !skip.has(p.id))); }
         if (!list.length) list = res; // 정말 다 썼으면 그때만 다시 씀
         if (!list.length) { out.push(null); continue; }
         // 잘 맞는 앞쪽 12장 안에서 골고루 (같은 검색어라도 영상마다 다른 사진)
-        const p = list[(pick + out.length * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
+        let p = list[(pick + out.length * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
+        // 조건이 있으면 제미나이가 본 사진 중 어울리는 것만 (앞 10장, 없으면 다음 10장). 끝까지 없으면 빈칸으로 둠
+        if (gemk && vet[qi] && Date.now() - t0 < 90000) {
+          let chosen: Ph | null = null, judged = false;
+          for (let k = 0; k < 2 && !chosen && k * 10 < list.length && Date.now() - t0 < 90000; k++) {
+            const cands = list.slice(k * 10, k * 10 + 10).filter((c) => c.pv);
+            const good = await judge(cands, vet[qi]);
+            if (good === null) break;
+            judged = true;
+            if (good.length) chosen = cands[good[(pick + Math.floor(Math.random() * 1000)) % Math.min(good.length, 3)]];
+          }
+          if (chosen) p = chosen; else if (judged) { out.push(null); continue; }
+        }
         const im = await fetch(p.url);
         if (!im.ok) { out.push(null); continue; }
         skip.add(p.id);

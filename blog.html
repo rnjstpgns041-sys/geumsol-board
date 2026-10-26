@@ -193,7 +193,7 @@ let USED=[],COUSE=0;
 const SLOTS=()=>["person","band","treat0","treat1","treat2","treat3"].concat(CFG.room&&CFG.room.on&&ON.room!==false?["room"]:[]).filter(k=>k==="room"||document.querySelector(`[data-ph="${k}"]`));
 async function freePhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
   const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});keys=keys.filter(k=>q[k]);if(!keys.length)return false;
-  const r=await fn({action:"photos",queries:keys.map(k=>q[k]),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
+  const vt=BK.photoVet({topic:$("topic").value,clinic:clinicObj()});const r=await fn({action:"photos",queries:keys.map(k=>q[k]),vet:keys.map(k=>vt[k]||""),orient:keys.map(k=>k==="person"?"vertical":""),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
   (r.photos||[]).forEach((p,i)=>{if(p){IMG[keys[i]]=p.src;USED.push(p.id);}});return true;}
 /* 나노바나나: 한 장씩 그림 (한 장에 몇 초) */
 async function genPhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
@@ -204,7 +204,8 @@ async function genPhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
 /* 업체 사진을 섞어 먼저 넣고, 모자란 자리는 무료 사진이나 나노바나나로 */
 async function autoPhotos(force){const mode=$("phsrc").value,slots=SLOTS();let want=slots.filter(k=>force||!IMG[k]);if(!want.length)return;
   if(mode.startsWith("co")){const co=(CFG.coPhotos||[]).slice();for(let i=co.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[co[i],co[j]]=[co[j],co[i]];}
-    want.forEach((k,i)=>{if(i<co.length)IMG[k]=co[(i+COUSE)%co.length];});COUSE+=want.length;want=want.slice(co.length);render();}
+    /* 증상 설명 사진(사람이 아픈 곳을 잡은 사진)은 업체 사진이 어울리지 않아 늘 맞는 사진을 찾아 넣음 */
+    const cw=want.filter(k=>k!=="person"&&k!=="band");cw.forEach((k,i)=>{if(i<co.length)IMG[k]=co[(i+COUSE)%co.length];});COUSE+=cw.length;want=want.filter(k=>!cw.slice(0,co.length).includes(k));render();}
   if(!want.length||mode==="co")return;if(!PW&&!force)return;
   const gen=mode.endsWith("gen");msg(gen?"나노바나나가 그리는 중이에요…":"사진을 고르는 중이에요…","ok");
   try{if(gen?await genPhotos(want,force):await freePhotos(want,force)){render();msg("");}}catch(e){msg("사진을 가져오지 못했어요. 사진 자리를 눌러 직접 넣어도 돼요.","warn");}}

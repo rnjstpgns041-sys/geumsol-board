@@ -89,7 +89,7 @@ const T={
     hero:{t:["초기 대응이","[[중요]]해요"],art:"clipboard",items:[["pain","반복되는 통증"],["spine","목·허리 움직임 불편"],["bed","수면·일상에 영향"]]},
     warn:{t:["외상 없어도","[[후유증]]은 주의"],sub:"겉으로 보이지 않는 통증도 살펴보세요.",cards:[["head","머리","두통·어지럼"],["neck","목·어깨","뻣뻣함·결림"],["pelvis","허리·골반","묵직함·찌릿함"],["leg","팔·다리","저림·감각 이상"]],art:["car","shield"]},
     list:{t:["반복되는 통증","[[미루지 마세요]]"],art:"calendar",items:[["pain","반복되는 통증"],["bed","수면 불편·피로"],["spine","움직임·집중력 저하"],["head","두통·어지럼"],["hand","팔·다리 저림"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["사고 후 통증","[[늦게 나타날 수]] 있어요"],sub:"며칠 뒤 불편함이 나타날 수 있습니다.",q:"asian man shoulder pain",sym:[["head","두통·어지럼"],["neck","목 통증"],["pain","어깨 통증"],["spine","허리 통증"]]},
+    person:{t:["사고 후 통증","[[늦게 나타날 수]] 있어요"],sub:"며칠 뒤 불편함이 나타날 수 있습니다.",q:"man holding neck pain",sym:[["head","두통·어지럼"],["neck","목 통증"],["pain","어깨 통증"],["spine","허리 통증"]]},
     clinic:{title:"교통사고 [[클리닉]]",feats:[["shield","자동차[[보험 진료]]"],["doctor","[[원인별]] 진료"],["clipboard","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["시간차로 나타나는","[[사고 후]] 통증"],steps:[["사고 직후","alert","증상을 놓칠 수 있어요","crash"],["며칠 뒤","pain","목·어깨·허리 통증","user"],["이후","head","두통·저림·결림","clock"]],note:"증상과 시기는 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","needle","chuna","rehab"],wm:["scan","manual","shock","inject"],note:"치료는 진료 후 결정됩니다."}},
@@ -97,7 +97,7 @@ const T={
     hero:{t:["허리 통증","[[신호]]를 보세요"],art:"spine",items:[["pain","앉았다 일어날 때 통증"],["leg","다리까지 저림"],["bed","아침에 뻣뻣함"]]},
     warn:{t:["오래 앉아 있으면","[[허리]]가 먼저 지쳐요"],sub:"생활 습관이 통증으로 이어지기도 해요.",cards:[["spine","허리","묵직함·뻐근함"],["pelvis","골반","틀어짐·불균형"],["leg","엉덩이·다리","저림·당김"],["walk","걸음","오래 걷기 힘듦"]],art:["spine","alert"]},
     list:{t:["이런 증상이면","[[확인]]해 보세요"],art:"clipboard",items:[["pain","허리를 숙이기 힘들어요"],["leg","다리가 저리고 당겨요"],["bed","누워도 편하지 않아요"],["walk","오래 걷기 어려워요"],["spine","통증이 자주 반복돼요"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["허리 통증","[[참지 마세요]]"],sub:"작은 불편함이 오래 갈 수 있어요.",q:"asian man back pain",sym:[["spine","허리 통증"],["pelvis","골반 불편"],["leg","다리 저림"],["bed","수면 불편"]]},
+    person:{t:["허리 통증","[[참지 마세요]]"],sub:"작은 불편함이 오래 갈 수 있어요.",q:"man holding lower back pain",sym:[["spine","허리 통증"],["pelvis","골반 불편"],["leg","다리 저림"],["bed","수면 불편"]]},
     clinic:{title:"허리 통증 [[클리닉]]",feats:[["clipboard","[[원인별]] 진료"],["posture","자세·[[균형]] 관리"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["통증이","[[반복되는 이유]]"],steps:[["처음","alert","가끔 뻐근해요","user"],["반복","pain","자주 아프고 결려요","spine"],["오래되면","leg","저림·움직임 불편","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","needle","chuna","herb"],wm:["scan","manual","shock","rehab"],note:"치료는 진료 후 결정됩니다."}},
@@ -105,7 +105,7 @@ const T={
     hero:{t:["목·어깨 결림","[[그냥 두지 마세요]]"],art:"neck",items:[["neck","목이 뻣뻣하고 무거워요"],["pain","어깨가 자주 결려요"],["head","두통이 함께 와요"]]},
     warn:{t:["고개 숙인 자세가","[[목]]을 힘들게 해요"],sub:"스마트폰·컴퓨터 사용이 길다면 살펴보세요.",cards:[["neck","목","뻣뻣함·통증"],["pain","어깨","결림·뭉침"],["head","머리","두통·무거움"],["hand","팔·손","저림·힘 빠짐"]],art:["neck","alert"]},
     list:{t:["이런 증상","[[있으신가요]]"],art:"clipboard",items:[["neck","고개 돌리기 불편"],["pain","어깨가 늘 뭉쳐 있음"],["head","오후마다 두통"],["hand","팔·손 저림"],["bed","자고 나도 개운하지 않음"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["목·어깨 통증","[[자세]]부터 살펴요"],sub:"생활 습관과 함께 확인해요.",q:"asian woman neck pain",sym:[["neck","목 통증"],["pain","어깨 결림"],["head","두통"],["hand","팔 저림"]]},
+    person:{t:["목·어깨 통증","[[자세]]부터 살펴요"],sub:"생활 습관과 함께 확인해요.",q:"woman holding neck pain",sym:[["neck","목 통증"],["pain","어깨 결림"],["head","두통"],["hand","팔 저림"]]},
     clinic:{title:"목·어깨 [[클리닉]]",feats:[["clipboard","[[원인별]] 진료"],["posture","자세·[[체형]] 관리"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["통증이","[[쌓이는 과정]]"],steps:[["처음","alert","잠깐 뻐근해요","user"],["반복","neck","목·어깨 결림","neck"],["오래되면","head","두통·저림","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","needle","chuna","cup"],wm:["scan","manual","shock","inject"],note:"치료는 진료 후 결정됩니다."}},
@@ -113,7 +113,7 @@ const T={
     hero:{t:["관절 통증","[[미리]] 살펴요"],art:"bone",items:[["leg","계단에서 무릎 통증"],["walk","오래 걷기 힘듦"],["hand","손목·손가락 불편"]]},
     warn:{t:["쓰는 만큼","[[관절]]도 지쳐요"],sub:"작은 불편함부터 확인해 보세요.",cards:[["leg","무릎","시큰함·붓기"],["pelvis","고관절","뻐근함"],["hand","손목","찌릿함"],["walk","발목","삐끗함"]],art:["bone","shield"]},
     list:{t:["이럴 때는","[[확인]]해 보세요"],art:"clipboard",items:[["leg","앉았다 일어날 때 통증"],["walk","계단 오르내리기 힘듦"],["drop","관절이 붓고 열감"],["hand","손이 뻣뻣함"],["bed","밤에 쑤시는 느낌"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["관절 통증","[[생활]]을 바꿔요"],sub:"움직임이 줄면 일상도 불편해져요.",q:"asian senior knee pain",sym:[["leg","무릎 통증"],["walk","걷기 불편"],["hand","손목 통증"],["drop","붓기"]]},
+    person:{t:["관절 통증","[[생활]]을 바꿔요"],sub:"움직임이 줄면 일상도 불편해져요.",q:"senior holding knee pain",sym:[["leg","무릎 통증"],["walk","걷기 불편"],["hand","손목 통증"],["drop","붓기"]]},
     clinic:{title:"관절 통증 [[클리닉]]",feats:[["clipboard","[[원인별]] 진료"],["walk","움직임 [[회복]] 관리"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["관절 통증이","[[커지는 과정]]"],steps:[["처음","alert","가끔 시큰해요","user"],["반복","leg","붓고 쑤셔요","bone"],["오래되면","walk","움직임 불편","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","needle","herb","heat"],wm:["scan","manual","shock","inject"],note:"치료는 진료 후 결정됩니다."}},
@@ -121,7 +121,7 @@ const T={
     hero:{t:["잦은 두통","[[원인]]을 찾아요"],art:"head",items:[["head","머리가 자주 아파요"],["alert","어지럼이 함께 와요"],["bed","잠을 설쳐요"]]},
     warn:{t:["두통 뒤에","[[숨은 원인]]이 있어요"],sub:"생활 습관과 몸 상태를 함께 살펴요.",cards:[["neck","목·어깨","긴장·결림"],["bed","수면","부족·뒤척임"],["brain","스트레스","예민함"],["stomach","소화","더부룩함"]],art:["brain","alert"]},
     list:{t:["이런 두통","[[있으신가요]]"],art:"clipboard",items:[["head","오후마다 지끈거림"],["neck","목이 뻣뻣하며 두통"],["alert","어지럼·메스꺼움"],["bed","자고 나도 무거움"],["brain","신경 쓰면 심해짐"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["두통","[[참기만]] 하지 마세요"],sub:"반복되면 몸이 보내는 신호일 수 있어요.",q:"asian woman headache",sym:[["head","두통"],["alert","어지럼"],["neck","목 결림"],["bed","수면 불편"]]},
+    person:{t:["두통","[[참기만]] 하지 마세요"],sub:"반복되면 몸이 보내는 신호일 수 있어요.",q:"woman headache holding head",sym:[["head","두통"],["alert","어지럼"],["neck","목 결림"],["bed","수면 불편"]]},
     clinic:{title:"두통·어지럼 [[클리닉]]",feats:[["clipboard","[[원인별]] 진료"],["brain","몸 상태 [[함께]] 확인"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["두통이","[[반복되는 흐름]]"],steps:[["처음","alert","가끔 지끈거려요","user"],["반복","head","자주 아프고 무거워요","head"],["오래되면","bed","잠·집중이 힘들어요","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","needle","herb","chuna"],wm:["scan","inject","manual","rehab"],note:"치료는 진료 후 결정됩니다."}},
@@ -129,7 +129,7 @@ const T={
     hero:{t:["다이어트","[[방법]]이 중요해요"],art:"scale",items:[["scale","굶어도 빠지지 않아요"],["alert","자주 요요가 와요"],["stomach","식욕 조절이 힘들어요"]]},
     warn:{t:["무리한 다이어트","[[몸]]이 먼저 지쳐요"],sub:"내 몸 상태에 맞춘 방법을 찾아요.",cards:[["stomach","식습관","폭식·야식"],["bed","수면","부족·피로"],["walk","활동량","운동 부족"],["drop","순환","붓기·냉증"]],art:["scale","heart"]},
     list:{t:["이런 분께","[[필요해요]]"],art:"clipboard",items:[["scale","체중이 잘 줄지 않는 분"],["alert","요요를 겪은 분"],["drop","잘 붓는 분"],["stomach","식욕 조절이 힘든 분"],["bed","피곤이 쌓인 분"]],note:"체질과 상태에 따라 방법이 달라져요."},
-    person:{t:["내 몸에 맞춘","[[다이어트]]"],sub:"생활 습관부터 함께 살펴요.",q:"asian woman healthy diet",sym:[["scale","체중 관리"],["stomach","식습관"],["drop","붓기"],["bed","수면"]]},
+    person:{t:["내 몸에 맞춘","[[다이어트]]"],sub:"생활 습관부터 함께 살펴요.",q:"woman measuring waist tape",sym:[["scale","체중 관리"],["stomach","식습관"],["drop","붓기"],["bed","수면"]]},
     clinic:{title:"다이어트 [[클리닉]]",feats:[["clipboard","[[체질]] 확인"],["herb","맞춤 [[한약]] 상담"],["chat","식습관 [[상담]]"],["calendar","[[꾸준한]] 관리"]]},
     time:{t:["다이어트","[[관리 흐름]]"],steps:[["상담","chat","몸 상태·습관 확인","clipboard"],["관리","herb","맞춤 방법으로 관리","scale"],["유지","calendar","습관 만들기","clock"]],note:"결과는 개인마다 다를 수 있습니다."},
     treat:{t:["맞춤","[[관리 방법]]"],km:["doctor","herb","needle","cup"],wm:["scan","inject","rehab","manual"],note:"관리 방법은 진료 후 결정됩니다."}},
@@ -137,7 +137,7 @@ const T={
     hero:{t:["반복되는 비염","[[관리]]가 필요해요"],art:"nose",items:[["nose","코막힘·콧물"],["alert","재채기가 잦아요"],["bed","잠을 설쳐요"]]},
     warn:{t:["코만의 문제가","[[아닐 수]] 있어요"],sub:"몸 상태와 환경을 함께 살펴요.",cards:[["nose","코","막힘·콧물"],["head","머리","두통·멍함"],["bed","수면","코골이·뒤척임"],["wind","환경","먼지·온도 변화"]],art:["nose","shield"]},
     list:{t:["이런 증상","[[있으신가요]]"],art:"clipboard",items:[["nose","아침마다 재채기"],["drop","맑은 콧물이 계속"],["head","머리가 멍해요"],["bed","입으로 숨 쉬며 자요"],["wind","계절마다 심해져요"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["비염","[[미루지]] 마세요"],sub:"일상과 잠을 불편하게 만들 수 있어요.",q:"asian woman runny nose",sym:[["nose","코막힘"],["drop","콧물"],["head","두통"],["bed","수면 불편"]]},
+    person:{t:["비염","[[미루지]] 마세요"],sub:"일상과 잠을 불편하게 만들 수 있어요.",q:"woman blowing nose tissue",sym:[["nose","코막힘"],["drop","콧물"],["head","두통"],["bed","수면 불편"]]},
     clinic:{title:"비염 [[클리닉]]",feats:[["clipboard","[[원인별]] 진료"],["shield","[[면역]] 관리 상담"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["비염이","[[심해지는 흐름]]"],steps:[["처음","alert","가끔 코가 막혀요","user"],["반복","nose","콧물·재채기가 잦아요","nose"],["오래되면","bed","잠·집중이 힘들어요","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","herb","needle","heat"],wm:["scan","inject","rehab","manual"],note:"치료는 진료 후 결정됩니다."}},
@@ -145,7 +145,7 @@ const T={
     hero:{t:["우리 아이 성장","[[때]]를 놓치지 마세요"],art:"child",items:[["child","또래보다 작은 키"],["stomach","편식·잦은 배탈"],["bed","잠이 부족해요"]]},
     warn:{t:["성장에는","[[생활 습관]]이 중요해요"],sub:"잠·식사·운동을 함께 살펴요.",cards:[["bed","수면","늦게 자요"],["stomach","식사","편식·소화"],["walk","운동","활동 부족"],["brain","스트레스","예민함"]],art:["child","star"]},
     list:{t:["이럴 때","[[확인]]해 보세요"],art:"clipboard",items:[["child","1년에 4cm 미만 자라요"],["alert","사춘기가 빠른 것 같아요"],["stomach","잘 안 먹어요"],["bed","자주 깨요"],["nose","비염·감기가 잦아요"]],note:"성장 상태는 진료로 확인하세요."},
-    person:{t:["아이 성장","[[함께]] 살펴요"],sub:"지금 상태를 아는 것부터 시작해요.",q:"asian child smiling",sym:[["child","키 성장"],["stomach","식습관"],["bed","수면"],["walk","운동"]]},
+    person:{t:["아이 성장","[[함께]] 살펴요"],sub:"지금 상태를 아는 것부터 시작해요.",q:"child measuring height wall",sym:[["child","키 성장"],["stomach","식습관"],["bed","수면"],["walk","운동"]]},
     clinic:{title:"성장 [[클리닉]]",feats:[["clipboard","성장 [[상태]] 확인"],["chat","생활 습관 [[상담]]"],["doctor","아이별 [[맞춤 관리]]"],["calendar","[[꾸준한]] 확인"]]},
     time:{t:["성장 관리","[[흐름]]"],steps:[["확인","clipboard","현재 성장 상태","child"],["관리","chat","생활 습관·맞춤 관리","calendar"],["점검","calendar","꾸준히 다시 확인","clock"]],note:"성장 속도는 아이마다 다를 수 있습니다."},
     treat:{t:["아이별","[[맞춤 관리]]"],km:["doctor","herb","needle","heat"],wm:["scan","inject","rehab","manual"],note:"관리 방법은 진료 후 결정됩니다."}},
@@ -153,7 +153,7 @@ const T={
     hero:{t:["여성 건강","[[내 몸]]을 살펴요"],art:"woman",items:[["woman","몸이 예전 같지 않아요"],["fire","열이 오르내려요"],["bed","잠을 설쳐요"]]},
     warn:{t:["변화하는 몸","[[신호]]를 들어 보세요"],sub:"시기마다 필요한 관리가 달라요.",cards:[["fire","열감","화끈거림"],["bed","수면","뒤척임"],["brain","기분","예민함·우울"],["drop","순환","붓기·냉증"]],art:["woman","heart"]},
     list:{t:["이런 증상","[[있으신가요]]"],art:"clipboard",items:[["fire","얼굴로 열이 올라요"],["bed","밤에 자주 깨요"],["brain","기분 변화가 커요"],["drop","손발이 차고 붓기"],["pain","관절이 쑤셔요"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["여성 건강","[[시기별]]로 챙겨요"],sub:"몸 상태에 맞춘 관리가 필요해요.",q:"asian woman relaxing",sym:[["fire","열감"],["bed","수면"],["brain","기분 변화"],["drop","순환"]]},
+    person:{t:["여성 건강","[[시기별]]로 챙겨요"],sub:"몸 상태에 맞춘 관리가 필요해요.",q:"woman stomach pain holding",sym:[["fire","열감"],["bed","수면"],["brain","기분 변화"],["drop","순환"]]},
     clinic:{title:"여성 건강 [[클리닉]]",feats:[["clipboard","몸 상태 [[확인]]"],["herb","맞춤 [[한약]] 상담"],["doctor","시기별 [[맞춤 관리]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["몸의 변화","[[살펴보기]]"],steps:[["확인","clipboard","지금 몸 상태","woman"],["관리","herb","시기에 맞춘 관리","heart"],["점검","calendar","꾸준히 다시 확인","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["시기별","[[맞춤 관리]]"],km:["doctor","herb","needle","heat"],wm:["scan","inject","rehab","manual"],note:"관리 방법은 진료 후 결정됩니다."}},
@@ -161,7 +161,7 @@ const T={
     hero:{t:["회복의 시간","[[편안하게]]"],art:"heart",items:[["bedplus","치료 후 회복 관리"],["shield","면역 관리"],["users","보호자 걱정 덜기"]]},
     warn:{t:["치료 뒤","[[회복 관리]]가 중요해요"],sub:"몸과 마음을 함께 살펴요.",cards:[["bed","휴식","편안한 병실"],["stomach","식사","균형 잡힌 식단"],["walk","활동","재활·운동"],["heart","마음","정서 돌봄"]],art:["hospital","heart"]},
     list:{t:["이런 분께","[[필요해요]]"],art:"clipboard",items:[["bedplus","수술·항암 뒤 회복이 필요한 분"],["shield","면역 관리가 필요한 분"],["walk","재활이 필요한 분"],["users","돌봄이 걱정되는 가족"],["stomach","식사가 힘든 분"]],note:"입원 여부는 상담 후 결정됩니다."},
-    person:{t:["회복의 시간","[[함께]] 해요"],sub:"내 몸 상태에 맞춘 관리를 받아 보세요.",q:"asian senior patient nurse",sym:[["bedplus","회복 관리"],["shield","면역 관리"],["walk","재활"],["heart","정서 돌봄"]]},
+    person:{t:["회복의 시간","[[함께]] 해요"],sub:"내 몸 상태에 맞춘 관리를 받아 보세요.",q:"senior patient nurse hospital",sym:[["bedplus","회복 관리"],["shield","면역 관리"],["walk","재활"],["heart","정서 돌봄"]]},
     clinic:{title:"회복 [[관리]]",feats:[["clipboard","[[상태별]] 관리 계획"],["users","[[의료진]] 상주 여부 확인"],["walk","재활·[[운동]] 관리"],["chat","[[입원]] 상담"]]},
     time:{t:["회복 관리","[[흐름]]"],steps:[["상담","chat","몸 상태·치료 일정 확인","clipboard"],["관리","bedplus","맞춤 회복 관리","hospital"],["일상으로","walk","다시 일상 준비","clock"]],note:"관리 계획은 개인마다 다를 수 있습니다."},
     treat:{t:["회복을 돕는","[[관리]]"],km:["doctor","heat","herb","rehab"],wm:["scan","iv","rehab","manual"],note:"관리 방법은 진료 후 결정됩니다."}},
@@ -169,7 +169,7 @@ const T={
     hero:{t:["반복되는 피부 고민","[[속]]부터 살펴요"],art:"sparkle",items:[["sparkle","올라오는 트러블"],["drop","가려움·건조함"],["bed","잠을 설쳐요"]]},
     warn:{t:["피부는","[[몸 상태]]를 보여 줘요"],sub:"생활 습관과 몸 상태를 함께 살펴요.",cards:[["stomach","소화","더부룩함"],["bed","수면","부족·뒤척임"],["brain","스트레스","예민함"],["drop","순환","열감·건조"]],art:["sparkle","shield"]},
     list:{t:["이런 고민","[[있으신가요]]"],art:"clipboard",items:[["sparkle","같은 자리에 반복돼요"],["drop","가렵고 건조해요"],["fire","열이 오르며 붉어요"],["bed","가려워 잠을 설쳐요"],["brain","스트레스 받으면 심해요"]],note:"증상이 이어지면 진료로 확인하세요."},
-    person:{t:["피부 고민","[[원인]]을 찾아요"],sub:"겉과 속을 함께 살펴요.",q:"asian woman skin care",sym:[["sparkle","트러블"],["drop","가려움"],["fire","열감"],["bed","수면"]]},
+    person:{t:["피부 고민","[[원인]]을 찾아요"],sub:"겉과 속을 함께 살펴요.",q:"woman touching face skin",sym:[["sparkle","트러블"],["drop","가려움"],["fire","열감"],["bed","수면"]]},
     clinic:{title:"피부 [[클리닉]]",feats:[["clipboard","[[원인별]] 진료"],["herb","맞춤 [[한약]] 상담"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"]]},
     time:{t:["피부 고민이","[[반복되는 흐름]]"],steps:[["처음","alert","가끔 올라와요","user"],["반복","sparkle","같은 자리에 반복","sparkle"],["오래되면","bed","가려움·수면 불편","clock"]],note:"증상은 개인마다 다를 수 있습니다."},
     treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","herb","needle","cup"],wm:["scan","inject","rehab","manual"],note:"치료는 진료 후 결정됩니다."}}
@@ -178,7 +178,7 @@ T["기본"]={re:/./,
   hero:{t:["몸이 보내는 신호","[[놓치지]] 마세요"],art:"clipboard",items:[["pain","반복되는 불편함"],["bed","수면·피로"],["alert","일상에 영향"]]},
   warn:{t:["작은 불편함도","[[살펴보세요]]"],sub:"원인을 알면 관리가 쉬워져요.",cards:[["head","머리","두통·어지럼"],["neck","목·어깨","결림"],["spine","허리","뻐근함"],["leg","팔·다리","저림"]],art:["shield","check"]},
   list:{t:["이런 증상","[[있으신가요]]"],art:"calendar",items:[["pain","통증이 자주 반복돼요"],["bed","자고 나도 피곤해요"],["head","머리가 무거워요"],["stomach","소화가 불편해요"],["brain","스트레스가 많아요"]],note:"증상이 이어지면 진료로 확인하세요."},
-  person:{t:["불편함","[[미루지]] 마세요"],sub:"지금 상태를 아는 것부터 시작해요.",q:"asian doctor consultation",sym:[["pain","통증"],["bed","피로"],["head","두통"],["stomach","소화"]]},
+  person:{t:["불편함","[[미루지]] 마세요"],sub:"지금 상태를 아는 것부터 시작해요.",q:"doctor consultation patient",sym:[["pain","통증"],["bed","피로"],["head","두통"],["stomach","소화"]]},
   clinic:{title:"[[진료]] 안내",feats:[["clipboard","[[원인별]] 진료"],["doctor","상태별 [[맞춤 치료]]"],["chat","[[1:1]] 상담"],["calendar","[[꾸준한]] 관리"]]},
   time:{t:["진료","[[흐름]]"],steps:[["상담","chat","불편한 점 듣기","clipboard"],["진료","doctor","상태 확인","doctor"],["관리","calendar","맞춤 관리","clock"]],note:"진료 내용은 개인마다 다를 수 있습니다."},
   treat:{t:["상태별","[[맞춤 치료]]"],km:["doctor","needle","chuna","herb"],wm:["scan","manual","shock","inject"],note:"치료는 진료 후 결정됩니다."}};
@@ -364,10 +364,10 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-pillw{display:flex;justify-content:center;margin-top:30px;position:relative;z-index:2}.bi .k-pill{display:inline-block;background:linear-gradient(90deg,var(--a),var(--a2));color:#fff;border-radius:99px;padding:10px 40px;font-size:30px;font-weight:600;letter-spacing:-.03em}
 .bi .k-pill .pb{font-weight:900}.bi .k-pillw.on{margin-bottom:-28px}.bi .k-pillw.soft .k-pill{background:var(--soft);color:var(--ink);font-weight:700;font-size:26px}.bi .k-pillw.lg .k-pill{font-size:34px;font-weight:800;padding:10px 44px}.bi .k-pillw.lg .pb{color:#ffe9a6}
 .bi .k-pills2 .k-pillw{margin-top:12px}.bi .k-card{background:#fff;border-radius:34px;box-shadow:0 6px 30px rgba(20,40,80,.06)}
-.bi .k-body{position:relative;height:560px;margin-top:0;overflow:hidden;text-align:left}.bi .k-pp{position:absolute;left:222px;top:40px;width:320px;height:520px;border-radius:0;background:transparent}
+.bi .k-body{position:relative;height:560px;margin-top:0;overflow:hidden;text-align:left}.bi .k-pp{position:absolute;left:242px;top:40px;width:280px;height:520px;border-radius:0;background:transparent}
 .bi .k-pp img{object-fit:cover;object-position:50% 20%;-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent);mask-image:linear-gradient(180deg,#000 82%,transparent)}
 .bi .k-lb{position:absolute;height:72px;display:flex;align-items:flex-end;border-bottom:2.5px dashed var(--a)}.bi .k-lb.l{left:24px}.bi .k-lb.r{right:24px;justify-content:flex-end}
-.bi .k-lt{display:flex;flex-direction:column;padding-bottom:8px;font-size:23px;line-height:1.3;color:#22262c}.bi .k-lt b{color:var(--a);font-size:25px}.bi .k-lb.r .k-lt{width:250px}
+.bi .k-lt{display:flex;flex-direction:column;padding-bottom:8px;font-size:23px;line-height:1.3;color:#22262c}.bi .k-lt b{color:var(--a);font-size:25px}.bi .k-lb.r .k-lt{width:200px}
 .bi .k-dot{position:absolute;bottom:-12px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle,#3b5bff 0 32%,rgba(90,110,255,.45) 34% 62%,rgba(120,140,255,.15) 64%);box-shadow:0 0 12px rgba(60,90,255,.6)}
 .bi .k-lb.l .k-dot{right:-11px}.bi .k-lb.r .k-dot{left:-11px}
 .bi .k-blue{background:var(--a);color:#fff;border-radius:28px;padding:30px 30px;margin-top:34px;font-size:27px;line-height:1.5;font-weight:500}.bi .k-blue b{font-weight:800}.bi .k-blue.sm{font-size:26px;border-radius:22px;padding:22px}
@@ -410,6 +410,13 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-rv.hrs{display:flex;flex-wrap:wrap;gap:6px 0}.bi .k-rv.hrs div{width:50%;display:flex;flex-direction:column;font-size:21px;padding-right:8px}.bi .k-rv.hrs span{color:#ffe9a6;font-weight:700}.bi .k-rv.hrs b{font-size:25px}
 .bi .k-lfoot{background:var(--a);margin:44px -48px -40px;padding:6px 40px 36px}.bi .k-lfoot .k-foot{margin:0;padding:24px 0 14px}.bi .k-lfoot .k-fname{color:#fff}.bi .k-lfoot .k-logo{filter:brightness(0) invert(1)}.bi .k-law{color:rgba(255,255,255,.85);font-size:19px;line-height:1.6}
 .bi .k .ph{background:#e9eef0}`;
+/* 사진 자리마다 '이런 사진이어야 해요' 조건: 함수가 제미나이로 후보를 보고 어울리는 사진만 고름 */
+const PV={"교통사고": "목이나 허리를 손으로 잡고 아파하는 성인 한 명(교통사고 뒤 통증 느낌)", "허리": "허리를 손으로 잡고 아파하는 성인 한 명", "목": "목이나 어깨를 손으로 잡고 아파하는 성인 한 명", "관절": "무릎이나 관절을 손으로 잡고 아파하는 사람 한 명", "두통": "머리를 손으로 짚고 두통을 느끼는 사람 한 명", "다이어트": "줄자로 허리를 재거나 건강한 식단을 든 사람", "비염": "휴지로 코를 풀거나 재채기하는 사람 한 명", "성장": "키를 재거나 밝게 웃는 아이", "여성": "배나 허리를 손으로 감싸고 불편해하는 여성 한 명", "요양": "병원에서 돌봄을 받는 어르신 환자", "피부": "얼굴 피부를 손으로 만지며 살피는 여성 한 명", "기본": "의사와 환자가 상담하는 진료 장면"};
+function photoVet(o){const t=o.topic in PV?o.topic:"기본",tn=t==="기본"?"건강":t,c=o.clinic||{},v={};
+  v.person=PV[t]+". 사람이 사진 가운데에 크게 있고 배경이 단순한 세로 사진이면 더 좋아요. 몸에 그린 문신·예술 사진은 안 돼요.";
+  v.band="'"+tn+"' 통증·불편함을 설명하는 깔끔한 건강 사진(아픈 부위를 잡은 사람, 척추·몸 그림, 진료 장면).";
+  treatRows(T[t]||T["기본"],c).forEach((r,k)=>{if(r)v["treat"+k]="한의원·병원에서 '"+r[1]+"'(을)를 받는 장면이나 그 치료 도구가 보이는 깔끔한 사진.";});
+  v.room="깨끗한 병원 입원실(병실) 사진.";return v;}
 /* 사진 자리마다 무료 사진 검색어 (영어) */
 function photoQueries(o){const p=T[o.topic]||T["기본"],c=o.clinic,q={person:p.person.q};
   treatRows(p,c).forEach((r,k)=>{if(r)q["treat"+k]=r[3];});if(c.room&&c.room.on)q.room="hospital inpatient room";q.band=KBQ[o.topic]||KBQ["기본"];return q;}
@@ -541,5 +548,5 @@ const STYLES={
 .bi.st-warm .kick{display:flex;margin-bottom:20px}.bi.st-warm .kick span{background:var(--soft);color:var(--a);border-radius:99px;padding:8px 24px;font-size:26px;font-weight:800}`}
 };
 const STYLE_CSS=Object.values(STYLES).map(x=>x.css).join("\n");
-root.BlogKit={T,topicOf,build,photoQueries,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
+root.BlogKit={T,topicOf,build,photoQueries,photoVet,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
 })(window);
