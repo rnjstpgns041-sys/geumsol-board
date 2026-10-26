@@ -48,6 +48,10 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     <button class="btn small" id="bgmtry" style="height:38px">음악 들어 보기</button>
   </div><input type="file" id="bgmfile" accept="audio/*" hidden><div class="muted" id="bgminfo" style="margin-top:4px"></div>
   <div id="kws" class="row" style="margin-top:8px"></div>
+  <div id="hpbox" style="margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px">
+    <b>홈페이지 <span class="muted" style="font-weight:400">(대본에 반영돼요)</span></b>
+    <div class="grid" style="grid-template-columns:1fr auto;margin-top:6px;align-items:end"><label>홈페이지 주소<input id="hpurl" placeholder="예: www.yudang.co.kr"></label><button class="btn small" id="hpgo" style="height:38px">홈페이지 읽기</button></div>
+    <div class="muted" id="hpmsg" style="margin-top:4px">주소를 넣고 [홈페이지 읽기]를 누르면 진료 항목·설명·진료시간·위치를 읽어 두고, 대본을 쓸 때 그 내용으로 써요. 팀 모두 같이 써요.</div></div>
   <div id="cobox" style="margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px">
     <div class="row" style="justify-content:space-between"><b>업체 사진 <span class="muted" style="font-weight:400">(<span id="cocnt">0</span>장)</span></b><button class="btn small" id="coadd">업체 사진 넣기</button></div>
     <input type="file" id="cofile" accept="image/*" multiple hidden>
@@ -117,6 +121,38 @@ function findTpls(probes){const out=[],seen=new Set();
     for(const s of texts){let d=parse(s);if(typeof d==="string")d=parse(d);if(!d)continue;walk(d);
       const c=d.result&&d.result.content;if(Array.isArray(c))c.forEach(x=>{if(x&&typeof x.text==="string"){const e=parse(x.text);if(e)walk(e);}});}}
   return out;}
+/* 홈페이지에서 읽은 업체 정보: 블로그 이미지 만들기와 같은 칸(blogcfg/<업체 id>)을 같이 쓴다 */
+let HP=null,HPCID="";
+const HPK=["homepage","name","intro","slogan","treats","tdesc","why","equip","doctors","hours","lunch","addr","station","walk","parking","tel","way"];
+async function hpLoad(){const cid=$("client").value;HPCID=cid;HP=null;$("hpurl").value="";hpShow();if(!cid||cid.startsWith("n:"))return;
+  try{const r=await rest(`docs?coll=eq.blogcfg&id=eq.${encodeURIComponent(cid)}&select=data`);if(HPCID!==cid)return;HP=(r&&r[0]&&r[0].data)||null;}catch(e){}
+  $("hpurl").value=(HP&&HP.homepage)||"";hpShow();}
+function hpFacts(){const h=HP||{},o=[],A=x=>Array.isArray(x)?x.map(String).filter(Boolean):[];
+  if(h.intro)o.push("소개: "+h.intro);if(h.slogan)o.push("대표 문구: "+h.slogan);
+  const td=h.tdesc&&typeof h.tdesc==="object"?h.tdesc:{};const tr=A(h.treats);
+  if(tr.length)o.push("진료 항목: "+tr.join(", "));Object.entries(td).forEach(([k,v])=>{if(v)o.push(`${k}: ${v}`);});
+  if(A(h.why).length)o.push("이 업체의 장점: "+A(h.why).join(" / "));if(A(h.equip).length)o.push("장비·시설: "+A(h.equip).join(", "));
+  (Array.isArray(h.doctors)?h.doctors:[]).filter(d=>d&&d.name).slice(0,3).forEach(d=>o.push(`의료진: ${d.name} ${d.title||""}${(d.fields||[]).length?" ("+d.fields.join(", ")+")":""}`));
+  if(Array.isArray(h.hours)&&h.hours.length)o.push("진료시간: "+h.hours.map(x=>x.join(" ")).join(", ")+(h.lunch?` / 점심 ${h.lunch}`:""));
+  [["addr","주소"],["station","가까운 역"],["walk","걸어서"],["parking","주차"],["way","찾아오는 길"],["tel","전화"]].forEach(([k,l])=>{if(h[k])o.push(`${l}: ${h[k]}`);});
+  return o.join("\n").slice(0,2500);}
+function hpShow(){const f=hpFacts();$("hpmsg").textContent=!$("client").value?"업체를 먼저 골라 주세요.":f?`홈페이지 내용 ${f.split("\n").length}가지를 읽어 뒀어요. 대본을 쓸 때 이 내용으로 써요. 다시 읽으려면 [홈페이지 읽기]를 누르세요.`:"주소를 넣고 [홈페이지 읽기]를 누르면 진료 항목·설명·진료시간·위치를 읽어 두고, 대본을 쓸 때 그 내용으로 써요.";}
+/* 키워드 주제에 맞는 홈페이지 진료 설명 한 줄 (제미나이 없이 쓸 때 업체 특징 앞에 넣음) */
+function hpLine(kw){const td=HP&&HP.tdesc&&typeof HP.tdesc==="object"?HP.tdesc:{},t=ScriptGen.topicOf(kw)||kw;if(!t)return "";
+  const ws=t.split(/\s+/).filter(w=>w.length>=2);const hit=Object.entries(td).find(([k,v])=>v&&ws.some(w=>k.includes(w)||w.includes(k)||String(v).includes(w)));
+  return hit?String(hit[1]).split(/(?<=[.요])\s+/)[0].slice(0,60):"";}
+async function hpJina(u,ms){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms||40000);
+  try{const r=await fetch("https://r.jina.ai/"+u,{signal:ctl.signal});if(!r.ok)return "";return (await r.text()).slice(0,300000);}catch(e){return "";}finally{clearTimeout(t);}}
+const HPWANT=/의료진|원장|소개|진료\s*시간|진료안내|오시는|찾아오|위치|시설|둘러|입원|병실|진료과목|클리닉|치료|프로그램|센터|about|doctor|location|map|info|clinic|program/i;
+async function hpRead(url){const u0=new URL(/^https?:/i.test(url)?url:"https://"+url),host=h=>h.toLowerCase().replace(/^www\./,"");
+  const home=await hpJina(u0.href);if(home.replace(/\s/g,"").length<100)return null;const seen=new Set([u0.href]),links=[];
+  for(const m of home.matchAll(/(?<!!)\[([^\]]{0,80})\]\((https?:[^)\s]+)\)/g)){try{const u=new URL(m[2]);u.hash="";
+    if(host(u.hostname)!==host(u0.hostname)||seen.has(u.href)||/\.(jpe?g|png|gif|webp|pdf|zip)$/i.test(u.pathname))continue;
+    let path="";try{path=decodeURIComponent(u.pathname)}catch(e){path=u.pathname}if(HPWANT.test(m[1])||HPWANT.test(path)){seen.add(u.href);links.push(u.href);}}catch(e){}}
+  $("hpmsg").textContent=`첫 화면을 읽었어요. 안쪽 ${Math.min(links.length,5)}쪽을 더 읽는 중이에요…`;
+  const pages=[home,...await Promise.all(links.slice(0,5).map(h=>hpJina(h,30000)))].filter(Boolean);
+  const clean=t=>t.replace(/!\[[^\]]*\]\([^)]*\)/g," ").replace(/\]\([^)]*\)/g,"]").replace(/[ \t]+/g," ").replace(/\n\s*\n+/g,"\n");
+  return {text:pages.map(clean).join("\n----\n").slice(0,24000),pages:pages.length};}
 /* 키워드·업체가 바뀌면 대본 칸이 비었거나 아직 자동으로 쓴 그대로일 때만 새로 쓴다 (직접 고친 대본은 건드리지 않음) */
 let ATOK=0,RECENT=[];
 /* 이 업체로 최근에 만든 영상의 제목과 첫 문장: 새 대본·제목은 이것들과 다르게 쓴다 */
@@ -127,10 +163,10 @@ async function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$(
   const kw=$("kw").value.trim(),tok=++ATOK;let r=null;
   /* 키워드가 있으면 제미나이가 그 키워드 주제로 새로 쓰고, 안 되면 문장 틀로 */
   if(kw){try{await caps();if(GEM){$("sample").disabled=true;msg(`"${esc(kw)}" 주제로 대본을 쓰는 중이에요…`,"warn");const p=prof();
-      const g=await fn({action:"script",kw,name:$("client").value?cname():"",type:p.type,area:p.area,feats:p.feats||[],avoid:avoidNow()});
+      const g=await fn({action:"script",kw,name:$("client").value?cname():"",type:p.type,area:p.area,feats:p.feats||[],avoid:avoidNow(),site:hpFacts()});
       if(tok!==ATOK)return;if(g.ok&&g.lines&&g.lines.length){const t=g.lines.join("\n");r={text:t,chars:t.replace(/\s/g,"").length,title:g.title&&g.title.length===2?g.title:null};}}}catch(e){}finally{if(tok===ATOK)$("sample").disabled=false;}
     if(tok!==ATOK)return;if(!force&&$("text").value.trim()!==cur)return;}
-  const av=avoidNow();if(!r)r=ScriptGen.make(kw,$("client").value?cname():"",prof(),++SEED,0,0,av);$("text").value=LAST=r.text;cnt();
+  const av=avoidNow();if(!r){const p=prof(),hl=hpLine(kw);r=ScriptGen.make(kw,$("client").value?cname():"",hl?Object.assign({},p,{feats:[hl].concat(p.feats||[])}):p,++SEED,0,0,av);}$("text").value=LAST=r.text;cnt();
   /* 대본을 새로 쓸 때마다 영상 위 제목도 새로 (최근 제목은 피함) */
   const tt=r.title&&!av.some(a=>a.replace(/\s/g,"")===r.title.join("").replace(/\s/g,""))?r.title:ScriptGen.title(kw,$("client").value?cname():"",prof(),++SEED,av);
   $("t1").value=tt[0]||"";$("t2").value=tt[1]||"";
@@ -158,8 +194,26 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
   [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
-  await loadUsed();renderKws();fill();auto();renderCo();preview();await loadList();poll();}
-$("client").onchange=()=>{$("t1").value="";$("t2").value="";renderKws();fill();auto();};
+  await loadUsed();renderKws();fill();await hpLoad();auto();renderCo();preview();await loadList();poll();}
+$("client").onchange=async()=>{$("t1").value="";$("t2").value="";renderKws();fill();await hpLoad();auto();};
+$("hpgo").onclick=async()=>{const cid=$("client").value;if(!cid||cid.startsWith("n:")){$("hpmsg").textContent="업체를 먼저 골라 주세요.";return;}
+  const url=$("hpurl").value.trim();if(!url){$("hpmsg").textContent="홈페이지 주소를 넣어 주세요.";return;}
+  $("hpgo").disabled=true;$("hpmsg").textContent="홈페이지를 읽는 중이에요… (조금 걸려요)";
+  try{let pre=null;try{pre=await hpRead(url);}catch(e){}
+    const r=pre&&pre.text.length>=200?await fn({action:"site",url,text:pre.text,imgs:[],pages:pre.pages}):await fn({action:"site",url});
+    if(!r.ok)throw new Error(r.error||"읽지 못했어요");const g=r.info||{};
+    let cur={};try{const x=await rest(`docs?coll=eq.blogcfg&id=eq.${encodeURIComponent(cid)}&select=data`);cur=(x&&x[0]&&x[0].data)||{};}catch(e){}
+    const put=(k,v)=>{if(v!=null&&v!==""&&!(Array.isArray(v)&&!v.length))cur[k]=v;};cur.homepage=url;
+    ["tel","addr","lunch","way","station","walk","parking","intro","slogan"].forEach(k=>put(k,typeof g[k]==="string"?g[k].trim():""));
+    if(!cur.name)put("name",cname());
+    if(Array.isArray(g.hours))put("hours",g.hours.filter(h=>Array.isArray(h)&&h[1]).map(h=>[String(h[0]),String(h[1])]));
+    ["badges","feats","treats","why","equip"].forEach(k=>{if(Array.isArray(g[k]))put(k,g[k].map(String).filter(Boolean));});
+    if(g.tdesc&&typeof g.tdesc==="object")put("tdesc",Object.fromEntries(Object.entries(g.tdesc).filter(([a,b])=>a&&typeof b==="string"&&b.trim()).slice(0,12)));
+    if(Array.isArray(g.doctors)&&g.doctors.some(d=>d&&d.name)){const old=cur.doctors||[];cur.doctors=g.doctors.filter(d=>d&&d.name).slice(0,4).map(d=>({name:String(d.name),title:String(d.title||"원장"),role:String(d.role||""),fields:(d.fields||[]).map(String),history:(d.history||[]).map(String),photo:(old.find(o=>o.name===d.name)||{}).photo||""}));}
+    await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"blogcfg",id:cid,data:cur})});
+    if($("client").value===cid){HP=cur;hpShow();auto(true);}}
+  catch(e){$("hpmsg").textContent="홈페이지를 읽지 못했어요. 주소를 확인해 주세요. ("+(e.message||e)+")";}
+  $("hpgo").disabled=false;};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
 $("text").addEventListener("input",cnt);
 $("sample").onclick=()=>{if(!$("kw").value.trim()&&!$("client").value){msg("업체와 키워드를 먼저 골라 주세요.","warn");return;}auto(true);};
