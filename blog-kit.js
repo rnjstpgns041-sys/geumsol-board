@@ -265,7 +265,7 @@ const KH=(t,o)=>{o=o||{};const l2=t[1]||"",g2=/\[\[/.test(l2)?gem(l2):`<b class=
   return `<div class="k-h ${o.cls||""}"><div ${E}>${l1}</div>${l2?`<div ${E}>${g2}</div>`:""}</div>`;};
 const pill=(s,cls)=>`<div class="k-pillw ${cls||""}"><span class="k-pill" ${E}>${gem(s).replace(/class="g"/g,'class="pb"')}</span></div>`;
 const chk='<svg class="k-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 6.5"/></svg>';
-const kfoot=(c,band)=>{if(!c.logo&&!c.name)return "";return `<div class="k-foot ${band?"band":""}">${c.logo?`<img class="k-logo" src="${esc(c.logo)}" alt="">`:`<span class="k-mark"></span><span class="k-fname" ${E}>${esc(c.name)}</span>`}</div>`;};
+const kfoot=(c,band)=>{if(!c.logo&&!c.name)return "";return `<div class="k-foot ${band?"band":""}">${c.logo?`<img class="k-logo" src="${esc(c.logo)}" alt="">`:`<span class="k-fname" ${E}>${esc(c.name)}</span>`}</div>`;};
 /* 그림: 클립보드, 의사 */
 const CLIP=`<svg class="k-clip" viewBox="0 0 120 150"><rect x="8" y="16" width="104" height="128" rx="14" fill="#e9b47b" stroke="#16243b" stroke-width="5"/><path d="M20 30h80v100H34l-14-14z" fill="#fff" stroke="#16243b" stroke-width="4" stroke-linejoin="round"/><path d="M20 116l14 14v-14z" fill="#dbe6f3" stroke="#16243b" stroke-width="4" stroke-linejoin="round"/>
 <rect x="38" y="8" width="44" height="20" rx="8" fill="#b9c8dc" stroke="#16243b" stroke-width="4"/><circle cx="60" cy="10" r="5" fill="#fff" stroke="#16243b" stroke-width="3"/>
