@@ -1,6 +1,7 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>금솔 블로그 이미지 만들기</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017}}
@@ -165,15 +166,16 @@ function clinicPhotos(){const c=client()||{},i=c.info||{},out=[...(CFG.coPhotos|
 
 /* ── 그림 만들기 ── */
 function mix(h,w,t){const a=parseInt(h.slice(1),16),b=parseInt(w.slice(1),16),f=s=>Math.round(((a>>s)&255)*(1-t)+((b>>s)&255)*t);return "#"+[16,8,0].map(s=>f(s).toString(16).padStart(2,"0")).join("");}
-function vars(){const m=$("cm").value,a=$("ca").value;return `--m:${m};--a:${a};--bg2:${mix(a,"#ffffff",.93)};--soft:${mix(a,"#ffffff",.84)};--soft2:${mix(m,"#ffffff",.95)}`;}
+function vars(){const m=$("cm").value,a=$("ca").value,st=BK.STYLES[STY]||{},a2=st.a2&&st.a.toLowerCase()===a.toLowerCase()?st.a2:mix(a,"#5fd6ff",.55);return `--m:${m};--a:${a};--a2:${a2};--bg2:${mix(a,"#ffffff",.93)};--soft:${mix(a,"#ffffff",.84)};--soft2:${mix(m,"#ffffff",.95)}`;}
 function onMap(){const o={};SECS.forEach(([k])=>{if(ON[k]===false)o[k]=false;});(CFG.doctors||[]).forEach((d,i)=>{if(ON.doc===false)o["doc"+i]=false;});return o;}
 function clinicObj(){return Object.assign({},CFG,{km:$("km").value==="1",name:CFG.name||(client()||{}).name||"",photos:(CFG.photos||[]).filter(p=>p.url)});}
 let STY="basic";
-function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const ks=Object.keys(BK.STYLES).filter(k=>k!==STY);STY=ks[Math.floor(Math.random()*ks.length)];}
+/* 만들 때마다 바뀌게 = 네이버 카드형 색만 바뀜. 고정한 디자인에서 '다른 디자인'은 같은 종류 안에서 바꿈 */
+function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const card=v==="auto"||!!(BK.STYLES[STY]||{}).card,ks=Object.keys(BK.STYLES).filter(k=>k!==STY&&!!BK.STYLES[k].card===card);STY=ks[Math.floor(Math.random()*ks.length)]||STY;}
   const st=BK.STYLES[STY];$("cm").value=st.m;$("ca").value=st.a;}
 function kick(){const t=$("topic").value;return (t==="기본"?"건강":t)+" 가이드";}
 function render(){const c=clinicObj(),root=$("bi");root.className="bi st-"+STY;root.setAttribute("style",vars());
-  root.innerHTML=BK.build({topic:$("topic").value,clinic:c,img:IMG,on:onMap(),kick:kick()});
+  root.innerHTML=BK.build({topic:$("topic").value,clinic:c,img:IMG,on:onMap(),kick:kick(),style:STY});
   root.querySelectorAll(".blk").forEach(b=>{b.insertAdjacentHTML("afterbegin",`<div class="bx"><button data-save="${b.dataset.k}">이 구역만 저장</button><button data-hide="${b.dataset.k}">빼기</button></div>`);
     const k=b.dataset.k,ed=EDITS[k]||{};b.querySelectorAll("[contenteditable]").forEach((el,i)=>{el.dataset.o=el.textContent;const e=ed[i];if(e&&e.o===el.textContent)el.innerHTML=e.n;});});}
 $("bi").addEventListener("input",e=>{const el=e.target.closest("[contenteditable]"),b=e.target.closest(".blk");if(!el||!b)return;
@@ -188,7 +190,7 @@ async function needPW(){if(PW)return true;return new Promise(ok=>{const m=docume
   $("pwok").onclick=async()=>{PW=$("pwi").value.trim();if(!PW)return;const r=await fn({action:"ping"});if(r.ok){ls.set("gs-video-pw",PW);close(true);}else{$("pwm").innerHTML=`<div class="msg err" style="margin-top:8px">${esc(r.error||"비밀번호가 맞지 않아요.")}</div>`;}};
   $("pwi").onkeydown=e=>{if(e.key==="Enter")$("pwok").click();};$("pwi").focus();});}
 let USED=[],COUSE=0;
-const SLOTS=()=>["person","treat0","treat1","treat2","treat3"].concat(CFG.room&&CFG.room.on&&ON.room!==false?["room"]:[]).filter(k=>k==="room"||document.querySelector(`[data-ph="${k}"]`));
+const SLOTS=()=>["person","band","treat0","treat1","treat2","treat3"].concat(CFG.room&&CFG.room.on&&ON.room!==false?["room"]:[]).filter(k=>k==="room"||document.querySelector(`[data-ph="${k}"]`));
 async function freePhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
   const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});keys=keys.filter(k=>q[k]);if(!keys.length)return false;
   const r=await fn({action:"photos",queries:keys.map(k=>q[k]),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
@@ -289,9 +291,35 @@ $("coup").onclick=async()=>{if(!client())return msg("업체를 먼저 골라 주
   renderCos();await quietSave();$("sitemsg").textContent=`업체 사진 ${n}장을 넣었어요. 팀 모두 같이 써요.`;IMG={};autoPhotos(false);};
 $("cos").onclick=async e=>{const d=e.target.closest("[data-cdel]");if(!d)return;readForm();CFG.coPhotos.splice(+d.dataset.cdel,1);renderCos();await quietSave();};
 let SITEIMGS=[];
+/* 홈페이지 읽기는 브라우저가 r.jina.ai(글만 뽑아 주는 무료 리더)로 직접 읽음: 함수는 정리만 해서 한도에 안 걸림 */
+const SWANT=/의료진|원장|소개|진료\s*시간|진료안내|오시는|찾아오|위치|시설|둘러|입원|병실|진료과목|클리닉|치료|프로그램|센터|about|doctor|location|map|info|clinic|program/i;
+async function jina(u,ms){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms||40000);
+  try{const r=await fetch("https://r.jina.ai/"+u,{signal:ctl.signal});if(!r.ok)return "";return (await r.text()).slice(0,300000);}catch(e){return "";}finally{clearTimeout(t);}}
+async function siteRead(url){const u0=new URL(/^https?:/i.test(url)?url:"https://"+url),host=h=>h.toLowerCase().replace(/^www\./,"");
+  const home=await jina(u0.href);if(home.replace(/\s/g,"").length<100)return null;
+  const seen=new Set([u0.href]),links=[],imgs=new Set();
+  for(const m of home.matchAll(/(?<!!)\[([^\]]{0,80})\]\((https?:[^)\s]+)\)/g)){try{const u=new URL(m[2]);u.hash="";
+    if(host(u.hostname)!==host(u0.hostname)||seen.has(u.href)||/\.(jpe?g|png|gif|webp|pdf|zip)$/i.test(u.pathname))continue;
+    let path="";try{path=decodeURIComponent(u.pathname)}catch(e){path=u.pathname}
+    if(SWANT.test(m[1])||SWANT.test(path)){seen.add(u.href);links.push(u.href);}}catch(e){}}
+  $("sitemsg").textContent=`첫 화면을 읽었어요. 안쪽 ${Math.min(links.length,5)}쪽을 더 읽는 중이에요…`;
+  const subs=await Promise.all(links.slice(0,5).map(h=>jina(h,30000)));
+  const pages=[home,...subs].filter(Boolean);
+  for(const p of pages)for(const m of p.matchAll(/!\[[^\]]*\]\((https?:[^)\s]+)\)/g)){try{const u=new URL(m[1]);if(!/logo|icon|btn|blank|sprite|banner_s|\.gif|\.svg/i.test(u.pathname))imgs.add(u.href);}catch(e){}}
+  const clean=t=>t.replace(/!\[[^\]]*\]\([^)]*\)/g," ").replace(/\]\([^)]*\)/g,"]").replace(/[ \t]+/g," ").replace(/\n\s*\n+/g,"\n");
+  return {text:pages.map(clean).join("\n----\n").slice(0,24000),imgs:[...imgs].slice(0,40),pages:pages.length};}
+function siteRule(text){const tel=(text.match(/0\d{1,2}[-.)\s]\d{3,4}[-.\s]\d{4}|1[5-9]\d{2}-\d{4}/)||[""])[0],hours=[];
+  for(const m of text.matchAll(/(평일\s*매일|평일|주말\s*[·,및]?\s*공휴일|주말|월[~\-–]금|토요일|토|일요일|공휴일)\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2})/g))if(hours.length<4&&!hours.some(h=>h[0]===m[1]))hours.push([m[1].trim(),m[2].replace(/\s+/g," ").trim()]);
+  const lunch=(text.match(/점심\s*시간\s*[:：]?\s*(\d{1,2}[:시]\s?\d{0,2}\s*[~\-–]\s*\d{1,2}[:시]\s?\d{0,2})/)||[])[1]||"";
+  const addr=((text.match(/((?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n]{4,60}?(?:로|길)\s?\d+[^\n]{0,30})/)||[])[1]||"").trim();
+  return {tel,hours,lunch,addr};}
 $("sitego").onclick=async()=>{readForm();const url=CFG.homepage;if(!url)return $("sitemsg").textContent="홈페이지 주소를 넣어 주세요.";if(!await needPW())return;
   $("sitego").disabled=true;$("sitemsg").textContent="홈페이지를 읽는 중이에요… (조금 걸려요)";
-  try{const r=await fn({action:"site",url});if(!r.ok)throw new Error(r.error||"읽지 못했어요");const g=r.info||{};SITEIMGS=r.imgs||[];
+  try{let pre=null;try{pre=await siteRead(url);}catch(e){pre=null;}
+    let r=pre&&pre.text.length>=200?await fn({action:"site",url,text:pre.text,imgs:pre.imgs,pages:pre.pages}):await fn({action:"site",url});
+    /* 함수가 한도에 걸려도 브라우저가 읽은 글로 전화·주소·시간은 채움 */
+    if(!r.ok&&pre&&pre.text.length>=200)r={ok:true,info:siteRule(pre.text),imgs:pre.imgs,pages:pre.pages,note:"정리 도우미가 바빠서 전화·주소·시간만 채웠어요. 잠시 뒤 다시 누르면 더 채워져요."};
+    if(!r.ok)throw new Error(r.error||"읽지 못했어요");const g=r.info||{};SITEIMGS=r.imgs||[];
     const put=(k,v)=>{if(v!=null&&v!==""&&!(Array.isArray(v)&&!v.length))CFG[k]=v;};
     ["tel","addr","lunch","way","station","walk","parking"].forEach(k=>put(k,typeof g[k]==="string"?g[k].trim():""));
     if(Array.isArray(g.hours))put("hours",g.hours.filter(h=>Array.isArray(h)&&h[1]).map(h=>[String(h[0]),String(h[1])]));

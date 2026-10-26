@@ -194,7 +194,7 @@ const H=(t,cls)=>`<div class="h ${cls||""}"><i class="bar"></i><div class="t1" $
 const logo=c=>c.logo?`<img class="logo" src="${esc(c.logo)}" alt="">`:`<div class="logot" ${E}>${esc(c.name)}</div>`;
 
 /* 홈페이지에서 읽은 진료 항목 → 치료 줄 [아이콘, 이름, 설명, 사진 검색어] */
-const TMAP=[[/약침|침 ?치료|^침|전침/,"needle","통증 부위에 [[맞춰]] 진행","acupuncture"],[/추나|교정|도수/,"posture","[[균형·움직임]] 관리","chiropractic"],[/한약|탕약|보약|공진단|경옥고/,"herb","체질과 [[상태]]에 맞춰","herbal medicine"],
+const TMAP=[[/순환|부항|뜸/,"drop","[[순환]] 관리","cupping therapy"],[/약침|침 ?치료|^침|전침/,"needle","통증 부위에 [[맞춰]] 진행","acupuncture"],[/추나|교정|도수/,"posture","[[균형·움직임]] 관리","chiropractic"],[/한약|탕약|보약|공진단|경옥고/,"herb","체질과 [[상태]]에 맞춰","herbal medicine"],
   [/부항|뜸/,"drop","[[순환]] 관리","cupping therapy"],[/입원|재활/,"bedplus","회복을 위한 [[집중 관리]]","hospital room"],[/물리|온열|고주파|레이저|충격파/,"wave","[[통증 부위]] 관리","physiotherapy"],
   [/검사|엑스|x-?ray|MRI|초음파/i,"xray","[[상태]] 먼저 확인","x-ray doctor"],[/주사|약물|수액/,"pill","증상에 [[맞춰]] 진료","doctor injection"],[/다이어트|비만|체중/,"scale","[[생활 습관]]까지 함께","healthy diet food"],
   [/피부|여드름|아토피/,"sparkle","[[피부 상태]]에 맞춰","skin care"],[/성장|키/,"child","[[성장 단계]]에 맞춰","child growth"],[/비염|호흡|코/,"nose","[[호흡]] 편하게","nose breathing"],
@@ -248,15 +248,172 @@ function map(c){return `<div class="map"><svg viewBox="0 0 800 300" width="100%"
   <div class="mst" ${E}>${esc(c.station)}</div>${c.walk?`<div class="mwk">${icon("walk")}<span ${E}>${esc(c.walk)}</span></div>`:""}<div class="mcl" ${E}>${esc(c.name)}</div></div>`;}
 
 /* 전체 이미지: 구역 순서대로 */
-function build(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
+function build(o){if(STYLES[o.style]&&STYLES[o.style].card)return kbuild(o);const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
   add("hero",S.hero(p,c,o.kick));add("warn",S.warn(p,c));add("list",S.list(p,c));add("person",S.person(p,c,img));add("clinic",S.clinic(p,c));
   add("time",S.time(p,c));add("treat",S.treat(p,c,img));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,S.doctor(d,k)));
   if(c.room&&c.room.on)add("room",S.room(c,img));add("facility",S.facility(c));add("info",S.info(c));
   return out.join("");}
+/* ── 카드형 디자인: 네이버 상위 한의원 블로그(숨쉬는한의원 예시)처럼 큰 그라데이션 제목 + 알약 띠 + 파란 문구 상자 + 체크 목록 + 치료 카드 ── */
+const gem=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<b class="g">$1</b>');           // [[ ]] = 파랑 그라데이션 글자
+const yem=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<b class="y">$1</b>');           // 파란 상자 안 [[ ]] = 노란 글자
+const plain=s=>String(s||"").replace(/\[\[|\]\]/g,"");
+const ro=w=>{const c=String(w||"").trim().slice(-1).charCodeAt(0)-0xac00;if(c<0||c>11171)return "로";const j=c%28;return j===0||j===8?"로":"으로";};
+/* 제목: 첫 줄 검정, 둘째 줄 그라데이션([[ ]]가 있으면 그 부분만) */
+const KH=(t,o)=>{o=o||{};const l2=t[1]||"",g2=/\[\[/.test(l2)?gem(l2):`<b class="g">${esc(l2)}</b>`;
+  const l1=o.all?`<b class="g">${esc(plain(t[0]))}</b>`:gem(t[0]);
+  return `<div class="k-h ${o.cls||""}"><div ${E}>${l1}</div>${l2?`<div ${E}>${g2}</div>`:""}</div>`;};
+const pill=(s,cls)=>`<div class="k-pillw ${cls||""}"><span class="k-pill" ${E}>${gem(s).replace(/class="g"/g,'class="pb"')}</span></div>`;
+const chk='<svg class="k-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 6.5"/></svg>';
+const kfoot=(c,band)=>{if(!c.logo&&!c.name)return "";return `<div class="k-foot ${band?"band":""}">${c.logo?`<img class="k-logo" src="${esc(c.logo)}" alt="">`:`<span class="k-mark"></span><span class="k-fname" ${E}>${esc(c.name)}</span>`}</div>`;};
+/* 그림: 클립보드, 의사 */
+const CLIP=`<svg class="k-clip" viewBox="0 0 120 150"><rect x="8" y="16" width="104" height="128" rx="14" fill="#e9b47b" stroke="#16243b" stroke-width="5"/><path d="M20 30h80v100H34l-14-14z" fill="#fff" stroke="#16243b" stroke-width="4" stroke-linejoin="round"/><path d="M20 116l14 14v-14z" fill="#dbe6f3" stroke="#16243b" stroke-width="4" stroke-linejoin="round"/>
+<rect x="38" y="8" width="44" height="20" rx="8" fill="#b9c8dc" stroke="#16243b" stroke-width="4"/><circle cx="60" cy="10" r="5" fill="#fff" stroke="#16243b" stroke-width="3"/>
+${[48,70,92].map(y=>`<rect x="32" y="${y-8}" width="15" height="15" rx="3" fill="none" stroke="#16243b" stroke-width="3.5"/><path d="M34 ${y}l4 4 9-11" fill="none" stroke="#16243b" stroke-width="3.5" stroke-linecap="round"/><path d="M54 ${y+1}h${y===70?34:26}" stroke="#16243b" stroke-width="4.5" stroke-linecap="round"/>`).join("")}</svg>`;
+const DOC=`<svg class="k-doc" viewBox="0 0 160 260"><path d="M30 250V150c0-26 20-44 50-44s50 18 50 44v100z" fill="#fff" stroke="#9aa9bb" stroke-width="3"/><path d="M62 108l18 60 18-60" fill="#2f8f7a"/><path d="M62 106l18 24 18-24" fill="#fff" stroke="#9aa9bb" stroke-width="2"/>
+<rect x="58" y="245" width="44" height="12" fill="#2b2f36"/><path d="M48 150c-6 26-2 46 10 56M112 150c6 26 2 46-10 56" fill="none" stroke="#2b2f36" stroke-width="4" stroke-linecap="round"/><circle cx="58" cy="210" r="7" fill="#9fb4c7" stroke="#2b2f36" stroke-width="3"/>
+<path d="M40 176c20 10 60 10 80 0l-4 18c-24 8-48 8-72 0z" fill="#fff" stroke="#9aa9bb" stroke-width="3"/><circle cx="80" cy="66" r="34" fill="#ffd9b8"/><path d="M46 60c0-26 16-36 34-36s34 10 34 36c-8-10-22-14-34-14s-26 4-34 14z" fill="#2b2f36"/>
+<circle cx="68" cy="68" r="3.4" fill="#2b2f36"/><circle cx="92" cy="68" r="3.4" fill="#2b2f36"/><path d="M72 82c5 4 11 4 16 0" fill="none" stroke="#c0605a" stroke-width="3" stroke-linecap="round"/><circle cx="61" cy="78" r="5" fill="#ffb3a7" opacity=".6"/><circle cx="99" cy="78" r="5" fill="#ffb3a7" opacity=".6"/></svg>`;
+/* 치료 이름 → 쉬운 설명 두 문장 */
+const TD={needle:"통증 부위와 몸 상태에 맞춰 침·약침을 놓아 불편한 부위의 회복을 돕는 치료입니다.",posture:"한의사가 손으로 틀어진 체형과 관절의 균형을 살피고 움직임을 편하게 돕는 수기 치료입니다.",
+  herb:"체질과 지금 몸 상태를 살펴 처방하는 한약으로 몸의 회복과 균형을 돕습니다.",drop:"부항·뜸으로 뭉친 부위의 순환을 돕고 몸을 따뜻하게 관리합니다.",bedplus:"입원 기간 동안 상태를 가까이서 살피며 집중적으로 관리합니다.",
+  wave:"물리치료 장비로 통증 부위를 관리해 움직임을 편하게 돕습니다.",xray:"검사로 지금 상태를 먼저 확인하고 그에 맞는 치료 계획을 세웁니다.",pill:"증상에 맞춘 약물·주사 치료로 불편함을 관리합니다.",
+  scale:"식습관과 생활 습관을 함께 살피며 몸 상태에 맞는 관리 방법을 찾습니다.",sparkle:"피부 상태와 몸속 원인을 함께 살펴 관리합니다.",child:"아이의 성장 단계와 생활 습관을 살펴 맞춤 관리를 돕습니다.",nose:"코와 호흡 상태를 살피고 몸 상태에 맞춰 관리합니다.",
+  woman:"시기마다 달라지는 몸 상태를 살펴 맞춤 관리를 돕습니다.",walk:"운동과 재활로 움직임을 회복하고 재발 관리를 돕습니다.",doctor:"불편한 점을 충분히 듣고 원인과 상태를 확인합니다.",hand:"손으로 뭉친 부위를 풀고 움직임 회복을 돕습니다.",fire:"몸을 따뜻하게 해 순환과 회복을 돕습니다.",iv:"몸 상태에 맞춰 수액 등으로 회복을 돕습니다.",check:"증상과 몸 상태에 맞춰 진행합니다."};
+const FD={shield:"자동차보험 진료 여부를 접수 때 꼼꼼히 안내해 드립니다.",calendar:"바쁜 일상에도 진료받기 편하도록 진료 시간을 운영합니다.",bedplus:"필요할 때는 입원으로 상태를 가까이서 살핍니다.",chat:"불편한 점을 충분히 듣고 쉽게 설명해 드립니다.",
+  clipboard:"불편함의 원인부터 살피고 진료 계획을 세웁니다.",doctor:"환자마다 다른 증상과 상태에 맞춰 진료합니다.",herb:"체질과 상태를 살펴 처방을 정합니다.",needle:"불편한 부위에 맞춰 치료를 진행합니다.",posture:"몸의 균형과 움직임을 함께 살핍니다.",parking:"차를 가지고 오셔도 편하게 방문하실 수 있습니다.",woman:"편하게 말씀하실 수 있도록 세심하게 진료합니다.",check:"환자분의 편안한 회복을 먼저 생각합니다."};
+const tname=t=>t==="기본"?"맞춤 진료":t+" 진료";
+const feats=(p,c)=>((c.feats||[]).filter(Boolean).length>=2?c.feats.filter(Boolean).map(t=>[featIcon(t),t]):p.clinic.feats);
+const K={
+  /* 첫 화면: 제목 + 몸 그림 설명(사진 + 점선 + 빛나는 점) + 파란 문구 상자 */
+  hero:(p,c,img)=>{const cs=p.warn.cards.slice(0,4),L=[[24,150],[24,330]],R=[[470,90],[470,270]],dotL=[318,300],dotR=[452,442];
+    const lab=(x,k,side)=>{const [i,a,b]=x,[,y]=(side?R:L)[k],dx=side?dotR[k]:dotL[k];
+      return side?`<div class="k-lb r" style="top:${y}px;left:${dx}px"><i class="k-dot"></i><div class="k-lt"><b ${E}>${esc(a)}</b><span ${E}>${esc(b)}</span></div></div>`
+        :`<div class="k-lb l" style="top:${y}px;width:${dx-24}px"><div class="k-lt"><b ${E}>${esc(a)}</b><span ${E}>${esc(b)}</span></div><i class="k-dot"></i></div>`;};
+    return `<section class="k k-hero">${KH(p.hero.t,{cls:"xl"})}<i class="k-vl"></i>
+    <div class="k-sub" ${E}>${esc(p.warn.sub)}<br><b>${esc(plain(p.person.t.join(" ")))}</b></div>
+    ${pill("몸이 보내는 [[신호]]","on")}<div class="k-card k-body">${ph("person",img.person,"k-pp")}${cs.map((x,k)=>lab(x,k>>1,k%2)).join("")}</div>
+    <div class="k-blue" ${E}>${esc(p.person.sub)}<br><b>증상이 이어진다면 <b class="y">초기에 확인하는 것</b>이 중요합니다.</b></div>${kfoot(c)}</section>`;},
+  /* 손글씨 질문 + 체크 목록(종이 접힘) + 흰 카드 */
+  warn:(p,c)=>`<section class="k k-warn"><div class="k-hw" ${E}>혹시 이런 증상이 있으신가요?</div>${KH(p.list.t)}
+    <div class="k-paper">${p.list.items.map(([,t])=>`<div class="k-cl">${chk}<span ${E}>${esc(t)}</span></div>`).join("")}<i class="k-curl"></i></div>
+    <div class="k-card k-white">${KH(["이런 증상을","그냥 두고 계신가요?"],{all:true,cls:"md"})}
+      <div class="k-blue sm" ${E}>오래 두면 일상이 더 불편해질 수 있어<br><b class="y">초기에 확인하는 것</b>이 중요합니다.</div>
+      <div class="k-end" ${E}>꼼꼼하게 진료하는<br>${c.name?`<b class="g">${esc(c.name)}</b>에서 상담해 보세요!`:`<b class="g">가까운 한의원</b>에서 상담해 보세요!`}</div></div>${kfoot(c)}</section>`,
+  /* 사진 띠 위 체크 알약 + 손글씨 인용 + 흰 상자 */
+  list:(p,c,img)=>`<section class="k k-band tint">${KH(p.warn.t,{cls:"xl"})}
+    <div class="k-bandph">${ph("band",img.band,"k-bph")}<div class="k-bpills">${p.hero.items.slice(0,3).map(([,t])=>`<div class="k-bp">${chk}<span ${E}>${esc(t)}</span></div>`).join("")}</div></div>
+    <div class="k-q hw"><i>“</i><span ${E}>원인과 <b class="hb">몸 상태</b>에 맞는 <b class="hb">맞춤 관리</b>를</span><i>”</i></div>
+    <div class="k-wbox" ${E}>${c.name?`<b class="ac">${esc(c.name)}</b>에서 `:""}지금 상태를 확인하고<br>알맞은 관리 방법을 찾아보세요.</div>${kfoot(c,1)}</section>`,
+  /* 이런 분들께 필요해요 (3칸) + 진료 특징 목록 + 의사 그림 */
+  person:(p,c)=>{const who=p.person.sym.slice(0,3).map(([,t])=>t),fs=feats(p,c).slice(0,5);
+    return `<section class="k k-who"><div class="k-pills2">${pill(`[[${c.name?c.name+"의 ":""}${tname(KEYOF(p))}]],`,"lg")}${pill("이런 분들께 필요해요!","lg")}</div>
+    <div class="k-who3">${who.map(t=>`<div class="k-wc">${chk}<div ${E}>${esc(t)}${ro(t)}<br>힘드신 분</div></div>`).join("")}</div>
+    <div class="k-adv"><div class="k-advh" ${E}>${c.name?`<b class="g">${esc(c.name)}</b>의 `:""}진료 특징</div>
+      <div class="k-advg"><div>${fs.map(([,t])=>`<div class="k-cl">${chk}<span ${E}>${esc(plain(t))}</span></div>`).join("")}</div>${DOC}</div></div>${kfoot(c)}</section>`;},
+  /* 약속 카드 3개 + 시설 사진 띠 + 손글씨 */
+  clinic:(p,c)=>{const fs=feats(p,c).slice(0,3),ps=(c.photos||[]).filter(x=>x&&x.url).slice(0,3);
+    return `<section class="k k-prom">${KH([(c.name?c.name+"의":"우리 한의원의")+" [[약속!]]"],{cls:"xl"})}${pill("늘 가까이에서 건강을 살피는 주치의가 되겠습니다.","")}
+    <div class="k-ovals">${fs.map(([i,t])=>`<div class="k-oval"><div class="k-ot" ${E}>${gem(t)}</div><div class="k-od" ${E}>${esc(FD[i]||FD.check)}</div></div>`).join("")}</div>
+    <div class="k-bluebot">${ps.length?`<div class="k-strip">${ps.map((x,k)=>ph("fac"+k,x.url,"k-sp")).join("")}</div>`:""}
+    <div class="k-q hw white"><i>“</i><span ${E}>편안하고 건강한 일상을 누리실 수 있도록 함께하겠습니다</span><i>”</i></div>${kfoot(c,1)}</div></section>`;},
+  /* 진료 과정: 원 4개 + 화살표 */
+  time:(p,c)=>`<section class="k k-proc">${KH(p.time.t,{cls:"xl"})}${pill(p.time.note,"soft")}
+    <div class="k-steps">${p.time.steps.map(([a,i,t],k)=>`<div class="k-st ${k%2?"dk":""}"><div class="k-sti"><b>${String(k+1).padStart(2,"0")}</b><div ${E}>${esc(a)}</div><span ${E}>${esc(t)}</span></div></div>`).join("")}</div>${kfoot(c)}</section>`,
+  /* 치료: 사진 + 겹친 알약 설명, 아이콘 원 + 파란 이름표 카드 */
+  treat:(p,c,img)=>{const rows=treatRows(p,c);
+    return `<section class="k k-treat">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one"})}
+    <div class="k-q"><i>“</i><span ${E}>몸 상태를 꼼꼼히 살피고 <b class="ac">상태에 맞춘 치료</b>로<br>편안한 일상을 돕겠습니다.</span><i>”</i></div>
+    ${rows[0]?`<div class="k-phcap">${ph("treat0",img.treat0,"k-tph")}<div class="k-cap"><b ${E}>${esc(tname(KEYOF(p)))}, 이렇게 살펴요</b><span ${E}>불편한 곳과 몸 상태를 먼저 확인한 뒤<br>상태에 맞는 치료 방법을 함께 정합니다.</span></div></div>`:""}
+    <div class="k-tcs">${rows.map(([i,a])=>`<div class="k-tc"><div class="k-tci">${icon(i)}</div><div><span class="k-tag" ${E}>${esc(a)}</span><div class="k-tcd" ${E}>${esc(TD[i]||TD.check)}</div></div></div>`).join("")}</div>
+    <div class="k-note" ${E}>${esc(p.treat.note)}</div>${kfoot(c,1)}</section>`;},
+  doctor:(d,k,c)=>`<section class="k k-docs"><div class="k-dbox"><div class="k-dl"><div class="k-dtt" ${E}>${esc(d.title||"원장")}</div><div class="k-dn" ${E}>${esc(d.name)}</div><div class="k-dr" ${E}>${esc(d.role||"")}</div></div><div class="k-dr2">${ph("doc"+k,d.photo,"k-dph")}</div></div>
+    ${(d.fields||[]).length||(d.history||[]).length?`<div class="k-adv">${(d.fields||[]).length?`<div class="k-advh sm" ${E}>진료 분야</div>${d.fields.map(x=>`<div class="k-cl">${chk}<span ${E}>${esc(x)}</span></div>`).join("")}`:""}
+    ${(d.history||[]).length?`<div class="k-advh sm" ${E}>약력·학회</div>${d.history.map(x=>`<div class="k-cl">${chk}<span ${E}>${esc(x)}</span></div>`).join("")}`:""}</div>`:""}${kfoot(c)}</section>`,
+  room:(c,img)=>`<section class="k k-room">${KH([c.name||"","[["+plain(c.room.title||"입원치료")+"]]"].filter(Boolean),{cls:"xl"})}
+    ${c.room.note?`<div class="k-soft" ${E}>${esc(c.room.note)}</div>`:`<div class="k-soft" ${E}>입원으로 <b class="ac">좀 더 가까이에서</b> 상태를 살필 수 있어요.</div>`}
+    ${ph("room",img.room||((c.photos||[])[0]||{}).url,"k-rph")}
+    ${(c.room.items||[]).length?`<div class="k-ritems">${c.room.items.slice(0,4).map(([,a,b])=>`<div class="k-ri"><b ${E}>${esc(a)}</b><span ${E}>${esc(b||"")}</span></div>`).join("")}</div>`:""}
+    <div class="k-flow"><div class="k-flh" ${E}>입원<br>절차</div><div class="k-steps sm">${["진료 및<br>진찰","치료<br>계획","입원<br>진행","치료 후<br>관리"].map((t,k)=>`<div class="k-st ${k%2?"dk":""}"><div class="k-sti"><b>${String(k+1).padStart(2,"0")}</b><div ${E}>${t}</div></div></div>`).join("")}</div></div>${kfoot(c,1)}</section>`,
+  facility:(c)=>{const ps=(c.photos||[]).filter(x=>x&&x.url).slice(0,8);if(!ps.length)return "";const gs=[];for(let i=0;i<ps.length;i+=4)gs.push(ps.slice(i,i+4));
+    return `<section class="k k-fac">${KH([c.name||"","[[원내 시설 안내]]"].filter(Boolean),{cls:"xl"})}${pill("편안하게 진료받으실 수 있도록","")}
+    ${gs.map((g,gi)=>`<div class="k-floor"><div class="k-fl"><div class="k-fbadge" ${E}>${gi?"시설":"진료"}</div>${g.map(x=>`<div class="k-cl w">${chk}<span ${E}>${esc(x.label||"시설")}</span></div>`).join("")}</div>
+      <div class="k-fg">${g.map((x,k)=>ph("fac"+(gi*4+k),x.url,"k-fph")).join("")}</div></div>`).join("")}${kfoot(c)}</section>`;},
+  info:(c)=>{const hs=(c.hours||[]).filter(h=>h&&h[1]);
+    return `<section class="k k-info"><div class="k-brk">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md"})}</div>
+    ${c.station?map(c):""}
+    <div class="k-rows">${c.addr?`<div class="k-row"><div class="k-ri2">${icon("pin")}<b>주소</b></div><div class="k-rv" ${E}>${esc(c.addr)}${c.way?`<br><small>${esc(c.way)}</small>`:""}</div></div>`:""}
+    ${c.tel?`<div class="k-row"><div class="k-ri2">${icon("phone")}<b>전화번호</b></div><div class="k-rv big" ${E}>${esc(c.tel)}</div></div>`:""}
+    ${hs.length||c.lunch?`<div class="k-row"><div class="k-ri2">${icon("clock")}<b>진료시간</b></div><div class="k-rv hrs">${hs.map(h=>`<div><span ${E}>${esc(h[0])}</span><b ${E}>${esc(h[1])}</b></div>`).join("")}${c.lunch?`<div><span>점심시간</span><b ${E}>${esc(c.lunch)}</b></div>`:""}</div></div>`:""}
+    ${c.parking?`<div class="k-row"><div class="k-ri2">${icon("car")}<b>주차</b></div><div class="k-rv" ${E}>${esc(c.parking)}</div></div>`:""}</div>
+    <div class="k-lfoot">${kfoot(c)}<div class="k-law" ${E}>모든 치료는 개인에 따라 차이가 있을 수 있고 부작용이 생길 수 있습니다.<br>반드시 의료진과 충분히 상담한 뒤 결정하시기 바랍니다.</div></div></section>`;}
+};
+const KEYOF=p=>Object.keys(T).find(k=>T[k]===p)||"기본";
+function kbuild(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
+  const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
+  add("hero",K.hero(p,c,img));add("warn",K.warn(p,c));add("list",K.list(p,c,img));add("treat",K.treat(p,c,img));add("person",K.person(p,c));
+  add("time",K.time(p,c));add("clinic",K.clinic(p,c));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,K.doctor(d,k,c)));
+  if(c.room&&c.room.on)add("room",K.room(c,img));add("facility",K.facility(c));add("info",K.info(c));
+  return out.join("");}
+
+const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417}
+.bi .k{padding:64px 48px 40px;position:relative;color:var(--ink);text-align:center}.bi .k.tint{background:var(--bg2)}.bi .k b{font-weight:800}
+.bi .k .g{background:linear-gradient(90deg,var(--a),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;font-weight:inherit}
+.bi .k .y{color:#ffe9a6}.bi .k .ac{color:var(--a)}.bi .k-h{font-weight:900;font-size:58px;line-height:1.2;letter-spacing:-.045em}.bi .k-h.xl{font-size:64px}.bi .k-h.md{font-size:50px}.bi .k-h.one div{white-space:nowrap}
+.bi .k-vl{display:block;width:2px;height:54px;background:#3a3f47;margin:22px auto}.bi .k-sub{font-size:28px;line-height:1.45;color:#22262c}.bi .k-sub b{color:var(--a)}
+.bi .k-pillw{display:flex;justify-content:center;margin-top:30px;position:relative;z-index:2}.bi .k-pill{display:inline-block;background:linear-gradient(90deg,var(--a),var(--a2));color:#fff;border-radius:99px;padding:10px 40px;font-size:30px;font-weight:600;letter-spacing:-.03em}
+.bi .k-pill .pb{font-weight:900}.bi .k-pillw.on{margin-bottom:-28px}.bi .k-pillw.soft .k-pill{background:var(--soft);color:var(--ink);font-weight:700;font-size:26px}.bi .k-pillw.lg .k-pill{font-size:34px;font-weight:800;padding:10px 44px}.bi .k-pillw.lg .pb{color:#ffe9a6}
+.bi .k-pills2 .k-pillw{margin-top:12px}.bi .k-card{background:#fff;border-radius:34px;box-shadow:0 6px 30px rgba(20,40,80,.06)}
+.bi .k-body{position:relative;height:560px;margin-top:0;overflow:hidden;text-align:left}.bi .k-pp{position:absolute;left:222px;top:40px;width:320px;height:520px;border-radius:0;background:transparent}
+.bi .k-pp img{object-fit:cover;object-position:50% 20%;-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent);mask-image:linear-gradient(180deg,#000 82%,transparent)}
+.bi .k-lb{position:absolute;height:72px;display:flex;align-items:flex-end;border-bottom:2.5px dashed var(--a)}.bi .k-lb.l{left:24px}.bi .k-lb.r{right:24px;justify-content:flex-end}
+.bi .k-lt{display:flex;flex-direction:column;padding-bottom:8px;font-size:23px;line-height:1.3;color:#22262c}.bi .k-lt b{color:var(--a);font-size:25px}.bi .k-lb.r .k-lt{width:250px}
+.bi .k-dot{position:absolute;bottom:-12px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle,#3b5bff 0 32%,rgba(90,110,255,.45) 34% 62%,rgba(120,140,255,.15) 64%);box-shadow:0 0 12px rgba(60,90,255,.6)}
+.bi .k-lb.l .k-dot{right:-11px}.bi .k-lb.r .k-dot{left:-11px}
+.bi .k-blue{background:var(--a);color:#fff;border-radius:28px;padding:30px 30px;margin-top:34px;font-size:27px;line-height:1.5;font-weight:500}.bi .k-blue b{font-weight:800}.bi .k-blue.sm{font-size:26px;border-radius:22px;padding:22px}
+.bi .k-hw{font-family:"Nanum Pen Script","Gaegu",cursive;font-size:44px;color:#22262c;margin-bottom:6px;letter-spacing:0}
+.bi .k-paper{position:relative;background:#e8f4fb;margin:34px 0 0;padding:24px 90px 24px 34px;text-align:left;overflow:hidden}
+.bi .k-curl{position:absolute;right:0;bottom:0;width:96px;height:96px;background:linear-gradient(315deg,#f6f7f9 50%,#b9c6d0 50%,#dfe7ee 75%,#f2f6f9);border-radius:0 0 0 18px;box-shadow:-3px -3px 8px rgba(40,60,90,.12)}
+.bi .k-cl{display:flex;align-items:center;gap:16px;font-size:26px;padding:15px 0;color:#22262c;text-align:left}.bi .k-paper .k-cl+.k-cl{border-top:1.5px dashed #c7d6e2}.bi .k-cl span{line-height:1.35}
+.bi .k-ck{width:30px;height:30px;flex:none;color:var(--a)}.bi .k-white{margin-top:40px;padding:50px 40px 44px;border:4px solid #eceef1;box-shadow:none}.bi .k-end{font-size:40px;font-weight:900;margin-top:32px;line-height:1.3}
+.bi .k-bandph{position:relative;margin:40px -48px 0}.bi .k-bph{height:470px;border-radius:0}.bi .k-bph img{filter:saturate(.9)}
+.bi .k-bpills{position:absolute;left:50%;top:40px;transform:translateX(-50%);display:flex;flex-direction:column;gap:12px;width:430px}
+.bi .k-bp{display:flex;align-items:center;gap:14px;background:var(--a);color:#fff;border-radius:99px;padding:13px 30px;font-size:25px;text-align:left;box-shadow:0 6px 16px rgba(0,0,0,.18)}.bi .k-bp .k-ck{color:#ffe9a6;width:26px;height:26px}
+.bi .k-q{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:40px;font-size:27px;line-height:1.45;font-weight:500}.bi .k-q i{font-style:normal;font-size:70px;line-height:.6;color:#b9bec6;font-family:Georgia,serif;font-weight:900;align-self:flex-start}
+.bi .k-q.hw{font-family:"Nanum Pen Script","Gaegu",cursive;font-size:46px;font-weight:400}.bi .k-q.hw i{font-family:Georgia,serif}.bi .k-q .hb{color:var(--a);font-weight:400}.bi .k-q.white{color:#fff}.bi .k-q.white i{color:rgba(255,255,255,.7)}
+.bi .k-wbox{background:#fff;border-radius:30px;padding:36px;margin-top:34px;font-size:32px;font-weight:600;line-height:1.45}
+.bi .k-foot{display:flex;align-items:center;justify-content:center;gap:12px;margin:46px -48px -40px;padding:26px 0 30px}.bi .k-foot.band{background:var(--a);margin-top:46px}.bi .k-foot.band .k-fname{color:#fff}
+.bi .k-logo{max-height:46px;max-width:300px;display:block}.bi .k-foot.band .k-logo{filter:brightness(0) invert(1)}.bi .k-mark{width:38px;height:30px;border-radius:16px 16px 4px 4px;background:linear-gradient(120deg,#e0388f,#6b3cf0 40%,#1fb6f0 70%,#3fd27a)}.bi .k-fname{font-size:30px;font-weight:900;color:#1d2026}
+.bi .k-who3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}.bi .k-wc{background:#fff;border:2px solid #eceef1;border-radius:22px;padding:22px 10px;font-size:23px;line-height:1.4;display:flex;flex-direction:column;align-items:center;gap:8px}.bi .k-wc .k-ck{width:38px;height:38px}
+.bi .k-adv{background:#e8f4fb;border-radius:30px;margin-top:30px;padding:34px 36px;text-align:left}.bi .k-advh{font-size:44px;font-weight:900;text-align:center;margin-bottom:14px}.bi .k-advh.sm{font-size:30px;text-align:left;color:var(--a);margin:10px 0 4px}
+.bi .k-advg{display:grid;grid-template-columns:1fr 170px;align-items:end}.bi .k-doc{width:170px;height:270px;display:block}
+.bi .k-ovals{display:flex;flex-direction:column;gap:20px;margin-top:34px}.bi .k-oval{border:3px solid var(--a);border-radius:99px;background:rgba(255,255,255,.85);padding:28px 40px}.bi .k-ot{font-size:38px;font-weight:900;color:var(--a)}.bi .k-ot .g{font-weight:900}.bi .k-od{font-size:24px;margin-top:8px;line-height:1.45}
+.bi .k-bluebot{background:var(--a);margin:44px -48px -40px;padding:34px 30px 0}.bi .k-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.bi .k-sp{aspect-ratio:4/3;border-radius:0}.bi .k-bluebot .k-q{margin-top:24px}.bi .k-bluebot .k-foot{margin:10px -30px 0}
+.bi .k-steps{display:flex;justify-content:center;margin:46px 0 40px}.bi .k-st{width:200px;height:200px;border-radius:50%;border:14px solid #9cc8ff;background:#fff;display:grid;place-items:center;margin-left:-14px;position:relative}
+.bi .k-st:first-child{margin-left:0}.bi .k-st:not(:last-child):after{content:"";position:absolute;right:-34px;top:50%;margin-top:-16px;border:16px solid transparent;border-left:20px solid #9cc8ff;z-index:3}.bi .k-st.dk:not(:last-child):after{border-left-color:var(--a)}.bi .k-st.dk{border-color:var(--a);z-index:1}.bi .k-sti{font-size:24px;font-weight:800;line-height:1.3;padding:0 10px}.bi .k-sti b{display:block;color:var(--a);font-size:30px;font-weight:900}.bi .k-sti span{display:block;font-size:17px;font-weight:600;color:#4a5260;margin-top:4px}
+.bi .k-steps.sm .k-st{width:160px;height:160px;border-width:11px}.bi .k-steps.sm .k-sti{font-size:20px}
+.bi .k-phcap{position:relative;margin:34px -10px 0}.bi .k-tph{height:380px;border-radius:6px}.bi .k-cap{position:relative;margin:-70px 40px 0;background:#fff;border:3px solid var(--a);border-radius:99px;padding:24px 50px;display:flex;flex-direction:column;gap:6px;color:var(--a);font-size:24px;line-height:1.4}.bi .k-cap b{font-size:30px;font-weight:900}
+.bi .k-tcs{display:flex;flex-direction:column;gap:22px;margin-top:34px}.bi .k-tc{display:grid;grid-template-columns:150px 1fr;gap:26px;align-items:center;border:3px solid var(--a);border-radius:34px;background:#fff;padding:26px 30px;text-align:left}
+.bi .k-tci{width:150px;height:150px;border-radius:50%;background:#e8f4fb;display:grid;place-items:center;color:var(--a)}.bi .k-tci .ic{width:80px;height:80px;stroke-width:1.4}
+.bi .k-tag{display:inline-block;background:var(--a);color:#fff;border-radius:99px;padding:6px 26px;font-size:28px;font-weight:900}.bi .k-tcd{font-size:23px;line-height:1.5;margin-top:12px;color:#22262c}.bi .k-note{font-size:21px;color:#6b7380;margin-top:24px}
+.bi .k-dbox{display:grid;grid-template-columns:1fr 1fr;border:3px solid var(--a);border-radius:30px;overflow:hidden;background:#fff}.bi .k-dl{background:var(--a);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:30px}
+.bi .k-dtt{background:#fff;color:var(--a);border-radius:99px;padding:6px 26px;font-size:26px;font-weight:900}.bi .k-dn{font-size:76px;font-weight:900;line-height:1.1}.bi .k-dr{font-size:26px}.bi .k-dr2{padding:22px}.bi .k-dph{aspect-ratio:3/4;border-radius:16px}
+.bi .k-soft{display:inline-block;background:#e8f4fb;border-radius:99px;padding:14px 36px;font-size:26px;font-weight:700;margin-top:24px}.bi .k-rph{height:440px;margin:30px -24px 0;border-radius:4px}
+.bi .k-ritems{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.bi .k-ri{background:#fff;border-radius:18px;padding:16px;display:flex;flex-direction:column;font-size:21px}.bi .k-ri b{font-size:25px;color:var(--a)}
+.bi .k-flow{display:flex;align-items:center;gap:14px;margin-top:30px}.bi .k-flh{flex:none;width:150px;height:170px;border-radius:26px;background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;font-size:40px;font-weight:900;display:grid;place-items:center;line-height:1.2}.bi .k-flow .k-steps{margin:0}
+.bi .k-floor{display:grid;grid-template-columns:230px 1fr;border:3px solid var(--a);border-radius:30px;overflow:hidden;margin-top:30px;background:#fff}.bi .k-fl{background:var(--a);color:#fff;padding:26px 18px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.bi .k-fbadge{width:120px;height:120px;border-radius:50%;background:#fff;color:var(--a);font-size:34px;font-weight:900;display:grid;place-items:center;margin:0 auto 18px}.bi .k-cl.w{color:#fff;font-size:23px;padding:6px 0}.bi .k-cl.w .k-ck{color:#ffe9a6;width:26px;height:26px}
+.bi .k-fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px}.bi .k-fph{aspect-ratio:4/3;border-radius:0}
+.bi .k-brk{position:relative;padding:6px 40px}.bi .k-brk:before,.bi .k-brk:after{content:"";position:absolute;top:0;bottom:0;width:26px;border:7px solid #cfe6f2}.bi .k-brk:before{left:0;border-right:0}.bi .k-brk:after{right:0;border-left:0}
+.bi .k-info .map{margin-top:34px}.bi .k-rows{display:flex;flex-direction:column;gap:16px;margin-top:30px}.bi .k-row{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:18px;background:var(--a);color:#fff;border-radius:99px;padding:22px 40px;text-align:left}
+.bi .k-ri2{display:flex;flex-direction:column;align-items:center;gap:4px;color:#ffe9a6}.bi .k-ri2 .ic{width:46px;height:46px}.bi .k-ri2 b{font-size:22px}.bi .k-rv{font-size:25px;font-weight:700;line-height:1.4}.bi .k-rv small{font-size:20px;font-weight:500;opacity:.9}.bi .k-rv.big{font-size:42px;font-weight:900}
+.bi .k-rv.hrs{display:flex;flex-wrap:wrap;gap:6px 0}.bi .k-rv.hrs div{width:50%;display:flex;flex-direction:column;font-size:21px;padding-right:8px}.bi .k-rv.hrs span{color:#ffe9a6;font-weight:700}.bi .k-rv.hrs b{font-size:25px}
+.bi .k-lfoot{background:var(--a);margin:44px -48px -40px;padding:6px 40px 36px}.bi .k-lfoot .k-foot{margin:0;padding:24px 0 14px}.bi .k-lfoot .k-fname{color:#fff}.bi .k-lfoot .k-logo{filter:brightness(0) invert(1)}.bi .k-law{color:rgba(255,255,255,.85);font-size:19px;line-height:1.6}
+.bi .k .ph{background:#e9eef0}`;
 /* 사진 자리마다 무료 사진 검색어 (영어) */
 function photoQueries(o){const p=T[o.topic]||T["기본"],c=o.clinic,q={person:p.person.q};
-  treatRows(p,c).forEach((r,k)=>{if(r)q["treat"+k]=r[3];});if(c.room&&c.room.on)q.room="hospital inpatient room";return q;}
+  treatRows(p,c).forEach((r,k)=>{if(r)q["treat"+k]=r[3];});if(c.room&&c.room.on)q.room="hospital inpatient room";q.band=KBQ[o.topic]||KBQ["기본"];return q;}
+const KBQ={"교통사고":"car accident neck pain","허리":"lower back pain spine","목":"neck shoulder pain office","관절":"knee joint pain","두통":"headache woman","다이어트":"healthy diet salad","비염":"allergy sneezing tissue","성장":"children running park","여성":"woman wellness relax","요양":"hospital recovery care","피부":"skin care face","기본":"korean medicine clinic"};
 
 /* 이미지 안의 디자인 (가로 860px). --m 진한 색, --a 강조 색 */
 const CSS=`.bi{width:860px;background:#fff;color:var(--m);font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Malgun Gothic",sans-serif;letter-spacing:-.02em;line-height:1.35;word-break:keep-all}
@@ -307,7 +464,7 @@ const CSS=`.bi{width:860px;background:#fff;color:var(--m);font-family:"Pretendar
 .bi .mwk{position:absolute;left:36%;top:28%;display:flex;gap:8px;align-items:center;background:var(--m);color:#fff;border-radius:12px;padding:8px 14px;font-size:22px;font-weight:700}.bi .mwk .ic{width:28px;height:28px}
 .bi .mcl{position:absolute;right:4%;top:18%;background:var(--m);color:#fff;border-radius:12px;padding:10px 16px;font-size:24px;font-weight:800}
 .bi .ipark{display:flex;align-items:center;gap:18px;background:var(--soft2);border-radius:16px;padding:22px 28px;margin-top:20px;font-size:30px}.bi .ipark>.ic{width:50px;height:50px;color:var(--a)}.bi .ipark b{color:var(--a);border-right:2px solid #d0d8d4;padding-right:18px}
-.bi .kick{display:none}.bi .foot{margin-top:40px}.bi .foot .logo{margin:0 auto}.bi .ic{width:1em;height:1em}`;
+.bi .kick{display:none}.bi .foot{margin-top:40px}.bi .foot .logo{margin:0 auto}.bi .ic{width:1em;height:1em}`+K_CSS;
 
 /* ── 이미지로 저장: 화면 구역을 그대로 SVG(foreignObject)에 담아 canvas에 그림. 사진·글꼴은 data URL로 넣음 ── */
 const blob2url=b=>new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(b);});
@@ -317,11 +474,16 @@ async function dataURL(src){if(!src||src.startsWith("data:"))return src;if(CACHE
 let FONT_CSS=null;
 async function fontCSS(url){if(FONT_CSS!=null)return FONT_CSS;FONT_CSS="";
   if(url)try{const d=await dataURL(url);if(d)FONT_CSS=`@font-face{font-family:"Pretendard Variable";font-weight:45 920;src:url(${d}) format("woff2")}`;}catch(e){}return FONT_CSS;}
+/* 손글씨 글꼴: 쓰인 글자만 담은 작은 파일을 구글 글꼴에서 받아 그림 안에 넣음 */
+const HW={};
+async function hwCSS(t){t=[...new Set(String(t||"").replace(/\s/g,""))].join("");if(!t)return "";if(HW[t]!=null)return HW[t];HW[t]="";
+  try{const css=await (await fetch("https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&text="+encodeURIComponent(t))).text();
+    const u=(css.match(/url\((https:[^)]+)\)/)||[])[1];const d=u&&await dataURL(u);if(d)HW[t]=`@font-face{font-family:"Nanum Pen Script";src:url(${d})}`;}catch(e){}return HW[t];}
 async function snap(el,o){o=o||{};const scale=o.scale||1.5,w=el.offsetWidth,h=el.offsetHeight;
   const cl=el.cloneNode(true);cl.querySelectorAll("[contenteditable]").forEach(x=>x.removeAttribute("contenteditable"));
   cl.querySelectorAll(".phe").forEach(x=>x.parentNode.remove());cl.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
   for(const im of cl.querySelectorAll("img")){const d=await dataURL(im.getAttribute("src"));if(d)im.setAttribute("src",d);else im.remove();}
-  const css=(await fontCSS(o.font))+CSS+STYLE_CSS+(o.vars||"");
+  const css=(await fontCSS(o.font))+(await hwCSS([...cl.querySelectorAll(".k-hw,.k-q.hw")].map(x=>x.textContent).join("")))+CSS+STYLE_CSS+(o.vars||"");
   const html=new XMLSerializer().serializeToString(cl);
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="bi ${esc(o.cls||"")}" style="${esc(o.style||"")}"><style>${css}</style>${html}</div></foreignObject></svg>`;
   const img=new Image();img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);await img.decode();
@@ -345,6 +507,10 @@ async function zip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
 
 /* ── 디자인: 네이버 상위 블로그 이미지에서 본 모양 몇 가지 (st-*) ── */
 const STYLES={
+  card:{name:"네이버 카드형 · 블루",m:"#121417",a:"#0b5ccc",a2:"#18bdf0",card:1,css:""},
+  card_navy:{name:"카드형 · 네이비",m:"#121417",a:"#1c3f94",a2:"#4f86f7",card:1,css:""},
+  card_green:{name:"카드형 · 그린",m:"#121417",a:"#11805a",a2:"#36c48a",card:1,css:""},
+  card_coral:{name:"카드형 · 코랄",m:"#121417",a:"#e0533b",a2:"#ff9c6e",card:1,css:""},
   basic:{name:"깔끔 네이비",m:"#16325c",a:"#1f9d6b",css:""},
   pastel:{name:"파스텔 인포그래픽",m:"#1d3b53",a:"#16a3a0",css:`.bi.st-pastel{background:#e6f4f2}.bi.st-pastel .blk{padding:16px 26px}.bi.st-pastel .blk:first-child{padding-top:30px}.bi.st-pastel .blk:last-child{padding-bottom:30px}
 .bi.st-pastel .s{border-radius:40px;background:#fff!important;padding:60px 52px;box-shadow:0 8px 0 rgba(22,163,160,.12)}.bi.st-pastel .sep{display:none}
