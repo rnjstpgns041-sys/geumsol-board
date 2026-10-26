@@ -47,7 +47,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
     <div id="kws" class="row"></div>
     <div class="g2"><label>주제<select id="topic"></select></label><label>진료 방식<select id="km"><option value="1">한방 (침·추나·한약)</option><option value="0">양방 (검사·도수·주사)</option></select></label></div>
     <div class="g2" style="grid-template-columns:1fr auto;align-items:end"><label>디자인 (네이버 블로그 참고)<select id="style"></select></label><button class="btn small" id="restyle" style="height:36px">다른 디자인</button></div>
-    <label>사진 채우기<select id="phsrc"><option value="co-free">업체 사진 먼저, 모자라면 무료 사진</option><option value="co-gen">업체 사진 먼저, 모자라면 나노바나나</option><option value="free">무료 사진만</option><option value="gen">나노바나나만</option><option value="co">업체 사진만</option></select></label>
+    <label>사진 채우기<select id="phsrc"><option value="free">글에 맞는 무료 사진 (자동)</option><option value="co-free">업체 사진 먼저, 모자라면 무료 사진</option><option value="co-gen">업체 사진 먼저, 모자라면 나노바나나</option><option value="gen">나노바나나만</option><option value="co">업체 사진만</option></select></label>
     <div class="g2"><label>진한 색<input type="color" id="cm" value="#16325c"></label><label>강조 색<input type="color" id="ca" value="#1f9d6b"></label></div>
     <div><div class="muted" style="margin-bottom:4px">넣을 구역</div><div id="ons" class="row"></div></div>
     <div class="row"><button class="btn small" id="photosgo">사진 다시 채우기</button><button class="btn small" id="reset">글 처음으로</button></div>
@@ -94,7 +94,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
 </div>
 </div>
 <input type="file" id="file1" accept="image/*" hidden><input type="file" id="filen" accept="image/*" multiple hidden>
-<script src="blog-kit.js?v=35"></script>
+<script src="blog-kit.js?v=38"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video",PUB=SB+"/storage/v1/object/public/files/";
@@ -199,8 +199,13 @@ async function freePhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
   const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});keys=keys.filter(k=>q[k]);if(!keys.length)return false;
   const vt=(BK.photoVet||(()=>({})))({topic:$("topic").value,clinic:clinicObj()});const r=await fn({action:"photos",queries:keys.map(k=>q[k]),vet:keys.map(k=>vt[k]||""),need:keys.map(k=>((BK.photoNeed||(()=>({})))({topic:$("topic").value,clinic:clinicObj()})[k])||""),orient:keys.map(k=>k==="person"?"vertical":""),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
   (r.photos||[]).forEach((p,i)=>{if(p){IMG[keys[i]]=p.src;USED.push(p.id);}});
+  /* 못 찾은 자리는 다음 후보로 한 번 더 자동으로 찾음 (빈칸 없이) */
+  let left=keys.filter((k,i)=>!(r.photos||[])[i]);
+  if(left.length&&!/사용량/.test(r.note||"")){msg(`어울리는 사진을 ${left.length}곳 더 찾는 중이에요…`,"ok");
+    const r2=await fn({action:"photos",queries:left.map(k=>q[k]),vet:left.map(k=>vt[k]||""),need:left.map(k=>((BK.photoNeed||(()=>({})))({topic:$("topic").value,clinic:clinicObj()})[k])||""),orient:left.map(k=>k==="person"?"vertical":""),skip:USED,pick:PICK++});
+    if(r2.ok){(r2.photos||[]).forEach((p,i)=>{if(p){IMG[left[i]]=p.src;USED.push(p.id);}});if(r2.note)r.note=r2.note;left=left.filter((k,i)=>!(r2.photos||[])[i]);}}
   if(!r.ver)r.note="사진 고르는 함수가 옛날 버전이라 어울리는지 확인하지 못하고 넣었어요. Supabase에서 video 함수를 새 코드로 다시 배포해 주세요."+(r.note?" "+r.note:"");
-  const miss=keys.filter((k,i)=>!(r.photos||[])[i]).length;if(r.note||miss)setTimeout(()=>msg(esc((r.note||"")+(miss?` 어울리는 사진을 못 찾은 자리 ${miss}곳은 비워 뒀어요. 사진 자리를 눌러 직접 넣거나 다시 찾아 주세요.`:"")),"warn"),50);return true;}
+  const miss=left.length;if(r.note||miss)setTimeout(()=>msg(esc((r.note||"")+(miss?` 어울리는 사진을 못 찾은 자리 ${miss}곳은 비워 뒀어요. 사진 자리를 눌러 직접 넣거나 다시 찾아 주세요.`:"")),"warn"),50);return true;}
 /* 나노바나나: 한 장씩 그림 (한 장에 몇 초) */
 async function genPhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
   const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});let ok=0;
@@ -211,7 +216,7 @@ async function genPhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
 async function autoPhotos(force){const mode=$("phsrc").value,slots=SLOTS();let want=slots.filter(k=>force||!IMG[k]);if(!want.length)return;
   if(mode.startsWith("co")){const co=(CFG.coPhotos||[]).slice();for(let i=co.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[co[i],co[j]]=[co[j],co[i]];}
     /* 증상 설명 사진(사람이 아픈 곳을 잡은 사진)은 업체 사진이 어울리지 않아 늘 맞는 사진을 찾아 넣음 */
-    const cw=want.filter(k=>k!=="person"&&k!=="band");cw.forEach((k,i)=>{if(i<co.length)IMG[k]=co[(i+COUSE)%co.length];});COUSE+=cw.length;want=want.filter(k=>!cw.slice(0,co.length).includes(k));render();}
+    const cw=want.filter(k=>mode==="co"?k!=="person"&&k!=="band":k==="room");cw.forEach((k,i)=>{if(i<co.length)IMG[k]=co[(i+COUSE)%co.length];});COUSE+=cw.length;want=want.filter(k=>!cw.slice(0,co.length).includes(k));render();}
   if(!want.length||mode==="co")return;if(!PW&&!force)return;
   const gen=mode.endsWith("gen");msg(gen?"나노바나나가 그리는 중이에요…":"어울리는 사진을 고르는 중이에요… 사진을 하나씩 확인해서 20~30초쯤 걸려요.","ok");
   try{if(gen?await genPhotos(want,force):await freePhotos(want,force)){render();msg("");}}catch(e){msg("사진을 가져오지 못했어요. 사진 자리를 눌러 직접 넣어도 돼요.","warn");}}
@@ -354,6 +359,7 @@ $("facs").onclick=e=>{const d=e.target.closest("[data-fdel]");if(!d)return;readF
 
 async function start(){$("bistyle").textContent=BK.CSS+BK.STYLE_CSS;
   $("style").innerHTML='<option value="auto">만들 때마다 바뀌게</option>'+Object.entries(BK.STYLES).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join("");
+  if(!ls.get("gs-blog-ph2")){ls.set("gs-blog-ph2","1");if(ls.get("gs-blog-phsrc")==="co-free")ls.set("gs-blog-phsrc","free");}
   [["style","gs-blog-style"],["phsrc","gs-blog-phsrc"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});$("topic").innerHTML=Object.keys(BK.T).map(k=>`<option>${esc(k)}</option>`).join("");renderOns();fit();
   try{const cs=await rest("docs?coll=eq.clients&select=id,data");CL=(cs||[]).map(x=>Object.assign({id:x.id},x.data||{})).filter(c=>c.name).sort((a,b)=>(a.order??999)-(b.order??999)||a.id.localeCompare(b.id));
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}
