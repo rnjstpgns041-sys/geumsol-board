@@ -61,7 +61,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     </div><div class="row" style="margin-top:8px"><button class="btn small" id="fsave">특징 저장 (팀 모두에게 적용)</button><span class="muted" id="fmsg"></span></div>
     <details id="fprobe" hidden style="margin-top:8px"><summary class="muted">슈퍼쇼츠 응답 원문 (문제 생기면 이 화면을 찍어 보내 주세요)</summary><pre id="fraw" style="white-space:pre-wrap;font-size:11px;max-height:260px;overflow:auto"></pre></details>
   </details>
-  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px"><label>영상 위 제목 첫 줄<input id="t1" placeholder="비워 두면 대본 첫 문장으로 채워요"></label><label>제목 둘째 줄 (강조 색)<input id="t2" placeholder=""></label></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px"><label>영상 위 제목 첫 줄<input id="t1" placeholder="대본을 새로 쓰면 제목도 새로 채워져요"></label><label>제목 둘째 줄 (강조 색)<input id="t2" placeholder=""></label></div>
   <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
   <div class="row" style="margin-top:10px;justify-content:space-between">
     <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
@@ -74,7 +74,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
 </div>
 </div>
-<script src="script-gen.js"></script>
+<script src="script-gen.js?v=27t"></script>
 <script src="shorts-maker.js?v=26a"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
@@ -118,15 +118,22 @@ function findTpls(probes){const out=[],seen=new Set();
       const c=d.result&&d.result.content;if(Array.isArray(c))c.forEach(x=>{if(x&&typeof x.text==="string"){const e=parse(x.text);if(e)walk(e);}});}}
   return out;}
 /* 키워드·업체가 바뀌면 대본 칸이 비었거나 아직 자동으로 쓴 그대로일 때만 새로 쓴다 (직접 고친 대본은 건드리지 않음) */
-let ATOK=0;
+let ATOK=0,RECENT=[];
+/* 이 업체로 최근에 만든 영상의 제목과 첫 문장: 새 대본·제목은 이것들과 다르게 쓴다 */
+function avoidNow(){const cid=$("client").value,o=[];
+  [($("t1").value+" "+$("t2").value).trim(),$("text").value.split("\n")[0]].concat(RECENT,LIST.filter(x=>!cid||x.cid===cid).slice(0,8).flatMap(x=>[(x.title||[]).join(" "),String(x.text||"").split("\n")[0]])).forEach(t=>{t=String(t||"").trim();if(t&&!o.includes(t))o.push(t);});
+  return o.slice(0,12);}
 async function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$("text").value.trim();if(!force&&cur&&cur!==LAST)return;if(!$("client").value&&!$("kw").value.trim())return;
   const kw=$("kw").value.trim(),tok=++ATOK;let r=null;
   /* 키워드가 있으면 제미나이가 그 키워드 주제로 새로 쓰고, 안 되면 문장 틀로 */
   if(kw){try{await caps();if(GEM){$("sample").disabled=true;msg(`"${esc(kw)}" 주제로 대본을 쓰는 중이에요…`,"warn");const p=prof();
-      const g=await fn({action:"script",kw,name:$("client").value?cname():"",type:p.type,area:p.area,feats:p.feats||[]});
-      if(tok!==ATOK)return;if(g.ok&&g.lines&&g.lines.length){const t=g.lines.join("\n");r={text:t,chars:t.replace(/\s/g,"").length};}}}catch(e){}finally{if(tok===ATOK)$("sample").disabled=false;}
+      const g=await fn({action:"script",kw,name:$("client").value?cname():"",type:p.type,area:p.area,feats:p.feats||[],avoid:avoidNow()});
+      if(tok!==ATOK)return;if(g.ok&&g.lines&&g.lines.length){const t=g.lines.join("\n");r={text:t,chars:t.replace(/\s/g,"").length,title:g.title&&g.title.length===2?g.title:null};}}}catch(e){}finally{if(tok===ATOK)$("sample").disabled=false;}
     if(tok!==ATOK)return;if(!force&&$("text").value.trim()!==cur)return;}
-  if(!r)r=ScriptGen.make(kw,$("client").value?cname():"",prof(),++SEED);$("text").value=LAST=r.text;cnt();
+  const av=avoidNow();if(!r)r=ScriptGen.make(kw,$("client").value?cname():"",prof(),++SEED,0,0,av);$("text").value=LAST=r.text;cnt();
+  /* 대본을 새로 쓸 때마다 영상 위 제목도 새로 (최근 제목은 피함) */
+  const tt=r.title&&!av.some(a=>a.replace(/\s/g,"")===r.title.join("").replace(/\s/g,""))?r.title:ScriptGen.title(kw,$("client").value?cname():"",prof(),++SEED,av);
+  $("t1").value=tt[0]||"";$("t2").value=tt[1]||"";
   if(typeof preview==="function"){preview();if(typeof findPhotos==="function")findPhotos(true).then(()=>preview()).catch(()=>{});}msg(`1분 분량(${r.chars}자) 대본을 자동으로 썼어요. 읽어 보고 고칠 곳만 고쳐 주세요.`+(force?" 다시 누르면 다른 버전이 나와요.":""),"ok");}
 function cname(){const o=$("client").selectedOptions[0];return o?o.textContent:"";}
 function renderKws(){const cid=$("client").value,ks=KW.filter(k=>k.cid===cid);
@@ -152,7 +159,7 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
   [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
   await loadUsed();renderKws();fill();auto();renderCo();preview();await loadList();poll();}
-$("client").onchange=()=>{renderKws();fill();auto();};
+$("client").onchange=()=>{$("t1").value="";$("t2").value="";renderKws();fill();auto();};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
 $("text").addEventListener("input",cnt);
 $("sample").onclick=()=>{if(!$("kw").value.trim()&&!$("client").value){msg("업체와 키워드를 먼저 골라 주세요.","warn");return;}auto(true);};
@@ -251,9 +258,12 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
     const url=URL.createObjectURL(o.blob),a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
     $("pbar").style.width="100%";$("pinfo").textContent=`완성 · ${Math.round(o.seconds)}초`;
     let pub="";try{msg("완성! 내 컴퓨터에 내려받았어요. 팀 목록에 올리는 중이에요…","ok");pub=await upload(o.blob,`mk_${stamp}_${Math.random().toString(36).slice(2,7)}.${o.ext}`);}catch(e){}
-    const rec={id:"mk_"+stamp,cid:$("client").value,client:cname(),kw:$("kw").value.trim(),text,voice:v,length:"shortform",status:"completed",files:pub?[pub]:[],at:`${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())} ${pd(d.getHours())}:${pd(d.getMinutes())}`,credits:null,error:"",local:true};
+    const rec={id:"mk_"+stamp,cid:$("client").value,client:cname(),kw:$("kw").value.trim(),text,title:titleNow(),voice:v,length:"shortform",status:"completed",files:pub?[pub]:[],at:`${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())} ${pd(d.getHours())}:${pd(d.getMinutes())}`,credits:null,error:"",local:true};
     if(!pub)rec.files=[url];LIST.unshift(rec);render();if(pub){try{await save(rec);}catch(e){}}
-    msg(`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`,"ok");}
+    const done=`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`;
+    /* 다음 영상은 다른 제목·대본으로: 방금 쓴 것을 피해서 바로 새로 써 둔다 */
+    RECENT.unshift(rec.title.join(" "),L[0]);busy=false;
+    if($("kw").value.trim()||$("client").value){await auto(true);msg(done+" 다음 영상에 쓸 새 제목과 대본을 미리 써 뒀어요.","ok");}else msg(done,"ok");}
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
   busy=false;$("go").disabled=false;};
 $("pnext").onclick=async()=>{SEEDV++;lines().forEach(l=>{delete CACHE[l];});try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
@@ -285,11 +295,11 @@ let TRY=null;$("bgmtry").onclick=async()=>{if(TRY){try{TRY.close();}catch(e){}TR
   const sp=bgmSpec();if(!sp||sp==="none"){msg("배경음악을 '없이'로 골랐어요.","warn");return;}
   const ac=new (window.AudioContext||window.webkitAudioContext)();TRY=ac;$("bgmtry").textContent="멈추기";
   const b=await ShortsMaker.bgmBuffer(ac,sp,15);if(!b||TRY!==ac){return;}const n=ac.createBufferSource();n.buffer=b;n.connect(ac.destination);n.onended=()=>{if(TRY===ac){ac.close();TRY=null;$("bgmtry").textContent="음악 들어 보기";}};n.start();};
-["text","t1","t2"].forEach(id=>$(id).addEventListener("input",preview));$("client").addEventListener("change",()=>{$("t1").value="";$("t2").value="";renderCo();coLabel(bdir()).then(n=>{if(n)renderCo();});findPhotos(true).then(()=>preview()).catch(()=>preview());});
+["text","t1","t2"].forEach(id=>$(id).addEventListener("input",preview));$("client").addEventListener("change",()=>{renderCo();coLabel(bdir()).then(n=>{if(n)renderCo();});findPhotos(true).then(()=>preview()).catch(()=>preview());});
 $("logout").onclick=()=>{PW="";ls.set("gs-video-pw","");gate();};
 document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.kw){$("kw").value=t.dataset.kw;renderKws();auto();}
-  if(t.dataset.reuse){const j=LIST.find(x=>x.id===t.dataset.reuse);if(j){$("text").value=j.text;if(j.cid)$("client").value=j.cid;$("kw").value=j.kw||"";LAST="";renderKws();fill();cnt();window.scrollTo({top:0,behavior:"smooth"});}}});
+  if(t.dataset.reuse){const j=LIST.find(x=>x.id===t.dataset.reuse);if(j){$("text").value=j.text;if(j.cid)$("client").value=j.cid;$("kw").value=j.kw||"";LAST="";const t=j.title||[];$("t1").value=t[0]||"";$("t2").value=t[1]||"";preview();renderKws();fill();cnt();window.scrollTo({top:0,behavior:"smooth"});}}});
 if(PW)start();else gate();
 setInterval(()=>{if(PW&&!$("main").hidden)poll()},10000);
 </script></body></html>
