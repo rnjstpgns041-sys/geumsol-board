@@ -94,7 +94,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
 </div>
 </div>
 <input type="file" id="file1" accept="image/*" hidden><input type="file" id="filen" accept="image/*" multiple hidden>
-<script src="blog-kit.js?v=39"></script>
+<script src="blog-kit.js?v=40"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video",PUB=SB+"/storage/v1/object/public/files/";
@@ -172,8 +172,8 @@ function clinicObj(){return Object.assign({},CFG,{mapImg:IMG.map||"",km:$("km").
 let STY="basic",LOOK=null;
 /* 만들 때마다 바뀌게 = 네이버 카드형 색만 바뀜. 고정한 디자인에서 '다른 디자인'은 같은 종류 안에서 바꿈 */
 /* 종류: 네이버 실제형(real) / 카드형(card) / 예전 모양. '만들 때마다'는 실제형 안에서 고름 */
-const kind=k=>{const s=BK.STYLES[k]||{};return s.real?"real":s.card?"card":"old";};
-function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const want=v==="auto"?"real":kind(STY),ks=Object.keys(BK.STYLES).filter(k=>k!==STY&&kind(k)===want);STY=ks[Math.floor(Math.random()*ks.length)]||STY;}
+const kind=k=>{const s=BK.STYLES[k]||{};return s.nv?"ref":s.real?"real":s.card?"card":"old";};
+function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const want=v==="auto"?(Math.random()<.75?"ref":"real"):kind(STY),ks=Object.keys(BK.STYLES).filter(k=>k!==STY&&kind(k)===want);STY=ks[Math.floor(Math.random()*ks.length)]||STY;}
   LOOK=BK.randLook?BK.randLook(LOOK):null;   // 구역 모양·제목·바탕도 매번 새로 섞음
   const st=BK.STYLES[STY];$("cm").value=st.m;$("ca").value=st.a;}
 function lcls(){return BK.lookCls&&(BK.STYLES[STY]||{}).card?BK.lookCls(LOOK):"";}
