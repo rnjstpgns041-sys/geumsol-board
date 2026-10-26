@@ -248,7 +248,7 @@ function map(c){return `<div class="map"><svg viewBox="0 0 800 300" width="100%"
   <div class="mst" ${E}>${esc(c.station)}</div>${c.walk?`<div class="mwk">${icon("walk")}<span ${E}>${esc(c.walk)}</span></div>`:""}<div class="mcl" ${E}>${esc(c.name)}</div></div>`;}
 
 /* 전체 이미지: 구역 순서대로 */
-function build(o){if(STYLES[o.style]&&STYLES[o.style].card)return kbuild(o);const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
+function build(o){if(STYLES[o.style]&&STYLES[o.style].real)return rbuild(o);if(STYLES[o.style]&&STYLES[o.style].card)return kbuild(o);const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
   add("hero",S.hero(p,c,o.kick));add("warn",S.warn(p,c));add("list",S.list(p,c));add("person",S.person(p,c,img));add("clinic",S.clinic(p,c));
   add("time",S.time(p,c));add("treat",S.treat(p,c,img));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,S.doctor(d,k)));
@@ -435,6 +435,115 @@ function kbuild(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o
   add("time",KX("time",L,p,c));add("clinic",KX("clinic",L,p,c));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,K.doctor(d,k,c)));
   if(c.room&&c.room.on)add("room",K.room(c,img));add("facility",K.facility(c));add("info",KX("info",L,c));
   return out.join("");}
+/* ── 네이버 실제형: 네이버 한의원 상위 글 2,633장에서 많이 보이는 카드(어두운 카드뉴스 / 베이지 명조 / 사진 위 굵은 글씨). 아이콘·그라데이션 없이 사진과 글씨로 ── */
+const rem=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<b class="ra">$1</b>');
+const rck='<svg class="r-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.3l3 3 6-6.3" stroke-width="2"/></svg>';
+const rname=c=>c.logo?`<img class="r-logo" src="${esc(c.logo)}" alt="">`:c.name?`<span class="r-nm" ${E}>${esc(c.name)}</span>`:"";
+const RT=t=>`<div class="r-t"><div ${E}>${rem(t[0])}</div>${t[1]?`<div ${E}>${rem(t[1])}</div>`:""}</div>`;
+/* 글 카드: 제목 + 목록(번호 또는 체크), 사진이 있으면 함께 */
+function rlist(f,o){const n=String(o.n).padStart(2,"0"),tall=o.items.length>4||o.items.some(x=>x[1])&&o.items.length>3||!!o.ph&&o.items.length>3;
+  const rows=o.items.map(([a,b],k)=>`<div class="r-row">${o.check?rck:`<b class="r-no">${o.step&&f!=="pho"?"STEP ":""}${String(k+1).padStart(2,"0")}</b>`}<div><b ${E}>${esc(plain(a))}</b>${b?`<span ${E}>${esc(b)}</span>`:""}</div></div>`).join("");
+  const pk=o.ph?ph(o.ph,o.src,"r-ph"):"";
+  if(f==="dark"){const grid=!o.ph&&o.items.length===4&&o.items.every(x=>x[1]);
+    return `<section class="r r-dark ${tall?"tall":""} ${o.ph?"wph":""}">${o.ph?`<div class="r-side">${pk}</div>`:""}<div class="r-num">${n}</div>
+      <div class="r-in">${o.kick?`<div class="r-kick" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}<div class="${grid?"r-grid":"r-box"}">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;}
+  if(f==="beige")return `<section class="r r-beige ${tall?"tall":""}"><div class="r-in">${o.kick?`<div class="r-kick" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}
+      ${o.ph?`<div class="r-phw">${pk}</div>`:""}<div class="r-cards">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;
+  return `<section class="r r-pho ${tall?"tall":""} ${o.ph?"wph":""}">${o.ph?`<div class="r-top">${pk}</div>`:""}<div class="r-in">${o.kick?`<div class="r-lab" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}
+      <div class="r-lines">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;}
+/* 표지: 큰 제목 + 사진 */
+function rcover(f,p,c,img){const t=p.hero.t,sub=p.warn.sub;
+  if(f==="dark")return `<section class="r r-dark wph cover"><div class="r-side">${ph("person",img.person,"r-ph rq")}</div><div class="r-num">01</div>
+    <div class="r-in"><div class="r-t xl"><div ${E}>${rem(plain(t[0]))}</div><div ${E}>${rem(plain(t[1]))}</div></div><div class="r-sub" ${E}>${esc(sub)}</div></div>
+    <div class="r-tags">${p.warn.cards.slice(0,3).map(([,a])=>`<span ${E}>${esc(a)}</span>`).join("")}</div></section>`;
+  if(f==="beige")return `<section class="r r-beige cover"><div class="r-in"><div class="r-t xl"><div ${E}>${esc(plain(t[0]))}</div><div ${E}>${rem(t[1]&&!/\[\[/.test(t[1])?"[["+t[1]+"]]":t[1])}</div></div>
+    <div class="r-dash" ${E}>${esc(sub)}</div></div><div class="r-cvph">${ph("person",img.person,"r-ph rq")}</div><div class="r-cn">${rname(c)}</div></section>`;
+  return `<section class="r r-pho cover">${ph("person",img.person,"r-ph full rq")}<div class="r-shade"></div><div class="r-cn tl">${rname(c)}</div>
+    <div class="r-big"><div class="y" ${E}>${esc(plain(t[0]))}</div><div ${E}>${esc(plain(t[1]))}</div></div></section>`;}
+/* 사진 한 장 + 짧은 설명 */
+function rphoto(f,key,src,cap,sub){return `<section class="r r-phc ${f}">${ph(key,src,"r-ph full rq")}<div class="r-cap"><b ${E}>${esc(cap)}</b>${sub?`<span ${E}>${esc(sub)}</span>`:""}</div></section>`;}
+function rdoc(f,d,k){return `<section class="r r-doc ${f}"><div class="r-dph">${ph("doc"+k,d.photo,"r-ph")}</div><div class="r-din"><span class="r-dtt" ${E}>${esc(d.title||"원장")}</span><div class="r-dn" ${E}>${esc(d.name)}</div><div class="r-dr" ${E}>${esc(d.role||"")}</div>
+  ${(d.fields||[]).concat(d.history||[]).slice(0,6).map(x=>`<div class="r-dl" ${E}>${esc(x)}</div>`).join("")}</div></section>`;}
+function rfac(f,c){const ps=(c.photos||[]).filter(x=>x&&x.url).slice(0,8),out=[];for(let i=0;i<ps.length;i+=4){const g=ps.slice(i,i+4);
+  out.push(`<section class="r r-fac ${f}"><div class="r-fh" ${E}>${esc(c.name||"")} ${i?"시설 안내":"둘러보기"}</div><div class="r-fg n${g.length}">${g.map((x,k)=>`<div class="r-fi">${ph("fac"+(i+k),x.url,"r-ph")}<span ${E}>${esc(x.label||"시설")}</span></div>`).join("")}</div></section>`);}return out;}
+function rinfo(f,c){const hs=(c.hours||[]).filter(h=>h&&h[1]),row=(l,v)=>`<div class="r-ir"><b>${l}</b><div>${v}</div></div>`;
+  return `<section class="r r-info ${f}"><div class="r-in"><div class="r-kick" ${E}>진료 안내</div><div class="r-t"><div ${E}>${esc(c.name||"")}</div><div ${E}><b class="ra">진료시간 · 오시는 길</b></div></div>
+  <div class="r-tab">${hs.length?row("진료시간",hs.map(h=>`<div><span ${E}>${esc(h[0])}</span> <b ${E}>${esc(h[1])}</b></div>`).join("")+(c.lunch?`<div><span>점심시간</span> <b ${E}>${esc(c.lunch)}</b></div>`:"")):""}
+  ${c.tel?row("전화",`<b class="r-tel" ${E}>${esc(c.tel)}</b>`):""}${c.addr?row("주소",`<span ${E}>${esc(c.addr)}</span>${c.way?`<small ${E}>${esc(c.way)}</small>`:""}`):""}${c.parking?row("주차",`<span ${E}>${esc(c.parking)}</span>`):""}</div>
+  ${c.station?map(c):""}<div class="r-law" ${E}>모든 치료는 개인에 따라 차이가 있을 수 있고 부작용이 생길 수 있습니다. 반드시 의료진과 충분히 상담한 뒤 결정하시기 바랍니다.</div></div><div class="r-cn">${rname(c)}</div></section>`;}
+function rbuild(o){const st=STYLES[o.style]||{},f=st.rf||"dark",p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{},out=[],tp=KEYOF(p),tn=tname(tp);let n=1;
+  const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
+  const L=(k,o2)=>{n++;return rlist(f,Object.assign({n,c},o2));};
+  add("hero",rcover(f,p,c,img));
+  add("warn",L("warn",{kick:"이런 증상, 그냥 두지 마세요",t:p.list.t,items:p.list.items.slice(0,5).map(([,t])=>[t,""]),check:1,ph:"band",src:img.band}));
+  add("list",L("list",{kick:"왜 그럴까요?",t:p.warn.t,items:p.warn.cards.slice(0,4).map(([,a,b])=>[a,b])}));
+  const rows=treatRows(p,c);
+  add("treat",L("treat",{kick:(c.name?c.name+" ":"")+tn,t:[(c.name||"상태에 맞춘")+(c.name?"의":""),`[[${tp==="기본"?"맞춤 진료":tp+" 치료"}]]`],items:rows.map(([i,a])=>[a,TD[i]||TD.check]),note:p.treat.note}));
+  rows.forEach(([i,a],k)=>add("treat",rphoto(f,"treat"+k,img["treat"+k],a,TD[i]||"")));
+  add("person",L("person",{kick:"이런 분께 권해요",t:[tn,"이런 분께 [[필요해요]]"],items:p.person.sym.slice(0,4).map(([,t])=>[t+ro(t)+" 힘드신 분",""]),check:1}));
+  add("time",L("time",{kick:"진료 과정",t:p.time.t,items:p.time.steps.map(([a,,t])=>[a,t]),step:1,note:p.time.note}));
+  add("clinic",L("clinic",{kick:"약속드립니다",t:[(c.name||"저희 한의원")+"의",`[[진료 원칙]]`],items:feats(p,c).slice(0,4).map(([i,t])=>[plain(t),FD[i]||FD.check])}));
+  (c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,rdoc(f,d,k)));
+  if(c.room&&c.room.on)add("room",L("room",{kick:"입원 치료",t:[c.name||"",`[[${plain(c.room.title||"입원치료")}]]`],items:(c.room.items||[]).slice(0,4).map(([,a,b])=>[a,b||""]).concat((c.room.items||[]).length?[]:[["가까이에서 살펴요","입원으로 상태를 자주 확인해요"]]),ph:"room",src:img.room||((c.photos||[])[0]||{}).url}));
+  rfac(f,c).forEach(h=>add("facility",h));add("info",rinfo(f,c));return out.join("");}
+const R_CSS=`
+.bi[class*="st-real"]{background:#fff}.bi[class*="st-real"] .blk+.blk{margin-top:14px}
+.bi .r{position:relative;width:860px;height:860px;overflow:hidden;text-align:left;font-family:"Pretendard Variable",Pretendard,sans-serif;letter-spacing:-.03em;color:var(--rink)}.bi .r.tall{height:1075px}
+.bi .r .ph{border-radius:0;background:transparent}.bi .r .phe{border-radius:0}.bi .r b{font-weight:800}
+.bi .r-in{position:relative;z-index:2;padding:96px 64px 0}.bi .r-t{font-size:74px;font-weight:900;line-height:1.16;letter-spacing:-.05em}.bi .r-t.xl{font-size:104px;line-height:1.08}
+.bi .r .ra{color:var(--a);font-weight:inherit}.bi .r-kick{font-size:26px;font-weight:700;color:var(--a);margin-bottom:16px;letter-spacing:-.01em}
+.bi .r-no{flex:none;font-size:26px;font-weight:800;color:var(--a);min-width:44px}.bi .r-ck{flex:none;width:40px;height:40px;color:var(--a)}
+.bi .r-row{display:flex;gap:18px;align-items:flex-start}.bi .r-row b{display:block;font-size:31px;line-height:1.3}.bi .r-row span{display:block;font-size:23px;line-height:1.45;opacity:.82;margin-top:4px}.bi .r-row>div{flex:1}
+.bi .r-note{font-size:20px;opacity:.7;margin-top:22px}
+.bi .r-logo{max-height:52px;max-width:240px;display:block}.bi .r-nm{font-size:24px;font-weight:800}.bi .r-cn{position:absolute;left:56px;bottom:44px;z-index:3}.bi .r-cn.tl{top:44px;bottom:auto}
+/* 어두운 카드뉴스 */
+.bi .r-dark{background:radial-gradient(120% 90% at 80% 30%,var(--rbg2),var(--rbg) 70%);--rink:#f5ece3}
+.bi .r-dark .r-side{position:absolute;right:0;top:0;bottom:0;width:62%}.bi .r-dark .r-side .ph{width:100%;height:100%}.bi .r-dark .r-side img{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 45%);mask-image:linear-gradient(90deg,transparent 0,#000 45%);filter:saturate(.85) contrast(1.02)}
+.bi .r-dark .r-side:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,var(--rbg) 0,transparent 30%)}
+.bi .r-num{position:absolute;left:50%;top:-38px;margin-left:-62px;width:124px;height:124px;border-radius:50%;border:2px solid rgba(255,255,255,.28);display:grid;place-items:end center;padding-bottom:22px;font-size:30px;font-weight:600;color:var(--rink);z-index:3}
+.bi .r-dark.wph .r-in{max-width:540px}.bi .r-dark.wph .r-t{font-size:62px}.bi .r-dark.wph .r-t.xl{font-size:80px}.bi .r-dark .r-t{color:var(--rink)}.bi .r-dark .r-t .ra{color:var(--a)}
+.bi .r-dark .r-box{margin-top:40px;border:1.5px solid rgba(255,255,255,.22);border-radius:22px;padding:6px 30px;background:rgba(0,0,0,.18)}.bi .r-dark .r-box .r-row{padding:20px 0;align-items:center}.bi .r-dark .r-box .r-row+.r-row{border-top:1.5px dashed rgba(255,255,255,.18)}
+.bi .r-dark.wph .r-box .r-row b{font-size:27px}
+.bi .r-dark .r-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:44px}.bi .r-dark .r-grid .r-row{flex-direction:column;gap:10px;border:1.5px solid rgba(255,255,255,.22);border-radius:22px;padding:26px 24px;background:rgba(255,255,255,.04)}
+.bi .r-dark .r-sub{margin-top:40px;border-left:2px solid rgba(255,255,255,.5);padding-left:20px;font-size:28px;line-height:1.5;color:var(--rink);max-width:400px}
+.bi .r-tags{position:absolute;left:56px;bottom:52px;display:flex;gap:14px;z-index:3}.bi .r-tags span{border:1.5px solid rgba(255,255,255,.3);border-radius:18px;padding:14px 24px;font-size:22px;background:rgba(0,0,0,.25);color:var(--rink)}
+/* 베이지 명조 */
+.bi .r-beige{background:var(--rbg);--rink:#2a2622}.bi .r-beige .r-t{font-family:"Nanum Myeongjo",serif;font-weight:800;font-size:62px;letter-spacing:-.04em;line-height:1.25}.bi .r-beige .r-t.xl{font-size:76px}
+.bi .r-beige .r-kick{font-size:24px;color:var(--rk2,var(--a))}.bi .r-beige .r-in{padding:90px 64px 0}
+.bi .r-dash{display:flex;align-items:center;gap:18px;margin-top:26px;font-family:"Nanum Myeongjo",serif;font-size:28px;color:#6d655c}.bi .r-dash:before{content:"";width:80px;border-top:2px solid #8f877d}
+.bi .r-cvph{position:absolute;left:0;right:0;bottom:0;height:470px}.bi .r-cvph .ph{width:100%;height:100%}.bi .r-cvph img{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 30%);mask-image:linear-gradient(180deg,transparent 0,#000 30%)}
+.bi .r-beige .r-cn{background:rgba(255,255,255,.92);border-radius:10px;padding:8px 16px}
+.bi .r-cards{display:flex;flex-direction:column;gap:14px;margin-top:36px}.bi .r-cards .r-row{background:var(--rcard,#fffdf9);border-left:6px solid var(--a);border-radius:6px 16px 16px 6px;padding:24px 28px;box-shadow:0 2px 10px rgba(80,60,30,.06)}
+.bi .r-beige .r-no{font-family:"Nanum Myeongjo",serif;font-weight:400;font-size:30px}.bi .r-beige .r-row b{font-size:29px}
+.bi .r-phw{margin-top:30px;height:250px;border-radius:18px;overflow:hidden}.bi .r-phw .ph{width:100%;height:100%}
+/* 사진 위 굵은 글씨 */
+.bi .r-pho{background:var(--rbg);--rink:#14223d}.bi .r-pho.cover{background:#111}.bi .r .r-ph.full{position:absolute;inset:0;width:100%;height:100%}
+.bi .r-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.78))}
+.bi .r-big{position:absolute;left:52px;right:40px;bottom:64px;z-index:2;font-size:118px;font-weight:900;line-height:1.08;letter-spacing:-.06em;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.35)}.bi .r-big .y{color:var(--a)}
+.bi .r-pho .r-cn.tl{background:#fff;border-radius:10px;padding:8px 16px}.bi .r-pho .r-cn .r-nm{color:#14223d}
+.bi .r-top{height:330px;position:relative}.bi .r-top .ph{width:100%;height:100%}.bi .r-pho.wph .r-in{padding-top:44px}
+.bi .r-pho .r-t{font-size:66px}.bi .r-lab{display:inline-block;background:var(--rink);color:#fff;font-size:24px;font-weight:800;border-radius:10px;padding:8px 18px;margin-bottom:18px}
+.bi .r-lines{margin-top:34px}.bi .r-lines .r-row{padding:18px 0;align-items:center}.bi .r-lines .r-row+.r-row{border-top:2px solid rgba(20,34,61,.1)}
+.bi .r-pho .r-no{background:var(--a);color:#fff;border-radius:12px;min-width:0;width:56px;height:56px;display:grid;place-items:center;font-size:22px}.bi .r-pho .r-no:not(:only-child){}
+.bi .r-pho.wph .r-row b{font-size:28px}.bi .r-pho.wph .r-row span{font-size:21px}
+/* 사진 카드 */
+.bi .r-phc{background:#111}.bi .r-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:120px 56px 54px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.75) 55%);color:#fff}
+.bi .r-cap b{display:block;font-size:56px;font-weight:900;letter-spacing:-.05em}.bi .r-cap span{display:block;font-size:24px;line-height:1.5;margin-top:10px;opacity:.9}
+.bi .r-phc.beige .r-cap{background:var(--rbg);color:#2a2622;padding:34px 56px 40px}.bi .r-phc.beige .r-cap b{font-family:"Nanum Myeongjo",serif;font-size:46px}.bi .r-phc.beige .r-ph.full{bottom:200px;height:auto}
+.bi .r-phc.pho .r-cap b{color:var(--a);font-size:72px}
+/* 의료진 */
+.bi .r-doc{display:grid;grid-template-columns:400px 1fr;background:var(--rbg);--rink:#2a2622}.bi .r-doc.dark{--rink:#f5ece3;background:var(--rbg)}.bi .r-dph .ph{width:100%;height:860px}
+.bi .r-din{padding:120px 44px 0;color:var(--rink)}.bi .r-dtt{display:inline-block;border:1.5px solid var(--a);color:var(--a);border-radius:99px;padding:6px 20px;font-size:24px;font-weight:700}
+.bi .r-dn{font-size:96px;font-weight:900;letter-spacing:-.04em;margin:16px 0 6px}.bi .r-doc.beige .r-dn{font-family:"Nanum Myeongjo",serif}.bi .r-dr{font-size:26px;opacity:.8;margin-bottom:30px}.bi .r-dl{font-size:23px;padding:10px 0;border-top:1px solid rgba(128,128,128,.3)}
+/* 시설 */
+.bi .r-fac{background:var(--rbg);padding:70px 40px 0}.bi .r-fh{font-size:44px;font-weight:900;color:var(--rink);margin:0 16px 26px}.bi .r-fac.beige .r-fh{font-family:"Nanum Myeongjo",serif;--rink:#2a2622}.bi .r-fac.dark .r-fh{color:#f5ece3}
+.bi .r-fg{display:grid;grid-template-columns:1fr 1fr;gap:14px}.bi .r-fi{position:relative;height:330px;border-radius:14px;overflow:hidden}.bi .r-fi .ph{width:100%;height:100%}.bi .r-fg.n1 .r-fi,.bi .r-fg.n2 .r-fi{height:670px}.bi .r-fg.n1{grid-template-columns:1fr}.bi .r-fg.n3 .r-fi:first-child{grid-row:span 2;height:674px}
+.bi .r-fi span{position:absolute;left:14px;bottom:14px;background:rgba(0,0,0,.6);color:#fff;font-size:22px;font-weight:700;border-radius:8px;padding:6px 14px}
+/* 진료 안내 */
+.bi .r-info{height:auto;min-height:860px;padding-bottom:120px;background:var(--rbg);--rink:#2a2622}.bi .r-info.dark{--rink:#f5ece3}.bi .r-info.beige .r-t{font-family:"Nanum Myeongjo",serif;font-size:56px}.bi .r-info .r-t{font-size:58px}
+.bi .r-tab{margin-top:36px;border-top:2px solid var(--a)}.bi .r-ir{display:grid;grid-template-columns:150px 1fr;gap:20px;padding:22px 4px;border-bottom:1px solid rgba(128,128,128,.3);font-size:25px;line-height:1.5}.bi .r-ir>b{color:var(--a)}.bi .r-ir small{display:block;font-size:20px;opacity:.75}.bi .r-tel{font-size:40px}
+.bi .r-info .map{margin-top:28px}.bi .r-law{font-size:18px;opacity:.65;margin-top:26px;line-height:1.6}`;
+
 
 const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417}
 .bi .k{padding:64px 48px 40px;position:relative;color:var(--ink);text-align:center}.bi .k.tint{background:var(--bg2)}.bi .k b{font-weight:800}
@@ -613,7 +722,7 @@ const CSS=`.bi{width:860px;background:#fff;color:var(--m);font-family:"Pretendar
 .bi .mwk{position:absolute;left:36%;top:28%;display:flex;gap:8px;align-items:center;background:var(--m);color:#fff;border-radius:12px;padding:8px 14px;font-size:22px;font-weight:700}.bi .mwk .ic{width:28px;height:28px}
 .bi .mcl{position:absolute;right:4%;top:18%;background:var(--m);color:#fff;border-radius:12px;padding:10px 16px;font-size:24px;font-weight:800}
 .bi .ipark{display:flex;align-items:center;gap:18px;background:var(--soft2);border-radius:16px;padding:22px 28px;margin-top:20px;font-size:30px}.bi .ipark>.ic{width:50px;height:50px;color:var(--a)}.bi .ipark b{color:var(--a);border-right:2px solid #d0d8d4;padding-right:18px}
-.bi .kick{display:none}.bi .foot{margin-top:40px}.bi .foot .logo{margin:0 auto}.bi .ic{width:1em;height:1em}`+K_CSS;
+.bi .kick{display:none}.bi .foot{margin-top:40px}.bi .foot .logo{margin:0 auto}.bi .ic{width:1em;height:1em}`+K_CSS+R_CSS;
 
 /* ── 이미지로 저장: 화면 구역을 그대로 SVG(foreignObject)에 담아 canvas에 그림. 사진·글꼴은 data URL로 넣음 ── */
 const blob2url=b=>new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(b);});
@@ -628,11 +737,15 @@ const HW={};
 async function hwCSS(t){t=[...new Set(String(t||"").replace(/\s/g,""))].join("");if(!t)return "";if(HW[t]!=null)return HW[t];HW[t]="";
   try{const css=await (await fetch("https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&text="+encodeURIComponent(t))).text();
     const u=(css.match(/url\((https:[^)]+)\)/)||[])[1];const d=u&&await dataURL(u);if(d)HW[t]=`@font-face{font-family:"Nanum Pen Script";src:url(${d})}`;}catch(e){}return HW[t];}
+/* 다른 구글 글꼴도 쓰인 글자만 받아 그림 안에 넣음 (명조 등) */
+async function gfCSS(fam,t){t=[...new Set(String(t||"").replace(/\s/g,""))].join("");if(!t)return "";const key=fam+"|"+t;if(HW[key]!=null)return HW[key];HW[key]="";
+  try{let css=await (await fetch("https://fonts.googleapis.com/css2?family="+fam+"&text="+encodeURIComponent(t))).text();
+    for(const u of [...new Set(css.match(/https:[^)]+/g)||[])]){const d=await dataURL(u);if(!d)return "";css=css.split(u).join(d);}HW[key]=css;}catch(e){}return HW[key];}
 async function snap(el,o){o=o||{};const scale=o.scale||1.5,w=el.offsetWidth,h=el.offsetHeight;
   const cl=el.cloneNode(true);cl.querySelectorAll("[contenteditable]").forEach(x=>x.removeAttribute("contenteditable"));
   cl.querySelectorAll(".phe").forEach(x=>x.parentNode.remove());cl.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
   for(const im of cl.querySelectorAll("img")){const d=await dataURL(im.getAttribute("src"));if(d)im.setAttribute("src",d);else im.remove();}
-  const css=(await fontCSS(o.font))+(await hwCSS([...cl.querySelectorAll(".k-hw,.k-q.hw")].map(x=>x.textContent).join("")))+CSS+STYLE_CSS+(o.vars||"");
+  const css=(await fontCSS(o.font))+(await hwCSS([...cl.querySelectorAll(".k-hw,.k-q.hw")].map(x=>x.textContent).join("")))+(await gfCSS("Nanum+Myeongjo:wght@400;800",[...cl.querySelectorAll(".r-beige .r-t,.r-beige .r-no,.r-dash,.r-phc.beige .r-cap b,.r-doc.beige .r-dn,.r-fac.beige .r-fh,.r-info.beige .r-t")].map(x=>x.textContent).join("")))+CSS+STYLE_CSS+(o.vars||"");
   const html=new XMLSerializer().serializeToString(cl);
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="bi ${esc(o.cls||"")}" style="${esc(o.style||"")}"><style>${css}</style>${html}</div></foreignObject></svg>`;
   const img=new Image();img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);await img.decode();
@@ -656,6 +769,13 @@ async function zip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
 
 /* ── 디자인: 네이버 상위 블로그 이미지에서 본 모양 몇 가지 (st-*) ── */
 const STYLES={
+  real_brown:{name:"네이버 실제형 · 갈색 카드뉴스",m:"#2a1f1a",a:"#e9b98a",real:1,rf:"dark",css:".bi.st-real_brown{--rbg:#2a1f1a;--rbg2:#4d382c}"},
+  real_navy:{name:"네이버 실제형 · 남색 카드뉴스",m:"#0e1a30",a:"#ffd257",real:1,rf:"dark",css:".bi.st-real_navy{--rbg:#0e1a30;--rbg2:#25406b}"},
+  real_forest:{name:"네이버 실제형 · 짙은 초록 카드뉴스",m:"#1b261f",a:"#cfe6a6",real:1,rf:"dark",css:".bi.st-real_forest{--rbg:#1b261f;--rbg2:#35503f}"},
+  real_beige:{name:"네이버 실제형 · 베이지 명조(초록)",m:"#2a2622",a:"#3f6b45",real:1,rf:"beige",css:".bi.st-real_beige{--rbg:#f4efe6;--rk2:#b8452e}"},
+  real_beige2:{name:"네이버 실제형 · 베이지 명조(갈색)",m:"#2a2622",a:"#9a5b2e",real:1,rf:"beige",css:".bi.st-real_beige2{--rbg:#f6f0e7}"},
+  real_photo:{name:"네이버 실제형 · 사진 위 굵은 글씨(주황)",m:"#14223d",a:"#f26a1b",real:1,rf:"pho",css:".bi.st-real_photo{--rbg:#eef3f8}.bi.st-real_photo .r-big .y,.bi.st-real_photo .r-phc .r-cap b{color:#ffd400}"},
+  real_photo2:{name:"네이버 실제형 · 사진 위 굵은 글씨(파랑)",m:"#14223d",a:"#1f62d6",real:1,rf:"pho",css:".bi.st-real_photo2{--rbg:#f4f6fa}.bi.st-real_photo2 .r-big .y,.bi.st-real_photo2 .r-phc .r-cap b{color:#ffd400}"},
   card:{name:"네이버 카드형 · 블루",m:"#121417",a:"#0b5ccc",a2:"#18bdf0",card:1,css:""},
   card_navy:{name:"카드형 · 네이비",m:"#121417",a:"#1c3f94",a2:"#4f86f7",card:1,css:""},
   card_green:{name:"카드형 · 그린",m:"#121417",a:"#11805a",a2:"#36c48a",card:1,css:""},
