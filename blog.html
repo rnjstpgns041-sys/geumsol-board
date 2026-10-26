@@ -1,7 +1,7 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>금솔 블로그 이미지 만들기</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Nanum+Myeongjo:wght@400;800&display=swap">
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017}}
@@ -94,7 +94,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
 </div>
 </div>
 <input type="file" id="file1" accept="image/*" hidden><input type="file" id="filen" accept="image/*" multiple hidden>
-<script src="blog-kit.js?v=34"></script>
+<script src="blog-kit.js?v=35"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video",PUB=SB+"/storage/v1/object/public/files/";
@@ -171,7 +171,9 @@ function onMap(){const o={};SECS.forEach(([k])=>{if(ON[k]===false)o[k]=false;});
 function clinicObj(){return Object.assign({},CFG,{km:$("km").value==="1",name:CFG.name||(client()||{}).name||"",photos:(CFG.photos||[]).filter(p=>p.url)});}
 let STY="basic",LOOK=null;
 /* 만들 때마다 바뀌게 = 네이버 카드형 색만 바뀜. 고정한 디자인에서 '다른 디자인'은 같은 종류 안에서 바꿈 */
-function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const card=v==="auto"||!!(BK.STYLES[STY]||{}).card,ks=Object.keys(BK.STYLES).filter(k=>k!==STY&&!!BK.STYLES[k].card===card);STY=ks[Math.floor(Math.random()*ks.length)]||STY;}
+/* 종류: 네이버 실제형(real) / 카드형(card) / 예전 모양. '만들 때마다'는 실제형 안에서 고름 */
+const kind=k=>{const s=BK.STYLES[k]||{};return s.real?"real":s.card?"card":"old";};
+function pickStyle(force){const v=$("style").value;if(v!=="auto"&&!force){STY=v;}else{const want=v==="auto"?"real":kind(STY),ks=Object.keys(BK.STYLES).filter(k=>k!==STY&&kind(k)===want);STY=ks[Math.floor(Math.random()*ks.length)]||STY;}
   LOOK=BK.randLook?BK.randLook(LOOK):null;   // 구역 모양·제목·바탕도 매번 새로 섞음
   const st=BK.STYLES[STY];$("cm").value=st.m;$("ca").value=st.a;}
 function lcls(){return BK.lookCls&&(BK.STYLES[STY]||{}).card?BK.lookCls(LOOK):"";}
@@ -241,15 +243,17 @@ function choose(list){return new Promise(ok=>{const m=document.createElement("di
 function fname(s){return (s||"").replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,60);}
 function base(){const c=client();return fname([(c&&c.name)||CFG.name,$("kw").value.trim()||$("topic").value].filter(Boolean).join("_"))||"blog";}
 function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+const emptyBlk=b=>[...b.querySelectorAll(".ph.rq")].some(x=>!x.querySelector("img"));   // 사진이 꼭 있어야 하는 카드인데 사진이 없음
 async function shot(el){const z=$("pvz"),old=z.style.zoom;z.style.zoom=1;el.querySelectorAll(".bx").forEach(x=>x.style.display="none");
+  const hid=[...el.querySelectorAll(".blk")].filter(emptyBlk);hid.forEach(b=>b.style.display="none");
   try{const h=el.offsetHeight,scale=1080/Math.max(1,el.offsetWidth);return await BK.snap(el,{scale:Math.min(scale,30000/Math.max(1,h)),font:FONT,style:vars(),cls:"st-"+STY+" "+lcls()});}
-  finally{el.querySelectorAll(".bx").forEach(x=>x.style.display="");z.style.zoom=old;fit();}}
+  finally{el.querySelectorAll(".bx").forEach(x=>x.style.display="");hid.forEach(b=>b.style.display="");z.style.zoom=old;fit();}}
 async function run(f){if(BUSY)return;BUSY=true;$("one").disabled=$("each").disabled=true;$("pbarw").hidden=false;$("pbar").style.width="5%";
   try{await f();}catch(e){msg("저장하지 못했어요 ("+esc(e.message)+"). 다시 눌러 주세요.","err");}finally{BUSY=false;$("one").disabled=$("each").disabled=false;setTimeout(()=>{$("pbarw").hidden=true;},600);}}
 $("one").onclick=()=>run(async()=>{msg("한 장으로 만드는 중이에요… 길어서 조금 걸려요.","ok");
   const cv=await shot($("bi"));$("pbar").style.width="80%";download(await BK.toBlob(cv),base()+".jpg");$("pbar").style.width="100%";
   msg(`저장했어요. (가로 ${cv.width} × 세로 ${cv.height}) 네이버 블로그에 그대로 올리면 돼요.`,"ok");});
-$("each").onclick=()=>run(async()=>{const bs=[...$("bi").querySelectorAll(".blk")],files=[];
+$("each").onclick=()=>run(async()=>{const bs=[...$("bi").querySelectorAll(".blk")].filter(b=>!emptyBlk(b)),files=[];
   for(let i=0;i<bs.length;i++){msg(`구역 ${i+1}/${bs.length} 만드는 중이에요…`,"ok");const cv=await shot(bs[i]);files.push({name:`${String(i+1).padStart(2,"0")}_${bs[i].dataset.k}.jpg`,blob:await BK.toBlob(cv)});$("pbar").style.width=Math.round((i+1)/bs.length*95)+"%";}
   download(await BK.zip(files),base()+"_구역별.zip");$("pbar").style.width="100%";msg(`구역 ${files.length}개를 ZIP 하나로 저장했어요. 압축을 풀어서 순서대로 올리면 돼요.`,"ok");});
 function saveOne(k){run(async()=>{const b=$("bi").querySelector(`.blk[data-k="${k}"]`);if(!b)return;const cv=await shot(b);download(await BK.toBlob(cv),base()+"_"+k+".jpg");msg("이 구역을 저장했어요.","ok");});}
