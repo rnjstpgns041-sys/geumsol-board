@@ -23,6 +23,10 @@ function titleOf(line){const s=String(line||"").replace(/[.!]$/,"").trim(),w=s.s
   return [w.slice(0,best).join(" "),w.slice(best).join(" ")];}
 function cover(g,im,x,y,w,h,z,px,py){const r=Math.max(w/im.width,h/im.height)*z,iw=im.width*r,ih=im.height*r;
   g.drawImage(im,x+(w-iw)/2+px*(iw-w)/2,y+(h-ih)/2+py*(ih-h)/2,iw,ih);}
+/* 큰 사진은 미리 영상 크기에 맞게 줄여 둔다 (매 장면 큰 사진을 줄이며 그리면 효과 때 끊김) */
+function shrink(im,w,h,z){const r=Math.min(1,Math.max(w/im.width,h/im.height)*(z||1));if(r>0.92)return im;
+  const c=document.createElement("canvas");c.width=Math.max(1,Math.round(im.width*r));c.height=Math.max(1,Math.round(im.height*r));
+  const x=c.getContext("2d");x.imageSmoothingQuality="high";x.drawImage(im,0,0,c.width,c.height);return c;}
 function fitText(g,t,max,size,weight){let s=size;do{g.font=`${weight||900} ${s}px ${FONT}`;if(g.measureText(t).width<=max)break;s-=2;}while(s>24);return s;}
 function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
 const ease=t=>t<0?0:t>1?1:1-Math.pow(1-t,3);
@@ -64,17 +68,26 @@ async function prepare(o){const B=o.brand,base=o.base||"";
   /* 대본 문장에 맞춰 찾은 사진 (문장마다 하나, 없으면 null = 업체 사진 문장) */
   for(const src of (o.extra||[])){if(!src){own.push(-1);continue;}try{photos.push(await load(src));own.push(photos.length-1);}catch(e){own.push(-1);}}
   if(!photos.length)throw new Error("쓸 사진이 없어요.");
-  const foot=await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
+  let foot=await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
+  /* 가장 크게 확대될 때(약 1.75배)도 선명한 크기까지만 남김 */
+  for(let i=0;i<photos.length;i++)photos[i]=shrink(photos[i],W,BAND,1.75);
+  foot=shrink(foot,W,FOOT,1);if(logo)logo=shrink(logo,logo.width*600/logo.height,600,1);
   return {photos,foot,logo,own,nBrand,nUp};}
 
-function drawFrame(g,t,S){const {B,P,A,title,kw}=S;
-  /* 위 제목 */
+/* 위 제목은 영상 내내 같으니 한 번만 그려 두고 붙인다 */
+function headOf(S){if(S.head)return S.head;const c=document.createElement("canvas");c.width=W;c.height=HEAD;drawHead(c.getContext("2d"),S);return S.head=c;}
+function drawFrame(g,t,S){const {B,P,A,kw}=S;
+  g.drawImage(headOf(S),0,0);
+  drawMid(g,t,S);}
+function drawHead(g,S){const {B,title}=S;
   if(B.bg2){const gr=g.createLinearGradient(0,0,0,HEAD);gr.addColorStop(0,B.bg);gr.addColorStop(1,B.bg2);g.fillStyle=gr;}else g.fillStyle=B.bg;g.fillRect(0,0,W,HEAD);
   g.textAlign="center";g.textBaseline="middle";
   const s1=fitText(g,title[0],W-90,B.s1);g.fillStyle=B.t1;g.fillText(title[0],W/2,title[1]?HEAD*0.42:HEAD/2);
   if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=HEAD*0.42+s1*0.55+s2*0.75;
     if(B.t2bg){const w=g.measureText(title[1]).width+36;g.fillStyle=B.t2bg;g.fillRect(W/2-w/2,y2-s2*0.68,w,s2*1.36);}
-    g.fillStyle=B.t2;g.fillText(title[1],W/2,y2);}
+    g.fillStyle=B.t2;g.fillText(title[1],W/2,y2);}}
+function drawMid(g,t,S){const {B,P,A,kw}=S;
+  g.textAlign="center";g.textBaseline="middle";
   /* 가운데 사진: 장면마다 확대·축소·좌우·위아래로 움직이고, 바뀔 때 밀기·겹치기·원·위로 밀기·확대·블라인드 효과 */
   g.save();g.beginPath();g.rect(0,HEAD,W,BAND);g.clip();
   let k=P.scenes.findIndex((s,i)=>t>=s.t&&(i===P.scenes.length-1||t<P.scenes[i+1].t));if(k<0)k=0;
@@ -184,10 +197,10 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
   const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion};
   const music=await bgmBuffer(ac,o.bgm,P.total);
-  const cv=o.canvas||document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");
+  const cv=o.canvas||document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d",{alpha:false});
   drawFrame(g,0,S);
   const mime=pickMime();if(!mime)throw new Error("이 브라우저는 영상 저장을 못 해요. 크롬이나 엣지로 열어 주세요.");
-  const dest=ac.createMediaStreamDestination(),vs=cv.captureStream(FPS);
+  const dest=ac.createMediaStreamDestination(),rf=!!(window.CanvasCaptureMediaStreamTrack&&CanvasCaptureMediaStreamTrack.prototype.requestFrame),vs=cv.captureStream(rf?0:FPS),vt=vs.getVideoTracks()[0],push=()=>{if(rf&&vt)vt.requestFrame();};
   const st=new MediaStream([...vs.getVideoTracks(),...dest.stream.getAudioTracks()]);
   const rec=new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:6e6,audioBitsPerSecond:128e3});const parts=[];
   rec.ondataavailable=e=>{if(e.data&&e.data.size)parts.push(e.data);};
@@ -200,12 +213,19 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   P.lines.forEach((s,i)=>{if(bufs[i]){const n=ac.createBufferSource();n.buffer=bufs[i];n.connect(dest);if(o.monitor)n.connect(ac.destination);n.start(t0+s.t);}});
   /* 배경음악: 목소리 나올 때는 작게 */
   if(music){const n=ac.createBufferSource(),gm=ac.createGain();n.buffer=music;duck(gm.gain,P,t0,bufs.some(Boolean)||!!nar);n.connect(gm).connect(dest);if(o.monitor)gm.connect(ac.destination);n.start(t0);}
-  await new Promise(ok=>{let last=-1;const tick=()=>{const t=ac.currentTime-t0;if(t>=P.total){ok();return;}
-      if(t>=0){drawFrame(g,t,S);const p=Math.floor(t/P.total*100);if(p!==last){last=p;o.onProgress&&o.onProgress(p,t,P.total);}}
-      setTimeout(tick,1000/FPS/2);};tick();});
-  drawFrame(g,P.total-0.01,S);await new Promise(r=>setTimeout(r,250));rec.stop();await done;if(sil)sil.stop();ac.close();
+  /* 30분의 1초마다 한 장: 다른 탭을 봐도 느려지지 않게 일꾼(Worker) 시계로 깨움 */
+  const clock=ticker(1000/FPS);
+  await new Promise(ok=>{let last=-1,lf=-1;clock.on(()=>{const t=ac.currentTime-t0;if(t>=P.total){ok();return;}
+      if(t<0)return;const f=Math.floor(t*FPS);if(f===lf)return;lf=f;drawFrame(g,t,S);push();
+      const p=Math.floor(t/P.total*100);if(p!==last){last=p;o.onProgress&&o.onProgress(p,t,P.total);}});});
+  clock.stop();drawFrame(g,P.total-0.01,S);push();await new Promise(r=>setTimeout(r,250));push();rec.stop();await done;if(sil)sil.stop();ac.close();
   const blob=new Blob(parts,{type:mime.split(";")[0]});
   return {blob,mime,ext:mime.startsWith("video/mp4")?"mp4":"webm",seconds:P.total};}
+
+function ticker(ms){let w=null,cb=null,id=null;
+  try{const u=URL.createObjectURL(new Blob([`setInterval(()=>postMessage(0),${ms})`],{type:"text/javascript"}));w=new Worker(u);w.u=u;w.onmessage=()=>cb&&cb();}
+  catch(e){w=null;id=setInterval(()=>cb&&cb(),ms);}
+  return {on(f){cb=f;},stop(){cb=null;if(w){w.terminate();URL.revokeObjectURL(w.u);}if(id)clearInterval(id);}};}
 
 /* 미리보기: 소리 없이 화면만 그려 봄 */
 async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
