@@ -103,7 +103,12 @@ const ls={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set
 const P=new URLSearchParams(location.search);
 let PW=ls.get("gs-video-pw"),CL=[],KW=[],CFG={},IMG={},EDITS={},PICK=0,BUSY=false;
 async function rest(p,o){o=o||{};const r=await fetch(SB+"/rest/v1/"+p,{method:o.method||"GET",headers:Object.assign({apikey:KEY,"x-team-key":"","Content-Type":"application/json"},o.headers||{}),body:o.body});if(!r.ok)throw new Error("자료 칸 "+r.status);const t=await r.text();return t?JSON.parse(t):null;}
-async function fn(b){const r=await fetch(FN,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json","x-video-key":PW},body:JSON.stringify(b)});let d={};try{d=await r.json()}catch(e){d={ok:false,error:"사진 함수가 응답하지 않아요 ("+r.status+")"}}if(r.status===401&&d.auth===false){PW="";ls.set("gs-video-pw","");}return d;}
+async function fn(b){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),160000);let r;
+  try{r=await fetch(FN,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json","x-video-key":PW},body:JSON.stringify(b),signal:ctl.signal});}
+  catch(e){return {ok:false,error:ctl.signal.aborted?"너무 오래 걸려서 멈췄어요. 잠시 뒤 다시 눌러 주세요":"함수에 연결하지 못했어요"};}finally{clearTimeout(tm);}
+  let d={};try{d=await r.json()}catch(e){d={ok:false,error:"함수가 응답하지 않아요 ("+r.status+")"}}
+  /* Supabase가 함수를 중간에 끊으면 {code,message}만 옴: 원인을 그대로 보여 줌 */
+  if(!d.ok&&!d.error)d.error=(r.status===546||/WORKER|LIMIT|resource/i.test(String(d.code||d.message||""))?"함수가 시간·자원 한도에 걸렸어요":"함수 오류")+" ("+r.status+(d.message||d.msg?" "+String(d.message||d.msg).slice(0,80):"")+")";if(r.status===401&&d.auth===false){PW="";ls.set("gs-video-pw","");}return d;}
 function msg(t,k){$("msg").innerHTML=t?`<div class="msg ${k||"ok"}">${t}</div>`:"";}
 const SECS=[["hero","첫 화면"],["warn","주의"],["list","체크 목록"],["person","증상·사진"],["clinic","업체 소개"],["time","시기별"],["treat","치료 방법"],["doc","의료진"],["room","입원실"],["facility","시설"],["info","진료시간·길"]];
 let ON={};try{ON=JSON.parse(ls.get("gs-blog-on")||"{}")}catch(e){}
