@@ -235,7 +235,7 @@ const S={
     ${c.tel?`<div class="itel">${icon("phone")}<div><div class="itl" ${E}>진료 문의</div><div class="itn" ${E}>${esc(c.tel)}</div></div></div>`:""}
     <div class="ihours">${(c.hours||[]).map(h=>`<div class="ih">${icon("clock")}<div><div class="ihl" ${E}>${esc(h[0])}</div><div class="iht" ${E}>${esc(h[1])}</div></div></div>`).join("")}${c.lunch?`<div class="ih">${icon("utensils")}<div><div class="ihl" ${E}>점심시간</div><div class="iht" ${E}>${esc(c.lunch)}</div></div></div>`:""}</div>
     ${c.addr?`<div class="iaddr"><div ${E}>${esc(c.addr)}</div>${c.way?`<div ${E}>${esc(c.way)}</div>`:""}</div>`:""}
-    ${c.station?map(c):""}
+    ${mapb(c)}
     ${c.parking?`<div class="ipark">${icon("car")}<b ${E}>주차</b><span ${E}>${esc(c.parking)}</span></div>`:""}
     <div class="center foot">${logo(c)}</div></section>`
 };
@@ -247,6 +247,10 @@ function map(c){return `<div class="map"><svg viewBox="0 0 800 300" width="100%"
   <g transform="translate(600 160)"><path d="M0 40s-22-19-22-38a22 22 0 0 1 44 0C22 21 0 40 0 40z" fill="#2d6fd6"/><circle cy="2" r="8" fill="#fff"/></g></svg>
   <div class="mst" ${E}>${esc(c.station)}</div>${c.walk?`<div class="mwk">${icon("walk")}<span ${E}>${esc(c.walk)}</span></div>`:""}<div class="mcl" ${E}>${esc(c.name)}</div></div>`;}
 
+/* 오시는 길: 실제 지도 그림(주소로 만든 것)이 있으면 그것, 없으면 역 안내 그림 */
+function mapb(c){if(c.mapImg)return `<div class="rmap">${ph("map",c.mapImg,"mapph")}${c.station||c.walk?`<div class="rmap-s"><b ${E}>${esc(c.station||"")}</b>${c.walk?`<span ${E}>${esc(c.walk)}</span>`:""}</div>`:""}</div>`;return c.station?map(c):"";}
+/* 치료 설명: 홈페이지에 있는 설명이 있으면 그것 */
+const tdOf=(c,i,a)=>{const d=c&&c.tdesc;return (d&&(d[a]||d[plain(a)]))||TD[i]||TD.check;};
 /* 전체 이미지: 구역 순서대로 */
 function build(o){if(STYLES[o.style]&&STYLES[o.style].real)return rbuild(o);if(STYLES[o.style]&&STYLES[o.style].card)return kbuild(o);const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
@@ -327,7 +331,7 @@ const K={
     return `<section class="k k-treat">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one",top:"TREATMENT"})}
     <div class="k-q"><i>“</i><span ${E}>몸 상태를 꼼꼼히 살피고 <b class="ac">상태에 맞춘 치료</b>로<br>편안한 일상을 돕겠습니다.</span><i>”</i></div>
     ${rows[0]?`<div class="k-phcap">${ph("treat0",img.treat0,"k-tph")}<div class="k-cap"><b ${E}>${esc(tname(KEYOF(p)))}, 이렇게 살펴요</b><span ${E}>불편한 곳과 몸 상태를 먼저 확인한 뒤<br>상태에 맞는 치료 방법을 함께 정합니다.</span></div></div>`:""}
-    <div class="k-tcs">${rows.map(([i,a])=>`<div class="k-tc"><div class="k-tci">${icon(i)}</div><div><span class="k-tag" ${E}>${esc(a)}</span><div class="k-tcd" ${E}>${esc(TD[i]||TD.check)}</div></div></div>`).join("")}</div>
+    <div class="k-tcs">${rows.map(([i,a])=>`<div class="k-tc"><div class="k-tci">${icon(i)}</div><div><span class="k-tag" ${E}>${esc(a)}</span><div class="k-tcd" ${E}>${esc(tdOf(c,i,a))}</div></div></div>`).join("")}</div>
     <div class="k-note" ${E}>${esc(p.treat.note)}</div>${kfoot(c,1)}</section>`;},
   doctor:(d,k,c)=>`<section class="k k-docs"><div class="k-dbox"><div class="k-dl"><div class="k-dtt" ${E}>${esc(d.title||"원장")}</div><div class="k-dn" ${E}>${esc(d.name)}</div><div class="k-dr" ${E}>${esc(d.role||"")}</div></div><div class="k-dr2">${ph("doc"+k,d.photo,"k-dph")}</div></div>
     ${(d.fields||[]).length||(d.history||[]).length?`<div class="k-adv">${(d.fields||[]).length?`<div class="k-advh sm" ${E}>진료 분야</div>${d.fields.map(x=>`<div class="k-cl">${chk}<span ${E}>${esc(x)}</span></div>`).join("")}`:""}
@@ -343,7 +347,7 @@ const K={
       <div class="k-fg">${g.map((x,k)=>ph("fac"+(gi*4+k),x.url,"k-fph")).join("")}</div></div>`).join("")}${kfoot(c)}</section>`;},
   info:(c)=>{const hs=(c.hours||[]).filter(h=>h&&h[1]);
     return `<section class="k k-info"><div class="k-brk">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md",top:"INFO"})}</div>
-    ${c.station?map(c):""}
+    ${mapb(c)}
     <div class="k-rows">${c.addr?`<div class="k-row"><div class="k-ri2">${icon("pin")}<b>주소</b></div><div class="k-rv" ${E}>${esc(c.addr)}${c.way?`<br><small>${esc(c.way)}</small>`:""}</div></div>`:""}
     ${c.tel?`<div class="k-row"><div class="k-ri2">${icon("phone")}<b>전화번호</b></div><div class="k-rv big" ${E}>${esc(c.tel)}</div></div>`:""}
     ${hs.length||c.lunch?`<div class="k-row"><div class="k-ri2">${icon("clock")}<b>진료시간</b></div><div class="k-rv hrs">${hs.map(h=>`<div><span ${E}>${esc(h[0])}</span><b ${E}>${esc(h[1])}</b></div>`).join("")}${c.lunch?`<div><span>점심시간</span><b ${E}>${esc(c.lunch)}</b></div>`:""}</div></div>`:""}
@@ -387,13 +391,13 @@ const KV={
     /* 지그재그 줄 */
     (p,c,img)=>{const rows=treatRows(p,c);return `<section class="k k-treat">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one",top:"TREATMENT"})}
       ${rows[0]?ph("treat0",img.treat0,"k-tph2"):""}
-      <div class="k-zzs">${rows.map(([i,a],k)=>`<div class="k-zz ${k%2?"r":""}"><div class="k-zzi">${icon(i)}<b>${nn(k)}</b></div><div class="k-zzt"><div class="k-zzh" ${E}>${esc(a)}</div><div ${E}>${esc(TD[i]||TD.check)}</div></div></div>`).join("")}</div>
+      <div class="k-zzs">${rows.map(([i,a],k)=>`<div class="k-zz ${k%2?"r":""}"><div class="k-zzi">${icon(i)}<b>${nn(k)}</b></div><div class="k-zzt"><div class="k-zzh" ${E}>${esc(a)}</div><div ${E}>${esc(tdOf(c,i,a))}</div></div></div>`).join("")}</div>
       <div class="k-note" ${E}>${esc(p.treat.note)}</div>${kfoot(c,1)}</section>`;},
     /* 2칸 타일 */
     (p,c,img)=>{const rows=treatRows(p,c);return `<section class="k k-treat tint">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one",top:"TREATMENT"})}
       <div class="k-q"><i>“</i><span ${E}>몸 상태를 꼼꼼히 살피고 <b class="ac">상태에 맞춘 치료</b>로<br>편안한 일상을 돕겠습니다.</span><i>”</i></div>
       ${rows[0]?`<div class="k-phcap">${ph("treat0",img.treat0,"k-tph")}</div>`:""}
-      <div class="k-tgs ${rows.length%2?"odd":""}">${rows.map(([i,a])=>`<div class="k-tg"><div class="k-tgi">${icon(i)}</div><b ${E}>${esc(a)}</b><span ${E}>${esc(TD[i]||TD.check)}</span></div>`).join("")}</div>
+      <div class="k-tgs ${rows.length%2?"odd":""}">${rows.map(([i,a])=>`<div class="k-tg"><div class="k-tgi">${icon(i)}</div><b ${E}>${esc(a)}</b><span ${E}>${esc(tdOf(c,i,a))}</span></div>`).join("")}</div>
       <div class="k-note" ${E}>${esc(p.treat.note)}</div>${kfoot(c)}</section>`;}],
   person:[null,
     (p,c)=>{const who=p.person.sym.slice(0,3).map(([i,t])=>[i,t]),fs=feats(p,c).slice(0,5);
@@ -421,7 +425,7 @@ const KV={
       <div class="k-q hw white"><i>“</i><span ${E}>편안하고 건강한 일상을 누리실 수 있도록 함께하겠습니다</span><i>”</i></div>${kfoot(c,1)}</div></section>`;}],
   info:[null,
     (c)=>{const hs=(c.hours||[]).filter(h=>h&&h[1]),row=(i,l,v,cl)=>`<div class="k-tr2"><div class="k-tl2">${icon(i)}<b>${l}</b></div><div class="k-tv ${cl||""}">${v}</div></div>`;
-      return `<section class="k k-info">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md",top:"INFO"})}${c.station?map(c):""}
+      return `<section class="k k-info">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md",top:"INFO"})}${mapb(c)}
       <div class="k-tbl">${c.addr?row("pin","주소",`<span ${E}>${esc(c.addr)}</span>${c.way?`<small ${E}>${esc(c.way)}</small>`:""}`):""}
       ${c.tel?row("phone","전화번호",`<span ${E}>${esc(c.tel)}</span>`,"big"):""}
       ${hs.length||c.lunch?row("clock","진료시간",`<div class="k-hrs2">${hs.map(h=>`<div><span ${E}>${esc(h[0])}</span><b ${E}>${esc(h[1])}</b></div>`).join("")}${c.lunch?`<div><span>점심시간</span><b ${E}>${esc(c.lunch)}</b></div>`:""}</div>`):""}
@@ -431,7 +435,9 @@ const KV={
 const KX=(k,L,...a)=>{const f=(KV[k]||[])[(L&&L[k])|0];return f?f(...a):K[k](...a);};
 function kbuild(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{},L=o.look;const out=[];KN=0;
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
-  add("hero",KX("hero",L,p,c,img));add("warn",KX("warn",L,p,c));add("list",KX("list",L,p,c,img));add("treat",KX("treat",L,p,c,img));add("person",KX("person",L,p,c));
+  add("hero",KX("hero",L,p,c,img));
+  {const ab=aboutItems(c);if(c.intro||ab.length)add("about",`<section class="k k-about">${KH([c.name||"저희 한의원",`[[${plain(c.slogan||"병원 소개")}]]`].map(x=>String(x).slice(0,22)),{cls:"md",top:"ABOUT"})}${c.intro?`<div class="k-blue" ${E}>${esc(c.intro)}</div>`:""}
+    <div class="k-whol">${ab.slice(0,4).map(([a,b])=>`<div class="k-whr">${chk}<span ${E}>${esc(a)}${b?` <small>${esc(b)}</small>`:""}</span></div>`).join("")}</div>${kfoot(c)}</section>`);}add("warn",KX("warn",L,p,c));add("list",KX("list",L,p,c,img));add("treat",KX("treat",L,p,c,img));add("person",KX("person",L,p,c));
   add("time",KX("time",L,p,c));add("clinic",KX("clinic",L,p,c));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,K.doctor(d,k,c)));
   if(c.room&&c.room.on)add("room",K.room(c,img));add("facility",K.facility(c));add("info",KX("info",L,c));
   return out.join("");}
@@ -446,10 +452,10 @@ function rlist(f,o){const n=String(o.n).padStart(2,"0"),tall=o.items.length>4||o
   const pk=o.ph?ph(o.ph,o.src,"r-ph"):"";
   if(f==="dark"){const grid=!o.ph&&o.items.length===4&&o.items.every(x=>x[1]);
     return `<section class="r r-dark ${tall?"tall":""} ${o.ph?"wph":""}">${o.ph?`<div class="r-side">${pk}</div>`:""}<div class="r-num">${n}</div>
-      <div class="r-in">${o.kick?`<div class="r-kick" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}<div class="${grid?"r-grid":"r-box"}">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;}
-  if(f==="beige")return `<section class="r r-beige ${tall?"tall":""}"><div class="r-in">${o.kick?`<div class="r-kick" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}
+      <div class="r-in">${o.kick?`<div class="r-kick" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}${o.para?`<div class="r-para" ${E}>${esc(o.para)}</div>`:""}<div class="${grid?"r-grid":"r-box"}">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;}
+  if(f==="beige")return `<section class="r r-beige ${tall?"tall":""}"><div class="r-in">${o.kick?`<div class="r-kick" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}${o.para?`<div class="r-para" ${E}>${esc(o.para)}</div>`:""}
       ${o.ph?`<div class="r-phw">${pk}</div>`:""}<div class="r-cards">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;
-  return `<section class="r r-pho ${tall?"tall":""} ${o.ph?"wph":""}">${o.ph?`<div class="r-top">${pk}</div>`:""}<div class="r-in">${o.kick?`<div class="r-lab" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}
+  return `<section class="r r-pho ${tall?"tall":""} ${o.ph?"wph":""}">${o.ph?`<div class="r-top">${pk}</div>`:""}<div class="r-in">${o.kick?`<div class="r-lab" ${E}>${esc(o.kick)}</div>`:""}${RT(o.t)}${o.para?`<div class="r-para" ${E}>${esc(o.para)}</div>`:""}
       <div class="r-lines">${rows}</div>${o.note?`<div class="r-note" ${E}>${esc(o.note)}</div>`:""}</div></section>`;}
 /* 표지: 큰 제목 + 사진 */
 function rcover(f,p,c,img){const t=p.hero.t,sub=p.warn.sub;
@@ -470,16 +476,20 @@ function rinfo(f,c){const hs=(c.hours||[]).filter(h=>h&&h[1]),row=(l,v)=>`<div c
   return `<section class="r r-info ${f}"><div class="r-in"><div class="r-kick" ${E}>진료 안내</div><div class="r-t"><div ${E}>${esc(c.name||"")}</div><div ${E}><b class="ra">진료시간 · 오시는 길</b></div></div>
   <div class="r-tab">${hs.length?row("진료시간",hs.map(h=>`<div><span ${E}>${esc(h[0])}</span> <b ${E}>${esc(h[1])}</b></div>`).join("")+(c.lunch?`<div><span>점심시간</span> <b ${E}>${esc(c.lunch)}</b></div>`:"")):""}
   ${c.tel?row("전화",`<b class="r-tel" ${E}>${esc(c.tel)}</b>`):""}${c.addr?row("주소",`<span ${E}>${esc(c.addr)}</span>${c.way?`<small ${E}>${esc(c.way)}</small>`:""}`):""}${c.parking?row("주차",`<span ${E}>${esc(c.parking)}</span>`):""}</div>
-  ${c.station?map(c):""}<div class="r-law" ${E}>모든 치료는 개인에 따라 차이가 있을 수 있고 부작용이 생길 수 있습니다. 반드시 의료진과 충분히 상담한 뒤 결정하시기 바랍니다.</div></div><div class="r-cn">${rname(c)}</div></section>`;}
+  ${mapb(c)}<div class="r-law" ${E}>모든 치료는 개인에 따라 차이가 있을 수 있고 부작용이 생길 수 있습니다. 반드시 의료진과 충분히 상담한 뒤 결정하시기 바랍니다.</div></div><div class="r-cn">${rname(c)}</div></section>`;}
+/* 홈페이지에서 찾은 강점·장비로 '병원 소개' 목록 */
+function aboutItems(c){const out=[];(c.why||[]).forEach(x=>out.push([plain(x),""]));if(out.length<2)(c.badges||[]).forEach(x=>out.push([plain(x),""]));
+  if((c.equip||[]).length)out.push(["장비·시설",c.equip.slice(0,5).join(", ")]);return out.filter(x=>x[0]);}
 function rbuild(o){const st=STYLES[o.style]||{},f=st.rf||"dark",p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{},out=[],tp=KEYOF(p),tn=tname(tp);let n=1;
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
   const L=(k,o2)=>{n++;return rlist(f,Object.assign({n,c},o2));};
   add("hero",rcover(f,p,c,img));
+  const ab=aboutItems(c);if(c.intro||ab.length)add("about",L("about",{kick:"병원 소개",t:[c.name||"저희 한의원",`[[${plain(c.slogan||"이런 곳이에요")}]]`].map(x=>String(x).slice(0,22)),para:c.intro||"",items:ab.slice(0,c.intro?3:4)}));
   add("warn",L("warn",{kick:"이런 증상, 그냥 두지 마세요",t:p.list.t,items:p.list.items.slice(0,5).map(([,t])=>[t,""]),check:1,ph:"band",src:img.band}));
   add("list",L("list",{kick:"왜 그럴까요?",t:p.warn.t,items:p.warn.cards.slice(0,4).map(([,a,b])=>[a,b])}));
   const rows=treatRows(p,c);
-  add("treat",L("treat",{kick:(c.name?c.name+" ":"")+tn,t:[(c.name||"상태에 맞춘")+(c.name?"의":""),`[[${tp==="기본"?"맞춤 진료":tp+" 치료"}]]`],items:rows.map(([i,a])=>[a,TD[i]||TD.check]),note:p.treat.note}));
-  rows.forEach(([i,a],k)=>add("treat",rphoto(f,"treat"+k,img["treat"+k],a,TD[i]||"")));
+  add("treat",L("treat",{kick:(c.name?c.name+" ":"")+tn,t:[(c.name||"상태에 맞춘")+(c.name?"의":""),`[[${tp==="기본"?"맞춤 진료":tp+" 치료"}]]`],items:rows.map(([i,a])=>[a,tdOf(c,i,a)]),note:p.treat.note}));
+  rows.forEach(([i,a],k)=>add("treat",rphoto(f,"treat"+k,img["treat"+k],a,tdOf(c,i,a))));
   add("person",L("person",{kick:"이런 분께 권해요",t:[tn,"이런 분께 [[필요해요]]"],items:p.person.sym.slice(0,4).map(([,t])=>[t+ro(t)+" 힘드신 분",""]),check:1}));
   add("time",L("time",{kick:"진료 과정",t:p.time.t,items:p.time.steps.map(([a,,t])=>[a,t]),step:1,note:p.time.note}));
   add("clinic",L("clinic",{kick:"약속드립니다",t:[(c.name||"저희 한의원")+"의",`[[진료 원칙]]`],items:feats(p,c).slice(0,4).map(([i,t])=>[plain(t),FD[i]||FD.check])}));
@@ -540,7 +550,8 @@ const R_CSS=`
 .bi .r-fg{display:grid;grid-template-columns:1fr 1fr;gap:14px}.bi .r-fi{position:relative;height:330px;border-radius:14px;overflow:hidden}.bi .r-fi .ph{width:100%;height:100%}.bi .r-fg.n1 .r-fi,.bi .r-fg.n2 .r-fi{height:670px}.bi .r-fg.n1{grid-template-columns:1fr}.bi .r-fg.n3 .r-fi:first-child{grid-row:span 2;height:674px}
 .bi .r-fi span{position:absolute;left:14px;bottom:14px;background:rgba(0,0,0,.6);color:#fff;font-size:22px;font-weight:700;border-radius:8px;padding:6px 14px}
 /* 진료 안내 */
-.bi .r-info{height:auto;min-height:860px;padding-bottom:120px;background:var(--rbg);--rink:#2a2622}.bi .r-info.dark{--rink:#f5ece3}.bi .r-info.beige .r-t{font-family:"Nanum Myeongjo",serif;font-size:56px}.bi .r-info .r-t{font-size:58px}
+.bi section.r.r-info{height:auto;min-height:860px;padding-bottom:120px;background:var(--rbg);--rink:#2a2622}.bi section.r.r-info.dark{--rink:#f5ece3}
+.bi section.r.r-info,.bi .r-info .r-t,.bi .r-info .r-ir{color:var(--rink)}.bi .r-info.beige .r-t{font-family:"Nanum Myeongjo",serif;font-size:56px}.bi .r-info .r-t{font-size:58px}
 .bi .r-tab{margin-top:36px;border-top:2px solid var(--a)}.bi .r-ir{display:grid;grid-template-columns:150px 1fr;gap:20px;padding:22px 4px;border-bottom:1px solid rgba(128,128,128,.3);font-size:25px;line-height:1.5}.bi .r-ir>b{color:var(--a)}.bi .r-ir small{display:block;font-size:20px;opacity:.75}.bi .r-tel{font-size:40px}
 .bi .r-info .map{margin-top:28px}.bi .r-law{font-size:18px;opacity:.65;margin-top:26px;line-height:1.6}`;
 
@@ -598,7 +609,7 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-ri2{display:flex;flex-direction:column;align-items:center;gap:4px;color:#ffe9a6}.bi .k-ri2 .ic{width:46px;height:46px}.bi .k-ri2 b{font-size:22px}.bi .k-rv{font-size:25px;font-weight:700;line-height:1.4}.bi .k-rv small{font-size:20px;font-weight:500;opacity:.9}.bi .k-rv.big{font-size:42px;font-weight:900}
 .bi .k-rv.hrs{display:flex;flex-wrap:wrap;gap:6px 0}.bi .k-rv.hrs div{width:50%;display:flex;flex-direction:column;font-size:21px;padding-right:8px}.bi .k-rv.hrs span{color:#ffe9a6;font-weight:700}.bi .k-rv.hrs b{font-size:25px}
 .bi .k-lfoot{background:var(--a);margin:44px -48px -40px;padding:6px 40px 36px}.bi .k-lfoot .k-foot{margin:0;padding:24px 0 14px}.bi .k-lfoot .k-fname{color:#fff}.bi .k-law{color:rgba(255,255,255,.85);font-size:19px;line-height:1.6}
-.bi .k .ph{background:#e9eef0}
+.bi .k .ph{background:#e9eef0}.bi .rmap{position:relative;margin-top:28px;border-radius:20px;overflow:hidden;box-shadow:0 6px 24px rgba(20,40,80,.10)}.bi .mapph{aspect-ratio:1.72;width:100%;border-radius:0}.bi .rmap-s{display:flex;gap:14px;align-items:center;justify-content:center;background:#fff;color:#22262c;padding:16px;font-size:23px}.bi .rmap-s b{color:var(--a)}.bi .k-whr small{font-size:20px;font-weight:500;color:#5d6572}.bi .r-para{font-size:25px;line-height:1.6;margin-top:24px;opacity:.88}
 .bi .k-kk{display:none}
 .bi .k-g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:34px}.bi .k-gc{background:#fff;border-radius:26px;padding:26px 22px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 6px 24px rgba(20,40,80,.07)}.bi .k-gc b{font-size:28px;color:var(--a)}.bi .k-gc span{font-size:22px;color:#4a5260}
 .bi .k-gci{width:84px;height:84px;border-radius:50%;background:var(--bg2);color:var(--a);display:grid;place-items:center;flex:none}.bi .k-gci .ic{width:46px;height:46px}
