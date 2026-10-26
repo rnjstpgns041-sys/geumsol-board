@@ -242,6 +242,77 @@ ${text}`;
     return j({ ok: true, info, imgs: [...imgs].slice(0, 40), logo: logo ? new URL(logo, u0).href : "", pages: pages.length, note });
   }
 
+  // ── 쇼츠 영상 도우미 (제미나이) ──
+  const gemJson = (d: unknown) => {
+    const t = (d as any)?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
+    return JSON.parse(t.replace(/^\s*```(?:json)?|```\s*$/g, "").trim());
+  };
+  // 대본 쓰기: 키워드 주제로 1분(공백 뺀 320~380자) 쇼츠 대본
+  if (b.action === "script") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const kw = String(b.kw || "").trim().slice(0, 60), name = String(b.name || "").trim().slice(0, 40);
+    if (!kw) return j({ ok: false, error: "키워드를 넣어 주세요." });
+    const law = b.type === "law";
+    const feats = (Array.isArray(b.feats) ? b.feats : []).map((x) => String(x || "").trim().slice(0, 120)).filter(Boolean).slice(0, 8);
+    const prompt = `${law ? "법률사무소(변호사)" : "한의원·병원"} 홍보용 1분 세로 쇼츠 영상 대본을 써 주세요.
+키워드: ${kw}
+업체: ${name || "(없음)"}${b.area ? " / 지역: " + String(b.area).slice(0, 30) : ""}
+업체 특징(사실인 것만, 이 중 2~3개를 자연스럽게):
+${feats.map((f) => "- " + f).join("\n") || "- (없음)"}
+규칙:
+- 키워드 "${kw}"의 주제(증상·상황·궁금증)에 딱 맞는 내용으로. 다른 주제로 새지 말 것. 키워드 낱말을 2번 이상 넣기.
+- 첫 문장은 시청자가 멈춰 보게 하는 질문이나 공감 한 줄. 마지막 문장은 ${name ? name + "에 상담을 권하는 말" : "상담을 권하는 말"}.
+- 한 줄에 한 문장, 12~16줄, 각 문장은 공백 빼고 15~35자, 전체는 공백 빼고 320~380자. 말하듯 쉬운 존댓말(~요).
+- ${law ? "변호사 광고 규칙: 승소 보장, 최고, 100%, 무조건 같은 말 금지." : "의료광고법: 최고, 최초, 유일, 완치, 100%, 부작용 없음, 보장, 치료 후기, 효과 단정 금지. '도움이 될 수 있어요'처럼 조심스럽게."}
+- 없는 사실(가격, 할인, 경력, 장비)을 지어내지 말 것.
+JSON 하나로만: {"lines":["문장1","문장2"]}`;
+    try {
+      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.9 } }, Date.now() + 60000);
+      const lines = (gemJson(d).lines || []).map((x: unknown) => String(x || "").trim()).filter(Boolean).slice(0, 24);
+      if (lines.length < 4) throw new Error("대본이 너무 짧게 나왔어요");
+      return j({ ok: true, lines });
+    } catch (e) { return j({ ok: false, error: "대본을 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+  }
+  // 업체 사진 설명 달기: 팀이 올린 사진(우리 저장소)만 보고 무엇이 찍혔는지 짧게
+  if (b.action === "label") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const base = (Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "") + "/storage/v1/object/public/files/";
+    const urls = (Array.isArray(b.urls) ? b.urls : []).map(String).filter((u) => base.length > 40 && u.startsWith(base)).slice(0, 8);
+    const until = Date.now() + 100000;
+    const out = await Promise.all(urls.map(async (u) => {
+      try {
+        const r = await fetch(u); const ct = (r.headers.get("content-type") || "image/jpeg").split(";")[0];
+        if (!r.ok || !/^image\//.test(ct)) return null;
+        const buf = new Uint8Array(await r.arrayBuffer()); if (buf.length > 6_000_000) return null;
+        const d = await gemAuto("text", { contents: [{ parts: [{ inline_data: { mime_type: ct, data: b64(buf) } }, { text: '병원·법률사무소 홍보 영상에 쓸 사진이에요. 무엇이 찍혔는지 JSON 하나로만: {"desc":"8~20자 한국어 설명 (예: 추나 치료 받는 환자, 한의원 입구 간판, 입원실 침대)","tags":["사진 속 대상·장소·행동 낱말 4~8개, 한국어"]}' }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.2 } }, until);
+        const g = gemJson(d); return { desc: String(g.desc || "").slice(0, 40), tags: (Array.isArray(g.tags) ? g.tags : []).map((x: unknown) => String(x).slice(0, 12)).slice(0, 8) };
+      } catch { return null; }
+    }));
+    return j({ ok: true, labels: out });
+  }
+  // 대본 문장마다 어울리는 업체 사진 고르기 (어울리는 것만, 억지로 다 쓰지 않음)
+  if (b.action === "match") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const lines = (Array.isArray(b.lines) ? b.lines : []).map((x) => String(x || "").slice(0, 120)).slice(0, 30);
+    const ph = (Array.isArray(b.photos) ? b.photos : []).slice(0, 40).map((x: any, i: number) => `${i}: ${String(x?.desc || "").slice(0, 40)} [${(Array.isArray(x?.tags) ? x.tags : []).map(String).join(", ").slice(0, 80)}]`);
+    if (!lines.length || !ph.length) return j({ ok: true, pick: lines.map(() => -1) });
+    const prompt = `쇼츠 영상 대본 문장마다, 아래 업체 사진 중 그 문장 내용과 잘 맞는 사진 번호를 골라 주세요.
+- 문장 내용(증상, 치료, 장소, 사람)과 사진이 분명히 어울릴 때만 고르고, 애매하면 -1.
+- 업체 소개·위치·상담 권유 문장에는 외관·간판·입구·데스크·진료실 같은 사진이 어울려요.
+- 같은 사진은 한 번만. 사진을 다 쓰려고 억지로 고르지 말 것.
+사진:
+${ph.join("\n")}
+문장:
+${lines.map((l, i) => i + ": " + l).join("\n")}
+JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
+    try {
+      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.1 } }, Date.now() + 50000);
+      const raw = gemJson(d).pick || [], used = new Set<number>();
+      const pick = lines.map((_, i) => { const n = Number(raw[i]); if (!Number.isInteger(n) || n < 0 || n >= ph.length || used.has(n)) return -1; used.add(n); return n; });
+      return j({ ok: true, pick });
+    } catch (e) { return j({ ok: false, error: String((e as Error).message || e).slice(0, 160) }); }
+  }
+
   // 홈페이지 사진 한 장을 대신 받아 data URL로 (브라우저는 다른 사이트 사진을 그림으로 저장할 수 없어서)
   if (b.action === "img") {
     const u = safeUrl(b.url);
