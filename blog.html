@@ -207,7 +207,7 @@ async function autoPhotos(force){const mode=$("phsrc").value,slots=SLOTS();let w
     /* 증상 설명 사진(사람이 아픈 곳을 잡은 사진)은 업체 사진이 어울리지 않아 늘 맞는 사진을 찾아 넣음 */
     const cw=want.filter(k=>k!=="person"&&k!=="band");cw.forEach((k,i)=>{if(i<co.length)IMG[k]=co[(i+COUSE)%co.length];});COUSE+=cw.length;want=want.filter(k=>!cw.slice(0,co.length).includes(k));render();}
   if(!want.length||mode==="co")return;if(!PW&&!force)return;
-  const gen=mode.endsWith("gen");msg(gen?"나노바나나가 그리는 중이에요…":"사진을 고르는 중이에요…","ok");
+  const gen=mode.endsWith("gen");msg(gen?"나노바나나가 그리는 중이에요…":"어울리는 사진을 고르는 중이에요… 사진을 하나씩 확인해서 20~30초쯤 걸려요.","ok");
   try{if(gen?await genPhotos(want,force):await freePhotos(want,force)){render();msg("");}}catch(e){msg("사진을 가져오지 못했어요. 사진 자리를 눌러 직접 넣어도 돼요.","warn");}}
 
 /* ── 사진 자리 누르기 ── */
@@ -224,7 +224,7 @@ $("bi").addEventListener("click",async e=>{const sv=e.target.closest("[data-save
     try{if(a==="up"){const [f]=await pickFiles(false);if(!f)return;msg("올리는 중이에요…","ok");setPhoto(key,await up(f));msg("");}
       else if(a==="co"){const u=await choose(clinicPhotos());if(u)setPhoto(key,u);}
       else if(a==="gen"){if(await genPhotos([key],true)){render();msg("");}}
-      else if(a==="free"){msg("다른 사진을 찾는 중이에요…","ok");if(await freePhotos([key],true)){render();msg("");}}
+      else if(a==="free"){msg("어울리는 사진을 찾는 중이에요… 사진을 하나씩 확인해서 10~20초쯤 걸려요.","ok");if(await freePhotos([key],true)){render();msg("");}}
       else setPhoto(key,"");}catch(err){msg("사진을 넣지 못했어요 ("+esc(err.message)+")","err");}};});
 function setPhoto(key,url){let m;if((m=key.match(/^doc(\d+)$/))){const d=(CFG.doctors||[]).filter(d=>d&&d.name)[+m[1]];if(d)d.photo=url;renderDocs();}
   else if((m=key.match(/^fac(\d+)$/))){const p=(CFG.photos||[]).filter(p=>p.url)[+m[1]];if(p){if(url)p.url=url;else CFG.photos.splice(CFG.photos.indexOf(p),1);}renderFacs();}

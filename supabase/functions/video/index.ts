@@ -386,48 +386,52 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
 공통으로 빼야 할 사진: 문신, 흑백 예술 사진, 성적이거나 무섭거나 피가 보이는 사진, 글자·로고가 큰 사진, 조건과 주제가 다른 사진.
 조건에 잘 맞는 번호만 잘 맞는 순서로 JSON 하나로 답해 주세요: {"good":[번호,...]} (하나도 없으면 {"good":[]})` }];
         ims.forEach((d, i) => { if (d) parts.push({ text: "사진 " + i }, { inline_data: { mime_type: "image/jpeg", data: d } }); });
-        const d = await gemAuto("text", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } }, t0 + 110000);
+        const d = await gemAuto("text", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } }, Math.min(t0 + 110000, Date.now() + 20000));
         const g = gemJson(d);
         return (Array.isArray(g.good) ? g.good : []).map(Number).filter((n: number) => Number.isInteger(n) && n >= 0 && n < cands.length && ims[n]);
       } catch { return null; } // 제미나이가 안 되면 예전처럼 고름
     }
-    const out: (null | { id: string; src: string; by: string })[] = [];
-    for (const q of qs) {
-      if (!q) { out.push(null); continue; }
+    // 사진 자리마다 동시에 찾음 (한 번에 6개씩): 제미나이 확인이 있어도 오래 걸리지 않게
+    type Got = null | "badkey" | { id: string; src: string; by: string };
+    async function one(q: string, qi: number): Promise<Got> {
+      if (!q) return null;
       try {
-        // 결과가 없으면 'asian'을 빼고, 그래도 없으면 첫 낱말만으로 다시 찾음
-        const qi = out.length, ori = orient[qi] || "";
+        const s0 = Date.now(), ori = orient[qi] || "";
+        // 결과가 없으면 'asian'을 빼고, 그래도 없으면 앞 두 낱말만으로 다시 찾음
         let res = await search(q, 1, ori);
         for (const q2 of [q.replace(/^asian /, ""), q.replace(/^asian /, "").split(" ").slice(0, 2).join(" ")]) {
           if (res === "badkey" || (Array.isArray(res) && res.filter((p) => !skip.has(p.id)).length) || q2 === q) continue;
           res = await search(q2, 1, ori);
         }
-        if (res === "badkey") return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
+        if (res === "badkey") return "badkey";
         let list = res.filter((p) => !skip.has(p.id));
         // 앞쪽(검색어에 잘 맞는 사진)이 다 쓰였으면 다음 쪽에서 찾음
         if (list.length < 3) { const more = await search(q, 2, ori); if (Array.isArray(more)) list = list.concat(more.filter((p) => !skip.has(p.id))); }
         if (!list.length) list = res; // 정말 다 썼으면 그때만 다시 씀
-        if (!list.length) { out.push(null); continue; }
+        if (!list.length) return null;
         // 잘 맞는 앞쪽 12장 안에서 골고루 (같은 검색어라도 영상마다 다른 사진)
-        let p = list[(pick + out.length * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
-        // 조건이 있으면 제미나이가 본 사진 중 어울리는 것만 (앞 10장, 없으면 다음 10장). 끝까지 없으면 빈칸으로 둠
-        if (gemk && vet[qi] && Date.now() - t0 < 90000) {
+        let p = list[(pick + qi * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
+        // 조건이 있으면 제미나이가 본 사진 중 어울리는 것만 (앞 12장, 빨리 끝났을 때만 다음 12장). 끝까지 없으면 빈칸으로 둠
+        if (gemk && vet[qi] && Date.now() - t0 < 80000) {
           let chosen: Ph | null = null, judged = false;
-          for (let k = 0; k < 2 && !chosen && k * 10 < list.length && Date.now() - t0 < 90000; k++) {
-            const cands = list.slice(k * 10, k * 10 + 10).filter((c) => c.pv);
+          for (let k = 0; k < 2 && !chosen && k * 12 < list.length && (k === 0 || Date.now() - s0 < 15000); k++) {
+            const cands = list.slice(k * 12, k * 12 + 12).filter((c) => c.pv);
             const good = await judge(cands, vet[qi]);
             if (good === null) break;
             judged = true;
             if (good.length) chosen = cands[good[(pick + Math.floor(Math.random() * 1000)) % Math.min(good.length, 3)]];
           }
-          if (chosen) p = chosen; else if (judged) { out.push(null); continue; }
+          if (chosen) p = chosen; else if (judged) return null;
         }
-        const im = await fetch(p.url);
-        if (!im.ok) { out.push(null); continue; }
         skip.add(p.id);
-        out.push({ id: p.id, src: "data:image/jpeg;base64," + b64(new Uint8Array(await im.arrayBuffer())), by: p.by });
-      } catch { out.push(null); }
+        const im = await fetch(p.url);
+        if (!im.ok) return null;
+        return { id: p.id, src: "data:image/jpeg;base64," + b64(new Uint8Array(await im.arrayBuffer())), by: p.by };
+      } catch { return null; }
     }
+    const out: Got[] = [];
+    for (let i = 0; i < qs.length; i += 6) out.push(...await Promise.all(qs.slice(i, i + 6).map((q, k) => one(q, i + k))));
+    if (out.includes("badkey")) return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
     return j({ ok: true, photos: out });
   }
 
