@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       try {
         const r = await fetch(u, { headers: HDR, signal: ctl.signal, redirect: "follow" });
         if (!r.ok) return "";
-        const buf = new Uint8Array(await r.arrayBuffer()).subarray(0, 2_000_000);
+        const buf = new Uint8Array(await r.arrayBuffer()).subarray(0, 700_000);
         let txt = new TextDecoder("utf-8").decode(buf);
         if (/charset=["']?euc-kr/i.test(txt.slice(0, 3000)) || /euc-kr/i.test(r.headers.get("content-type") || "")) txt = new TextDecoder("euc-kr").decode(buf);
         return txt;
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
       try {
         const r = await fetch("https://r.jina.ai/" + u.href, { headers: { Accept: "text/plain", "X-Timeout": "20", "X-With-Images-Summary": "true", "X-With-Links-Summary": "true" }, signal: ctl.signal });
         if (!r.ok) return "";
-        return (await r.text()).slice(0, 400_000);
+        return (await r.text()).slice(0, 150_000);
       } catch { return ""; } finally { clearTimeout(t); }
     }
     type Pg = { url: URL; html: string; text: string; md: string };
@@ -190,9 +190,12 @@ Deno.serve(async (req) => {
       const md = await reader(u);
       return { url: u, html, text: md && md.length > text.length ? md.replace(/!\[[^\]]*\]\([^)]*\)/g, " ").replace(/\]\([^)]*\)/g, "]") : text, md };
     }
-    const home = await read(u0);
+    // 브라우저가 이미 읽어 온 글이 있으면 다시 읽지 않고 정리만 함 (무료 한도: CPU 2초)
+    const given = typeof b.text === "string" && b.text.length >= 200;
+    const home: Pg = given ? { url: u0, html: "", text: String(b.text).slice(0, 24000), md: "" } : await read(u0);
     if (!home.text) return j({ ok: false, error: "홈페이지를 열지 못했어요. 주소가 맞는지 확인해 주세요." });
     const pages: string[] = [home.text], imgs = new Set<string>(), seen = new Set([u0.href]);
+    if (given && Array.isArray(b.imgs)) for (const x of b.imgs.slice(0, 40)) addImg(String(x));
     const WANT = /의료진|원장|소개|진료\s*시간|진료안내|오시는|찾아오|위치|시설|둘러|입원|병실|진료과목|클리닉|치료|프로그램|센터|about|doctor|location|map|info|clinic|program/i;
     const links: URL[] = [];
     const addLink = (href: string, label: string) => {
@@ -204,7 +207,7 @@ Deno.serve(async (req) => {
     };
     for (const m of home.html.matchAll(/<a\b[^>]*?href=["']([^"'#]+)["'][^>]*>([\s\S]{0,400}?)<\/a>/gi)) addLink(m[1], strip(m[2]));
     for (const m of home.md.matchAll(/(?<!!)\[([^\]]{0,80})\]\((https?:[^)\s]+)\)/g)) addLink(m[2], m[1]);
-    const subs = await Promise.all(links.slice(0, 6).map((u) => read(u, 9000)));
+    const subs = given ? [] : await Promise.all(links.slice(0, 4).map((u) => read(u, 9000)));
     subs.forEach((p) => { if (p.text) pages.push(p.text); });
     for (const p of [home, ...subs]) {
       for (const m of p.html.matchAll(/<img\b[^>]*?(?:data-src|data-original|src)=["']([^"']+)["']/gi)) addImg(m[1]);
@@ -239,7 +242,7 @@ ${text}`;
         info = { ...info, ...Object.fromEntries(Object.entries(g).filter(([, v]) => v !== "" && v != null && !(Array.isArray(v) && !v.length))) };
       } catch (e) { note = "제미나이 정리를 못 해서 전화·주소·시간만 채웠어요. (" + String((e as Error).message || e).slice(0, 400) + ")"; }
     } else note = "제미나이 키(GEMINI_KEY)가 없어서 전화·주소·시간만 채웠어요.";
-    return j({ ok: true, info, imgs: [...imgs].slice(0, 40), logo: logo ? new URL(logo, u0).href : "", pages: pages.length, note });
+    return j({ ok: true, info, imgs: [...imgs].slice(0, 40), logo: logo ? new URL(logo, u0).href : "", pages: given ? Number(b.pages) || 1 : pages.length, note });
   }
 
   // ── 쇼츠 영상 도우미 (제미나이) ──
