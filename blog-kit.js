@@ -376,14 +376,14 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-curl{position:absolute;right:0;bottom:0;width:96px;height:96px;background:linear-gradient(315deg,#f6f7f9 50%,#b9c6d0 50%,#dfe7ee 75%,#f2f6f9);border-radius:0 0 0 18px;box-shadow:-3px -3px 8px rgba(40,60,90,.12)}
 .bi .k-cl{display:flex;align-items:center;gap:16px;font-size:26px;padding:15px 0;color:#22262c;text-align:left}.bi .k-paper .k-cl+.k-cl{border-top:1.5px dashed #c7d6e2}.bi .k-cl span{line-height:1.35}
 .bi .k-ck{width:30px;height:30px;flex:none;color:var(--a)}.bi .k-white{margin-top:40px;padding:50px 40px 44px;border:4px solid #eceef1;box-shadow:none}.bi .k-end{font-size:40px;font-weight:900;margin-top:32px;line-height:1.3}
-.bi .k-bandph{position:relative;margin:40px -48px 0}.bi .k-bph{height:470px;border-radius:0}.bi .k-bph img{filter:saturate(.9)}
-.bi .k-bpills{position:absolute;left:50%;top:40px;transform:translateX(-50%);display:flex;flex-direction:column;gap:12px;width:430px}
+.bi .k-bandph{position:relative;margin:40px -48px 0}.bi .k-bph{height:420px;border-radius:0}.bi .k-bph img{filter:saturate(.9)}
+.bi .k-bpills{position:relative;margin:-34px auto 0;display:flex;flex-direction:column;gap:12px;width:470px;z-index:2}
 .bi .k-bp{display:flex;align-items:center;gap:14px;background:var(--a);color:#fff;border-radius:99px;padding:13px 30px;font-size:25px;text-align:left;box-shadow:0 6px 16px rgba(0,0,0,.18)}.bi .k-bp .k-ck{color:#ffe9a6;width:26px;height:26px}
 .bi .k-q{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:40px;font-size:27px;line-height:1.45;font-weight:500}.bi .k-q i{font-style:normal;font-size:70px;line-height:.6;color:#b9bec6;font-family:Georgia,serif;font-weight:900;align-self:flex-start}
 .bi .k-q.hw{font-family:"Nanum Pen Script","Gaegu",cursive;font-size:46px;font-weight:400}.bi .k-q.hw i{font-family:Georgia,serif}.bi .k-q .hb{color:var(--a);font-weight:400}.bi .k-q.white{color:#fff}.bi .k-q.white i{color:rgba(255,255,255,.7)}
 .bi .k-wbox{background:#fff;border-radius:30px;padding:36px;margin-top:34px;font-size:32px;font-weight:600;line-height:1.45}
 .bi .k-foot{display:flex;align-items:center;justify-content:center;gap:12px;margin:46px -48px -40px;padding:26px 0 30px}.bi .k-foot.band{background:var(--a);margin-top:46px}.bi .k-foot.band .k-fname{color:#fff}
-.bi .k-logo{max-height:46px;max-width:300px;display:block}.bi .k-foot.band .k-logo{filter:brightness(0) invert(1)}.bi .k-mark{width:38px;height:30px;border-radius:16px 16px 4px 4px;background:linear-gradient(120deg,#e0388f,#6b3cf0 40%,#1fb6f0 70%,#3fd27a)}.bi .k-fname{font-size:30px;font-weight:900;color:#1d2026}
+.bi .k-logo{max-height:46px;max-width:300px;display:block}.bi .k-foot.band .k-logo,.bi .k-lfoot .k-logo{background:#fff;border-radius:14px;padding:8px 18px;max-height:62px}.bi .k-mark{width:38px;height:30px;border-radius:16px 16px 4px 4px;background:linear-gradient(120deg,#e0388f,#6b3cf0 40%,#1fb6f0 70%,#3fd27a)}.bi .k-fname{font-size:30px;font-weight:900;color:#1d2026}
 .bi .k-who3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}.bi .k-wc{background:#fff;border:2px solid #eceef1;border-radius:22px;padding:22px 10px;font-size:23px;line-height:1.4;display:flex;flex-direction:column;align-items:center;gap:8px}.bi .k-wc .k-ck{width:38px;height:38px}
 .bi .k-adv{background:#e8f4fb;border-radius:30px;margin-top:30px;padding:34px 36px;text-align:left}.bi .k-advh{font-size:44px;font-weight:900;text-align:center;margin-bottom:14px}.bi .k-advh.sm{font-size:30px;text-align:left;color:var(--a);margin:10px 0 4px}
 .bi .k-advg{display:grid;grid-template-columns:1fr 170px;align-items:end}.bi .k-doc{width:170px;height:270px;display:block}
@@ -408,7 +408,7 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-info .map{margin-top:34px}.bi .k-rows{display:flex;flex-direction:column;gap:16px;margin-top:30px}.bi .k-row{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:18px;background:var(--a);color:#fff;border-radius:99px;padding:22px 40px;text-align:left}
 .bi .k-ri2{display:flex;flex-direction:column;align-items:center;gap:4px;color:#ffe9a6}.bi .k-ri2 .ic{width:46px;height:46px}.bi .k-ri2 b{font-size:22px}.bi .k-rv{font-size:25px;font-weight:700;line-height:1.4}.bi .k-rv small{font-size:20px;font-weight:500;opacity:.9}.bi .k-rv.big{font-size:42px;font-weight:900}
 .bi .k-rv.hrs{display:flex;flex-wrap:wrap;gap:6px 0}.bi .k-rv.hrs div{width:50%;display:flex;flex-direction:column;font-size:21px;padding-right:8px}.bi .k-rv.hrs span{color:#ffe9a6;font-weight:700}.bi .k-rv.hrs b{font-size:25px}
-.bi .k-lfoot{background:var(--a);margin:44px -48px -40px;padding:6px 40px 36px}.bi .k-lfoot .k-foot{margin:0;padding:24px 0 14px}.bi .k-lfoot .k-fname{color:#fff}.bi .k-lfoot .k-logo{filter:brightness(0) invert(1)}.bi .k-law{color:rgba(255,255,255,.85);font-size:19px;line-height:1.6}
+.bi .k-lfoot{background:var(--a);margin:44px -48px -40px;padding:6px 40px 36px}.bi .k-lfoot .k-foot{margin:0;padding:24px 0 14px}.bi .k-lfoot .k-fname{color:#fff}.bi .k-law{color:rgba(255,255,255,.85);font-size:19px;line-height:1.6}
 .bi .k .ph{background:#e9eef0}`;
 /* 사진 자리마다 '이런 사진이어야 해요' 조건: 함수가 제미나이로 후보를 보고 어울리는 사진만 고름 */
 const PV={"교통사고": "목이나 허리를 손으로 잡고 아파하는 성인 한 명(교통사고 뒤 통증 느낌)", "허리": "허리를 손으로 잡고 아파하는 성인 한 명", "목": "목이나 어깨를 손으로 잡고 아파하는 성인 한 명", "관절": "무릎이나 관절을 손으로 잡고 아파하는 사람 한 명", "두통": "머리를 손으로 짚고 두통을 느끼는 사람 한 명", "다이어트": "줄자로 허리를 재거나 건강한 식단을 든 사람", "비염": "휴지로 코를 풀거나 재채기하는 사람 한 명", "성장": "키를 재거나 밝게 웃는 아이", "여성": "배나 허리를 손으로 감싸고 불편해하는 여성 한 명", "요양": "병원에서 돌봄을 받는 어르신 환자", "피부": "얼굴 피부를 손으로 만지며 살피는 여성 한 명", "기본": "의사와 환자가 상담하는 진료 장면"};
@@ -417,6 +417,13 @@ function photoVet(o){const t=o.topic in PV?o.topic:"기본",tn=t==="기본"?"건
   v.band="'"+tn+"' 통증·불편함을 설명하는 깔끔한 건강 사진(아픈 부위를 잡은 사람, 척추·몸 그림, 진료 장면).";
   treatRows(T[t]||T["기본"],c).forEach((r,k)=>{if(r)v["treat"+k]="한의원·병원에서 '"+r[1]+"'(을)를 받는 장면이나 그 치료 도구가 보이는 깔끔한 사진.";});
   v.room="깨끗한 병원 입원실(병실) 사진.";return v;}
+/* 사진 태그(영어)에 있어야 할 낱말: 제미나이 확인이 안 될 때도 엉뚱한 사진(커플·풍경 등)을 막음 */
+const PAIN="pain|ache|hurt|sore|injur|headache|migraine|backache|massage|physio|stiff|neck|spine|tired|sick|ill|doctor|patient";
+function photoNeed(o){const t=o.topic in PV?o.topic:"기본",c=o.clinic||{},n={};
+  const own={"다이어트":"diet|weight|waist|scale|salad|fitness|slim","비염":"sneez|tissue|nose|allerg|cold|flu|sick","성장":"child|kid|height|grow|boy|girl","피부":"skin|face|acne|beauty|cream|derma","요양":"hospital|patient|nurse|senior|care|elderly","기본":"doctor|patient|clinic|medical|consult|health"}[t];
+  n.person=own||PAIN;n.band=(own?own+"|":"")+PAIN+"|clinic|medical|health";
+  treatRows(T[t]||T["기본"],c).forEach((r,k)=>{if(r)n["treat"+k]="acupunct|needle|therap|massage|medic|clinic|doctor|treat|herb|cupping|physio|hospital|health|chiropract|spa|patient|exercise|rehab|diet|skin";});
+  n.room="hospital|bed|ward|room|clinic|medical|interior";return n;}
 /* 사진 자리마다 무료 사진 검색어 (영어) */
 function photoQueries(o){const p=T[o.topic]||T["기본"],c=o.clinic,q={person:p.person.q};
   treatRows(p,c).forEach((r,k)=>{if(r)q["treat"+k]=r[3];});if(c.room&&c.room.on)q.room="hospital inpatient room";q.band=KBQ[o.topic]||KBQ["기본"];return q;}
@@ -548,5 +555,5 @@ const STYLES={
 .bi.st-warm .kick{display:flex;margin-bottom:20px}.bi.st-warm .kick span{background:var(--soft);color:var(--a);border-radius:99px;padding:8px 24px;font-size:26px;font-weight:800}`}
 };
 const STYLE_CSS=Object.values(STYLES).map(x=>x.css).join("\n");
-root.BlogKit={T,topicOf,build,photoQueries,photoVet,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
+root.BlogKit={T,topicOf,build,photoQueries,photoVet,photoNeed,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
 })(window);
