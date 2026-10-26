@@ -94,7 +94,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px}details[open]>summ
 </div>
 </div>
 <input type="file" id="file1" accept="image/*" hidden><input type="file" id="filen" accept="image/*" multiple hidden>
-<script src="blog-kit.js"></script>
+<script src="blog-kit.js?v=29b"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video",PUB=SB+"/storage/v1/object/public/files/";
@@ -193,7 +193,7 @@ let USED=[],COUSE=0;
 const SLOTS=()=>["person","band","treat0","treat1","treat2","treat3"].concat(CFG.room&&CFG.room.on&&ON.room!==false?["room"]:[]).filter(k=>k==="room"||document.querySelector(`[data-ph="${k}"]`));
 async function freePhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
   const q=BK.photoQueries({topic:$("topic").value,clinic:clinicObj()});keys=keys.filter(k=>q[k]);if(!keys.length)return false;
-  const vt=BK.photoVet({topic:$("topic").value,clinic:clinicObj()});const r=await fn({action:"photos",queries:keys.map(k=>q[k]),vet:keys.map(k=>vt[k]||""),orient:keys.map(k=>k==="person"?"vertical":""),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
+  const vt=(BK.photoVet||(()=>({})))({topic:$("topic").value,clinic:clinicObj()});const r=await fn({action:"photos",queries:keys.map(k=>q[k]),vet:keys.map(k=>vt[k]||""),orient:keys.map(k=>k==="person"?"vertical":""),skip:USED,pick:PICK++});if(!r.ok){msg(esc(r.error||"사진을 찾지 못했어요."),"warn");return false;}
   (r.photos||[]).forEach((p,i)=>{if(p){IMG[keys[i]]=p.src;USED.push(p.id);}});return true;}
 /* 나노바나나: 한 장씩 그림 (한 장에 몇 초) */
 async function genPhotos(keys,ask){if(!PW&&!(ask&&await needPW()))return false;
