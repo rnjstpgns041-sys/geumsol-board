@@ -101,8 +101,23 @@ function make(kw,name,prof,seed,min,max,avoid){min=min||320;max=max||380;const r
   while(len(build().join(""))>max&&nInfo>3)nInfo--;
   while(len(build().join(""))>max&&nFeat>1)nFeat--;
   while(len(build().join(""))<min&&nFeat<feats.length&&len(build().join("")+feats[nFeat])<=max)nFeat++;
-  const out=build();
+  const out=tone(build(),seed);
   return {lines:out,text:out.join("\n"),chars:len(out.join("")),short:len(out.join(""))<min,topic:tp};}
+/* 말투 섞기: 모든 문장이 '~요'로 끝나면 단조로워서, 가운데 문장 일부를 '~습니다'·'~죠'로 바꾼다 (첫 문장·마지막 문장은 그대로) */
+const TONE=[[/할 수 있어요([.!]?)$/,"할 수 있습니다$1","할 수 있죠$1"],[/있어요([.!]?)$/,"있습니다$1","있죠$1"],[/없어요([.!]?)$/,"없습니다$1","없죠$1"],
+  [/(이)?에요([.!]?)$/,"입니다$2",null],[/거예요([.!]?)$/,"겁니다$1","거죠$1"],[/해요([.!]?)$/,"합니다$1","하죠$1"],[/돼요([.!]?)$/,"됩니다$1","되죠$1"],
+  [/봐요([.!]?)$/,"봅니다$1",null],[/줘요([.!]?)$/,"줍니다$1",null],[/와요([.!]?)$/,"옵니다$1",null],[/져요([.!]?)$/,"집니다$1",null],
+  [/달라요([.!]?)$/,"다릅니다$1","다르죠$1"],[/좋아요([.!]?)$/,"좋습니다$1","좋죠$1"],[/커요([.!]?)$/,"큽니다$1",null],[/많아요([.!]?)$/,"많습니다$1","많죠$1"],[/남아요([.!]?)$/,"남습니다$1",null]];
+function yo(l){return /요[.!]?$/.test(String(l).trim());}
+function tone(lines,seed){const r=rng((seed||7)*31+lines.length),L=lines.slice();if(L.length<5)return L;
+  const mid=L.map((l,i)=>i).slice(1,-1);if(mid.filter(i=>yo(L[i])).length<mid.length*0.6)return L;
+  let run=0,dzu=0;
+  mid.forEach(i=>{const l=String(L[i]).trim();if(!yo(l)){run=0;return;}
+    if(/세요[.!]?$/.test(l)||/요\?$/.test(l)){run=0;return;}
+    run++;if(run<2&&r()<0.55)return;
+    const t=TONE.find(x=>x[0].test(l));if(!t)return;
+    const useDzu=t[2]&&dzu<2&&r()<0.3;L[i]=l.replace(t[0],useDzu?t[2]:t[1]);if(useDzu)dzu++;run=0;});
+  return L;}
 /* 영상 위 제목 두 줄 (둘째 줄은 강조 색). {t}=주제, {n}=업체 이름. 만들 때마다 최근에 쓴 제목은 피해서 고른다 */
 const TT_CLINIC=[["{t}","이것부터 확인하세요"],["{t} 때문에","고생하고 계신가요?"],["{t},","그냥 두면 안 되는 이유"],["{t}","언제 진료받아야 할까요?"],
   ["자꾸 반복되는 {t}","원인부터 살펴보세요"],["{t} 관리,","생활 습관부터 바꿔 보세요"],["{t}","미루면 안 되는 신호"],["{t} 고민이라면","끝까지 봐 주세요"],
@@ -114,6 +129,6 @@ function title(kw,name,prof,seed,avoid){const r=rng(seed||Date.now());prof=prof|
   const norm=x=>String(x||"").replace(/\s/g,""),av=new Set((avoid||[]).map(norm));
   const all=(law?TT_LAW:TT_CLINIC).filter(a=>name||!/\{n\}/.test(a.join(""))).map(a=>a.map(x=>x.replace(/\{t\}/g,t).replace(/\{n\}이/g,name?j(name,"이","가"):"").replace(/\{n\}/g,name)));
   const fresh=all.filter(a=>!av.has(norm(a.join(""))));return pick(fresh.length?fresh:all,r);}
-const API={VDF,make,title,profileOf,len,josa:j,topicOf};
+const API={VDF,make,title,tone,profileOf,len,josa:j,topicOf};
 if(typeof module!=="undefined")module.exports=API;else root.ScriptGen=API;
 })(typeof window!=="undefined"?window:globalThis);

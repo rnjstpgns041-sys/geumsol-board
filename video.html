@@ -78,7 +78,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
 </div>
 </div>
-<script src="script-gen.js?v=27t"></script>
+<script src="script-gen.js?v=45"></script>
 <script src="shorts-maker.js?v=26a"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
@@ -164,7 +164,7 @@ async function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$(
   /* 키워드가 있으면 제미나이가 그 키워드 주제로 새로 쓰고, 안 되면 문장 틀로 */
   if(kw){try{await caps();if(GEM){$("sample").disabled=true;msg(`"${esc(kw)}" 주제로 대본을 쓰는 중이에요…`,"warn");const p=prof();
       const g=await fn({action:"script",kw,name:$("client").value?cname():"",type:p.type,area:p.area,feats:p.feats||[],avoid:avoidNow(),site:hpFacts()});
-      if(tok!==ATOK)return;if(g.ok&&g.lines&&g.lines.length){const t=g.lines.join("\n");r={text:t,chars:t.replace(/\s/g,"").length,title:g.title&&g.title.length===2?g.title:null};}}}catch(e){}finally{if(tok===ATOK)$("sample").disabled=false;}
+      if(tok!==ATOK)return;if(g.ok&&g.lines&&g.lines.length){const t=ScriptGen.tone(g.lines,++SEED).join("\n");r={text:t,chars:t.replace(/\s/g,"").length,title:g.title&&g.title.length===2?g.title:null};}}}catch(e){}finally{if(tok===ATOK)$("sample").disabled=false;}
     if(tok!==ATOK)return;if(!force&&$("text").value.trim()!==cur)return;}
   const av=avoidNow();if(!r){const p=prof(),hl=hpLine(kw);r=ScriptGen.make(kw,$("client").value?cname():"",hl?Object.assign({},p,{feats:[hl].concat(p.feats||[])}):p,++SEED,0,0,av);}$("text").value=LAST=r.text;cnt();
   /* 대본을 새로 쓸 때마다 영상 위 제목도 새로 (최근 제목은 피함) */
