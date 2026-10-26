@@ -353,17 +353,18 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
     const xk = (Deno.env.get("PIXABAY_KEY") || "").trim(), pk = (Deno.env.get("PEXELS_KEY") || "").trim();
     if (!xk && !pk) return j({ ok: false, error: "사진 키(PIXABAY_KEY)가 아직 없어요." }, 500);
     const qs = (Array.isArray(b.queries) ? b.queries : []).slice(0, 30).map((x) => String(x || "").trim().slice(0, 80));
-    const skip = new Set((Array.isArray(b.skip) ? b.skip : []).map(String));
+    // skip = 이번 영상에 쓴 사진 + 팀이 예전 영상에 쓴 사진 (최대한 다시 안 씀)
+    const skip = new Set((Array.isArray(b.skip) ? b.skip : []).slice(0, 5000).map(String));
     const pick = Math.max(0, Math.floor(Number(b.pick) || 0));
     // 검색 결과를 {id, url, by} 목록으로
-    async function search(q: string): Promise<{ id: string; url: string; by: string }[] | "badkey"> {
+    async function search(q: string, page = 1): Promise<{ id: string; url: string; by: string }[] | "badkey"> {
       if (xk) {
-        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=horizontal&safesearch=true&per_page=20&lang=" + (/[가-힣]/.test(q) ? "ko" : "en") + "&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
-        if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/key/i.test(t)) return "badkey"; return []; }
+        const r = await fetch("https://pixabay.com/api/?image_type=photo&orientation=horizontal&safesearch=true&per_page=60&page=" + page + "&lang=" + (/[가-힣]/.test(q) ? "ko" : "en") + "&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q));
+        if (r.status === 400 || r.status === 401 || r.status === 403) { const t = await r.text(); if (/key/i.test(t)) return "badkey"; return []; } // 400 = 없는 쪽(page)
         const d = await r.json().catch(() => ({}));
         return (Array.isArray(d.hits) ? d.hits : []).map((h: { id: number; largeImageURL: string; user: string }) => ({ id: "x" + h.id, url: String(h.largeImageURL), by: String(h.user || "") }));
       }
-      const r = await fetch("https://api.pexels.com/v1/search?per_page=15&orientation=landscape&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
+      const r = await fetch("https://api.pexels.com/v1/search?per_page=40&page=" + page + "&orientation=landscape&query=" + encodeURIComponent(q), { headers: { Authorization: pk } });
       if (r.status === 401 || r.status === 403) return "badkey";
       const d = await r.json().catch(() => ({}));
       return (Array.isArray(d.photos) ? d.photos : []).map((p: { id: number; src: { original: string }; photographer: string }) => ({ id: "p" + p.id, url: String(p.src.original) + "?auto=compress&cs=tinysrgb&w=1280&h=1100&fit=crop", by: String(p.photographer || "") }));
@@ -379,9 +380,13 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
           res = await search(q2);
         }
         if (res === "badkey") return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
-        const list = res.filter((p) => !skip.has(p.id));
+        let list = res.filter((p) => !skip.has(p.id));
+        // 앞쪽(검색어에 잘 맞는 사진)이 다 쓰였으면 다음 쪽에서 찾음
+        if (list.length < 3) { const more = await search(q, 2); if (Array.isArray(more)) list = list.concat(more.filter((p) => !skip.has(p.id))); }
+        if (!list.length) list = res; // 정말 다 썼으면 그때만 다시 씀
         if (!list.length) { out.push(null); continue; }
-        const p = list[(pick + out.length) % Math.min(list.length, 6)];
+        // 잘 맞는 앞쪽 12장 안에서 골고루 (같은 검색어라도 영상마다 다른 사진)
+        const p = list[(pick + out.length * 7 + Math.floor(Math.random() * 1000)) % Math.min(list.length, 12)];
         const im = await fetch(p.url);
         if (!im.ok) { out.push(null); continue; }
         skip.add(p.id);

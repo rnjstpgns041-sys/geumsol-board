@@ -151,7 +151,7 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
   [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
-  renderKws();fill();auto();renderCo();preview();await loadList();poll();}
+  await loadUsed();renderKws();fill();auto();renderCo();preview();await loadList();poll();}
 $("client").onchange=()=>{renderKws();fill();auto();};
 $("kw").oninput=()=>{renderKws();clearTimeout(AT);AT=setTimeout(()=>auto(),700);};
 $("text").addEventListener("input",cnt);
@@ -193,7 +193,12 @@ function coNow(L){const ph=coList();if(!ph.length||$("phmode").value!=="match")r
   return L.map((l,i)=>{const o=OVC[l];if(o!=null)return o<ph.length?o:-1;const a=auto[i];return a>=0&&a<ph.length?a:-1;});}
 function qsNow(L){const a=ShortsMaker.sceneQueries(L,cname(),$("kw").value.trim());return L.map((l,i)=>OVQ[l]!=null?(OVQ[l]||null):a[i]);}
 function extraNow(){if($("phmode").value!=="match")return null;const L=lines(),Q=qsNow(L),C=coNow(L),ph=coList();return L.map((l,i)=>C[i]>=0?ph[C[i]].src:Q[i]&&CACHE[l]&&CACHE[l].q===Q[i]?CACHE[l].src:null);}
-async function fetchFor(idx,L,Q,pick){const used=Object.values(CACHE).map(c=>c.id).filter(Boolean);
+/* 팀이 예전 영상에 쓴 무료 사진 번호 (videocfg/_used). 새 영상은 이 사진을 최대한 피함 */
+let USED=[];
+async function loadUsed(){try{const r=await rest("docs?coll=eq.videocfg&id=eq._used&select=data");USED=(r&&r[0]&&r[0].data&&r[0].data.ids)||[];}catch(e){}}
+async function saveUsed(ids){ids=ids.filter(Boolean);if(!ids.length)return;await loadUsed();USED=[...new Set([...USED,...ids])].slice(-4000);
+  try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:"_used",data:{ids:USED,at:new Date().toISOString()}})});}catch(e){}}
+async function fetchFor(idx,L,Q,pick){const used=[...new Set([...Object.values(CACHE).map(c=>c.id).filter(Boolean),...USED])];
   const r=await fn({action:"photos",queries:idx.map(i=>Q[i]),skip:used,pick});if(!r.ok)throw new Error(r.error||"사진을 찾지 못했어요.");
   idx.forEach((i,k)=>{const p=(r.photos||[])[k];CACHE[L[i]]={q:Q[i],src:p?p.src:null,id:p?p.id:null};});}
 async function findPhotos(quiet){const L=lines();if($("phmode").value!=="match"||!L.length){renderScenes();return null;}
@@ -241,6 +246,8 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
       onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
     const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
     const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;
+    /* 이번 영상에 들어간 무료 사진은 다음 영상부터 피함 */
+    {const Lq=qsNow(L),C=coNow(L);saveUsed(L.map((l,i)=>C[i]<0&&Lq[i]&&CACHE[l]&&CACHE[l].q===Lq[i]?CACHE[l].id:null));}
     const url=URL.createObjectURL(o.blob),a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
     $("pbar").style.width="100%";$("pinfo").textContent=`완성 · ${Math.round(o.seconds)}초`;
     let pub="";try{msg("완성! 내 컴퓨터에 내려받았어요. 팀 목록에 올리는 중이에요…","ok");pub=await upload(o.blob,`mk_${stamp}_${Math.random().toString(36).slice(2,7)}.${o.ext}`);}catch(e){}
