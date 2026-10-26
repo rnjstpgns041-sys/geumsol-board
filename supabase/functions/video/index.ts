@@ -246,6 +246,13 @@ ${text}`;
   }
 
   // ── 쇼츠 영상 도우미 (제미나이) ──
+  // 제미나이 답에서 JSON만 꺼냄. 비었으면 왜 비었는지(막힘 이유)를 알려 줌
+  const looseJson = (d: any) => {
+    const t = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
+    const m = t.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error("제미나이 답이 비었어요 (" + (d?.promptFeedback?.blockReason || d?.candidates?.[0]?.finishReason || "빈 답") + ")");
+    return JSON.parse(m[0]);
+  };
   const gemJson = (d: unknown) => {
     const t = (d as any)?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
     return JSON.parse(t.replace(/^\s*```(?:json)?|```\s*$/g, "").trim());
@@ -390,8 +397,15 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
 사진마다 조건에 얼마나 맞는지 0~10점으로 매겨 JSON 하나로 답해 주세요: {"s":[0번 점수, 1번 점수, ...]}
 10 = 조건 그대로(주제·사람·동작이 딱 맞음), 7 = 블로그에 넣어도 자연스러움, 4 이하 = 주제가 다르거나 어색함(커플·풍경·음식·운동복 화보 등). 애매하면 낮게 주세요.` }];
         ims.forEach((d, i) => { if (d) parts.push({ text: "사진 " + i }, { inline_data: { mime_type: "image/jpeg", data: d } }); });
-        const d = await gemAuto("text", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } }, Math.min(t0 + 110000, Date.now() + 20000));
-        const g = gemJson(d);
+        const until = Math.min(t0 + 110000, Date.now() + 20000);
+        const safety = ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"].map((category) => ({ category, threshold: "BLOCK_ONLY_HIGH" }));
+        // 답이 비거나(사진 때문에 막힘 등) 깨지면 사진 대신 사진 설명 낱말(태그)로 한 번 더 물어봄
+        const ask = async (ps: unknown[]) => { const d = await gemAuto("text", { contents: [{ parts: ps }], safetySettings: safety, generationConfig: { responseMimeType: "application/json", temperature: 0 } }, until); return looseJson(d); };
+        let g: any;
+        try { g = await ask(parts); } catch (e) {
+          if (Date.now() > until - 5000) throw e;
+          g = await ask([{ text: String((parts[0] as { text: string }).text).replace("사진 " + cands.length + "장이 0번부터 순서대로 있어요.", "사진 " + cands.length + "장의 설명 낱말(영어 태그)이 0번부터 있어요. 낱말만 보고 판단해 주세요.") + "\n" + cands.map((c, i) => i + ": " + c.tags.slice(0, 160)).join("\n") }]);
+        }
         // 8점 이상 먼저, 없으면 7점. 높은 점수 순서
         const sc = (Array.isArray(g.s) ? g.s : []).map(Number);
         const idx = sc.map((v: number, i: number) => [v, i]).filter(([v, i]: number[]) => v >= 7 && i < cands.length && ims[i]).sort((a: number[], b: number[]) => b[0] - a[0]);
@@ -447,7 +461,7 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
     const out: Got[] = [];
     for (let i = 0; i < qs.length; i += 6) out.push(...await Promise.all(qs.slice(i, i + 6).map((q, k) => one(q, i + k))));
     if (out.includes("badkey")) return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
-    return j({ ok: true, ver: 34, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
+    return j({ ok: true, ver: 36, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
   }
 
   if (!key) return j({ ok: false, error: "Supabase 비밀값 SUPERSHORTS_KEY가 아직 없어요." }, 500);
