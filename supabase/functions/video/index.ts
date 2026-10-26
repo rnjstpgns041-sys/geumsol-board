@@ -387,11 +387,16 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
         const parts: unknown[] = [{ text: `사진 ${cands.length}장이 0번부터 순서대로 있어요. 병원·한의원 블로그 그림에 넣을 사진을 고르려고 해요.
 조건: ${want}
 공통으로 빼야 할 사진: 문신, 흑백 예술 사진, 성적이거나 무섭거나 피가 보이는 사진, 글자·로고가 큰 사진, 조건과 주제가 다른 사진.
-조건에 잘 맞는 번호만 잘 맞는 순서로 JSON 하나로 답해 주세요: {"good":[번호,...]} (하나도 없으면 {"good":[]})` }];
+사진마다 조건에 얼마나 맞는지 0~10점으로 매겨 JSON 하나로 답해 주세요: {"s":[0번 점수, 1번 점수, ...]}
+10 = 조건 그대로(주제·사람·동작이 딱 맞음), 7 = 블로그에 넣어도 자연스러움, 4 이하 = 주제가 다르거나 어색함(커플·풍경·음식·운동복 화보 등). 애매하면 낮게 주세요.` }];
         ims.forEach((d, i) => { if (d) parts.push({ text: "사진 " + i }, { inline_data: { mime_type: "image/jpeg", data: d } }); });
         const d = await gemAuto("text", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } }, Math.min(t0 + 110000, Date.now() + 20000));
         const g = gemJson(d);
-        return (Array.isArray(g.good) ? g.good : []).map(Number).filter((n: number) => Number.isInteger(n) && n >= 0 && n < cands.length && ims[n]);
+        // 8점 이상 먼저, 없으면 7점. 높은 점수 순서
+        const sc = (Array.isArray(g.s) ? g.s : []).map(Number);
+        const idx = sc.map((v: number, i: number) => [v, i]).filter(([v, i]: number[]) => v >= 7 && i < cands.length && ims[i]).sort((a: number[], b: number[]) => b[0] - a[0]);
+        const top = idx.filter(([v]: number[]) => v >= 8);
+        return (top.length ? top : idx).map(([, i]: number[]) => i);
       } catch (e) { vetErr = String((e as Error).message || e).slice(0, 160); return null; } // 제미나이가 안 되면 태그로만 고름
     }
     // 사진 자리마다 동시에 찾음 (한 번에 6개씩): 제미나이 확인이 있어도 오래 걸리지 않게
@@ -429,7 +434,7 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
             const good = await judge(cands, vet[qi]);
             if (good === null) break;
             judged = true;
-            if (good.length) chosen = cands[good[(pick + Math.floor(Math.random() * 1000)) % Math.min(good.length, 3)]];
+            if (good.length) chosen = cands[good[(pick + Math.floor(Math.random() * 1000)) % Math.min(good.length, 2)]];
           }
           if (chosen) p = chosen; else if (judged) return null;
         }
@@ -442,7 +447,7 @@ JSON 하나로만: {"pick":[문장 수만큼 사진 번호 또는 -1]}`;
     const out: Got[] = [];
     for (let i = 0; i < qs.length; i += 6) out.push(...await Promise.all(qs.slice(i, i + 6).map((q, k) => one(q, i + k))));
     if (out.includes("badkey")) return j({ ok: false, error: "사진 키가 틀렸어요. Supabase 비밀값(" + (xk ? "PIXABAY_KEY" : "PEXELS_KEY") + ")을 확인해 주세요." });
-    return j({ ok: true, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
+    return j({ ok: true, ver: 34, photos: out, note: vetErr ? "사진 확인(제미나이)을 못 해서 사진 설명 낱말로만 골랐어요. (" + vetErr + ")" : "" });
   }
 
   if (!key) return j({ ok: false, error: "Supabase 비밀값 SUPERSHORTS_KEY가 아직 없어요." }, 500);

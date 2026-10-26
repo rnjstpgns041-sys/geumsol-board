@@ -1,4 +1,4 @@
-/* 블로그 긴 이미지(네이버 블로그용, 가로 860px) 만들기 도구.
+/* 블로그 긴 이미지(네이버 블로그용, 화면 860px · 저장 가로 1080px) 만들기 도구.
    아이콘(직접 그린 선 아이콘) · 주제별 문구 · 구역 틀 · 이미지로 저장(SVG foreignObject → canvas) · ZIP 묶기.
    보내 준 '파주365한방병원 교통사고' 예시처럼: 큰 제목 + 아이콘 목록 + 카드 + 사진 + 의료진 + 시설 + 진료시간·오시는 길 */
 (function(root){
@@ -260,9 +260,11 @@ const yem=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<b class="y">$1</b>');           /
 const plain=s=>String(s||"").replace(/\[\[|\]\]/g,"");
 const ro=w=>{const c=String(w||"").trim().slice(-1).charCodeAt(0)-0xac00;if(c<0||c>11171)return "로";const j=c%28;return j===0||j===8?"로":"으로";};
 /* 제목: 첫 줄 검정, 둘째 줄 그라데이션([[ ]]가 있으면 그 부분만) */
+let KN=0;   // 구역 번호 (POINT 01 …)
 const KH=(t,o)=>{o=o||{};const l2=t[1]||"",g2=/\[\[/.test(l2)?gem(l2):`<b class="g">${esc(l2)}</b>`;
   const l1=o.all?`<b class="g">${esc(plain(t[0]))}</b>`:gem(t[0]);
-  return `<div class="k-h ${o.cls||""}"><div ${E}>${l1}</div>${l2?`<div ${E}>${g2}</div>`:""}</div>`;};
+  const kk=o.top?`<div class="k-kk"><b>${String(++KN).padStart(2,"0")}</b><span>${esc(o.top)}</span></div>`:"";
+  return `${kk}<div class="k-h ${o.cls||""}"><div ${E}>${l1}</div>${l2?`<div ${E}>${g2}</div>`:""}</div>`;};
 const pill=(s,cls)=>`<div class="k-pillw ${cls||""}"><span class="k-pill" ${E}>${gem(s).replace(/class="g"/g,'class="pb"')}</span></div>`;
 const chk='<svg class="k-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 6.5"/></svg>';
 const kfoot=(c,band)=>{if(!c.logo&&!c.name)return "";return `<div class="k-foot ${band?"band":""}">${c.logo?`<img class="k-logo" src="${esc(c.logo)}" alt="">`:`<span class="k-fname" ${E}>${esc(c.name)}</span>`}</div>`;};
@@ -290,18 +292,18 @@ const K={
     const lab=(x,k,side)=>{const [i,a,b]=x,[,y]=(side?R:L)[k],dx=side?dotR[k]:dotL[k];
       return side?`<div class="k-lb r" style="top:${y}px;left:${dx}px"><i class="k-dot"></i><div class="k-lt"><b ${E}>${esc(a)}</b><span ${E}>${esc(b)}</span></div></div>`
         :`<div class="k-lb l" style="top:${y}px;width:${dx-24}px"><div class="k-lt"><b ${E}>${esc(a)}</b><span ${E}>${esc(b)}</span></div><i class="k-dot"></i></div>`;};
-    return `<section class="k k-hero">${KH(p.hero.t,{cls:"xl"})}<i class="k-vl"></i>
+    return `<section class="k k-hero">${KH(p.hero.t,{cls:"xl",top:"CHECK"})}<i class="k-vl"></i>
     <div class="k-sub" ${E}>${esc(p.warn.sub)}<br><b>${esc(plain(p.person.t.join(" ")))}</b></div>
     ${pill("몸이 보내는 [[신호]]","on")}<div class="k-card k-body">${ph("person",img.person,"k-pp")}${cs.map((x,k)=>lab(x,k>>1,k%2)).join("")}</div>
     <div class="k-blue" ${E}>${esc(p.person.sub)}<br><b>증상이 이어진다면 <b class="y">초기에 확인하는 것</b>이 중요합니다.</b></div>${kfoot(c)}</section>`;},
   /* 손글씨 질문 + 체크 목록(종이 접힘) + 흰 카드 */
-  warn:(p,c)=>`<section class="k k-warn"><div class="k-hw" ${E}>혹시 이런 증상이 있으신가요?</div>${KH(p.list.t)}
+  warn:(p,c)=>`<section class="k k-warn"><div class="k-hw" ${E}>혹시 이런 증상이 있으신가요?</div>${KH(p.list.t,{top:"SELF CHECK"})}
     <div class="k-paper">${p.list.items.map(([,t])=>`<div class="k-cl">${chk}<span ${E}>${esc(t)}</span></div>`).join("")}<i class="k-curl"></i></div>
     <div class="k-card k-white">${KH(["이런 증상을","그냥 두고 계신가요?"],{all:true,cls:"md"})}
       <div class="k-blue sm" ${E}>오래 두면 일상이 더 불편해질 수 있어<br><b class="y">초기에 확인하는 것</b>이 중요합니다.</div>
       <div class="k-end" ${E}>꼼꼼하게 진료하는<br>${c.name?`<b class="g">${esc(c.name)}</b>에서 상담해 보세요!`:`<b class="g">가까운 한의원</b>에서 상담해 보세요!`}</div></div>${kfoot(c)}</section>`,
   /* 사진 띠 위 체크 알약 + 손글씨 인용 + 흰 상자 */
-  list:(p,c,img)=>`<section class="k k-band tint">${KH(p.warn.t,{cls:"xl"})}
+  list:(p,c,img)=>`<section class="k k-band tint">${KH(p.warn.t,{cls:"xl",top:"WHY"})}
     <div class="k-bandph">${ph("band",img.band,"k-bph")}<div class="k-bpills">${p.hero.items.slice(0,3).map(([,t])=>`<div class="k-bp">${chk}<span ${E}>${esc(t)}</span></div>`).join("")}</div></div>
     <div class="k-q hw"><i>“</i><span ${E}>원인과 <b class="hb">몸 상태</b>에 맞는 <b class="hb">맞춤 관리</b>를</span><i>”</i></div>
     <div class="k-wbox" ${E}>${c.name?`<b class="ac">${esc(c.name)}</b>에서 `:""}지금 상태를 확인하고<br>알맞은 관리 방법을 찾아보세요.</div>${kfoot(c,1)}</section>`,
@@ -313,16 +315,16 @@ const K={
       <div class="k-advg"><div>${fs.map(([,t])=>`<div class="k-cl">${chk}<span ${E}>${esc(plain(t))}</span></div>`).join("")}</div>${DOC}</div></div>${kfoot(c)}</section>`;},
   /* 약속 카드 3개 + 시설 사진 띠 + 손글씨 */
   clinic:(p,c)=>{const fs=feats(p,c).slice(0,3),ps=(c.photos||[]).filter(x=>x&&x.url).slice(0,3);
-    return `<section class="k k-prom">${KH([(c.name?c.name+"의":"우리 한의원의")+" [[약속!]]"],{cls:"xl"})}${pill("늘 가까이에서 건강을 살피는 주치의가 되겠습니다.","")}
+    return `<section class="k k-prom">${KH([(c.name?c.name+"의":"우리 한의원의")+" [[약속!]]"],{cls:"xl",top:"PROMISE"})}${pill("늘 가까이에서 건강을 살피는 주치의가 되겠습니다.","")}
     <div class="k-ovals">${fs.map(([i,t])=>`<div class="k-oval"><div class="k-ot" ${E}>${gem(t)}</div><div class="k-od" ${E}>${esc(FD[i]||FD.check)}</div></div>`).join("")}</div>
     <div class="k-bluebot">${ps.length?`<div class="k-strip">${ps.map((x,k)=>ph("fac"+k,x.url,"k-sp")).join("")}</div>`:""}
     <div class="k-q hw white"><i>“</i><span ${E}>편안하고 건강한 일상을 누리실 수 있도록 함께하겠습니다</span><i>”</i></div>${kfoot(c,1)}</div></section>`;},
   /* 진료 과정: 원 4개 + 화살표 */
-  time:(p,c)=>`<section class="k k-proc">${KH(p.time.t,{cls:"xl"})}${pill(p.time.note,"soft")}
+  time:(p,c)=>`<section class="k k-proc">${KH(p.time.t,{cls:"xl",top:"PROCESS"})}${pill(p.time.note,"soft")}
     <div class="k-steps">${p.time.steps.map(([a,i,t],k)=>`<div class="k-st ${k%2?"dk":""}"><div class="k-sti"><b>${String(k+1).padStart(2,"0")}</b><div ${E}>${esc(a)}</div><span ${E}>${esc(t)}</span></div></div>`).join("")}</div>${kfoot(c)}</section>`,
   /* 치료: 사진 + 겹친 알약 설명, 아이콘 원 + 파란 이름표 카드 */
   treat:(p,c,img)=>{const rows=treatRows(p,c);
-    return `<section class="k k-treat">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one"})}
+    return `<section class="k k-treat">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one",top:"TREATMENT"})}
     <div class="k-q"><i>“</i><span ${E}>몸 상태를 꼼꼼히 살피고 <b class="ac">상태에 맞춘 치료</b>로<br>편안한 일상을 돕겠습니다.</span><i>”</i></div>
     ${rows[0]?`<div class="k-phcap">${ph("treat0",img.treat0,"k-tph")}<div class="k-cap"><b ${E}>${esc(tname(KEYOF(p)))}, 이렇게 살펴요</b><span ${E}>불편한 곳과 몸 상태를 먼저 확인한 뒤<br>상태에 맞는 치료 방법을 함께 정합니다.</span></div></div>`:""}
     <div class="k-tcs">${rows.map(([i,a])=>`<div class="k-tc"><div class="k-tci">${icon(i)}</div><div><span class="k-tag" ${E}>${esc(a)}</span><div class="k-tcd" ${E}>${esc(TD[i]||TD.check)}</div></div></div>`).join("")}</div>
@@ -340,7 +342,7 @@ const K={
     ${gs.map((g,gi)=>`<div class="k-floor"><div class="k-fl"><div class="k-fbadge" ${E}>${gi?"시설":"진료"}</div>${g.map(x=>`<div class="k-cl w">${chk}<span ${E}>${esc(x.label||"시설")}</span></div>`).join("")}</div>
       <div class="k-fg">${g.map((x,k)=>ph("fac"+(gi*4+k),x.url,"k-fph")).join("")}</div></div>`).join("")}${kfoot(c)}</section>`;},
   info:(c)=>{const hs=(c.hours||[]).filter(h=>h&&h[1]);
-    return `<section class="k k-info"><div class="k-brk">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md"})}</div>
+    return `<section class="k k-info"><div class="k-brk">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md",top:"INFO"})}</div>
     ${c.station?map(c):""}
     <div class="k-rows">${c.addr?`<div class="k-row"><div class="k-ri2">${icon("pin")}<b>주소</b></div><div class="k-rv" ${E}>${esc(c.addr)}${c.way?`<br><small>${esc(c.way)}</small>`:""}</div></div>`:""}
     ${c.tel?`<div class="k-row"><div class="k-ri2">${icon("phone")}<b>전화번호</b></div><div class="k-rv big" ${E}>${esc(c.tel)}</div></div>`:""}
@@ -349,11 +351,89 @@ const K={
     <div class="k-lfoot">${kfoot(c)}<div class="k-law" ${E}>모든 치료는 개인에 따라 차이가 있을 수 있고 부작용이 생길 수 있습니다.<br>반드시 의료진과 충분히 상담한 뒤 결정하시기 바랍니다.</div></div></section>`;}
 };
 const KEYOF=p=>Object.keys(T).find(k=>T[k]===p)||"기본";
-function kbuild(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{};const out=[];
+/* ── 구역마다 다른 모양(네이버 상위 블로그에서 자주 보이는 틀) — 만들 때마다 골라 섞음 ── */
+const LKN={h:4,bg:4,sh:3,hero:3,warn:3,list:2,treat:3,person:2,time:3,clinic:3,info:2};
+function randLook(prev){prev=prev||{};const o={};
+  for(const k in LKN){const n=LKN[k];let v=Math.floor(Math.random()*n);if(n>1&&v===prev[k]&&Math.random()<.8)v=(v+1+Math.floor(Math.random()*(n-1)))%n;o[k]=v;}return o;}
+const lookCls=L=>L?`lk-h${L.h|0} lk-b${L.bg|0} lk-s${L.sh|0}`:"";
+const hsub=p=>`${esc(p.warn.sub)}<br><b>${esc(plain(p.person.t.join(" ")))}</b>`;
+const hblue=p=>`<div class="k-blue" ${E}>${esc(p.person.sub)}<br><b>증상이 이어진다면 <b class="y">초기에 확인하는 것</b>이 중요합니다.</b></div>`;
+const wend=c=>`<div class="k-end" ${E}>꼼꼼하게 진료하는<br>${c.name?`<b class="g">${esc(c.name)}</b>에서 상담해 보세요!`:`<b class="g">가까운 한의원</b>에서 상담해 보세요!`}</div>`;
+const nn=k=>String(k+1).padStart(2,"0");
+const KV={
+  hero:[null,
+    /* 큰 사진 위 제목 + 2칸 증상 카드 */
+    (p,c,img)=>{const cs=p.warn.cards.slice(0,4);return `<section class="k k-hero k-hmag"><div class="k-mag">${ph("person",img.person,"k-magph")}<div class="k-magt">${KH(p.hero.t,{cls:"xl",top:"CHECK"})}<div class="k-sub" ${E}>${esc(p.warn.sub)}</div></div></div>
+      ${pill("몸이 보내는 [[신호]]","")}<div class="k-g2">${cs.map(([i,a,b])=>`<div class="k-gc"><div class="k-gci">${icon(i)}</div><b ${E}>${esc(a)}</b><span ${E}>${esc(b)}</span></div>`).join("")}</div>${hblue(p)}${kfoot(c)}</section>`;},
+    /* 왼쪽 사진 + 오른쪽 번호 목록 */
+    (p,c,img)=>{const cs=p.warn.cards.slice(0,4);return `<section class="k k-hero">${KH(p.hero.t,{cls:"xl",top:"CHECK"})}<div class="k-sub" style="margin-top:22px" ${E}>${hsub(p)}</div>
+      <div class="k-split">${ph("person",img.person,"k-sph")}<div class="k-nums">${cs.map(([i,a,b],k)=>`<div class="k-num"><b>${nn(k)}</b><div><strong ${E}>${esc(a)}</strong><span ${E}>${esc(b)}</span></div></div>`).join("")}</div></div>${hblue(p)}${kfoot(c)}</section>`;}],
+  warn:[null,
+    /* 아이콘 카드 격자 */
+    (p,c)=>`<section class="k k-warn"><div class="k-hw" ${E}>혹시 이런 증상이 있으신가요?</div>${KH(p.list.t,{top:"SELF CHECK"})}
+      <div class="k-wgrid">${p.list.items.map(([i,t])=>`<div class="k-wg"><div class="k-wgi">${icon(i)}</div><span ${E}>${esc(t)}</span></div>`).join("")}</div>
+      <div class="k-blue sm" ${E}>오래 두면 일상이 더 불편해질 수 있어<br><b class="y">초기에 확인하는 것</b>이 중요합니다.</div>${wend(c)}${kfoot(c)}</section>`,
+    /* 번호 + 네모 체크 자가 진단표 */
+    (p,c)=>`<section class="k k-warn">${KH(p.list.t,{top:"SELF CHECK"})}<div class="k-sc"><div class="k-sch" ${E}>나도 해당될까? 자가 체크</div>
+      ${p.list.items.map(([,t],k)=>`<div class="k-scr"><b>${k+1}</b><span ${E}>${esc(t)}</span><i class="k-sbx">${chk}</i></div>`).join("")}</div>
+      <div class="k-hw k-scn" ${E}>하나라도 해당된다면 미루지 말고 확인해 보세요!</div>${wend(c)}${kfoot(c)}</section>`],
+  list:[null,
+    /* 사진 옆 체크 띠 */
+    (p,c,img)=>`<section class="k k-band tint">${KH(p.warn.t,{cls:"xl",top:"WHY"})}
+      <div class="k-side">${ph("band",img.band,"k-sideph")}<div class="k-sidel">${p.hero.items.slice(0,3).map(([i,t])=>`<div class="k-sb"><div class="k-sbi">${icon(i)}</div><span ${E}>${esc(t)}</span></div>`).join("")}</div></div>
+      <div class="k-q hw"><i>“</i><span ${E}>원인과 <b class="hb">몸 상태</b>에 맞는 <b class="hb">맞춤 관리</b>를</span><i>”</i></div>
+      <div class="k-wbox" ${E}>${c.name?`<b class="ac">${esc(c.name)}</b>에서 `:""}지금 상태를 확인하고<br>알맞은 관리 방법을 찾아보세요.</div>${kfoot(c,1)}</section>`],
+  treat:[null,
+    /* 지그재그 줄 */
+    (p,c,img)=>{const rows=treatRows(p,c);return `<section class="k k-treat">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one",top:"TREATMENT"})}
+      ${rows[0]?ph("treat0",img.treat0,"k-tph2"):""}
+      <div class="k-zzs">${rows.map(([i,a],k)=>`<div class="k-zz ${k%2?"r":""}"><div class="k-zzi">${icon(i)}<b>${nn(k)}</b></div><div class="k-zzt"><div class="k-zzh" ${E}>${esc(a)}</div><div ${E}>${esc(TD[i]||TD.check)}</div></div></div>`).join("")}</div>
+      <div class="k-note" ${E}>${esc(p.treat.note)}</div>${kfoot(c,1)}</section>`;},
+    /* 2칸 타일 */
+    (p,c,img)=>{const rows=treatRows(p,c);return `<section class="k k-treat tint">${KH([c.name?c.name+"의":"상태에 맞춘",`[[${KEYOF(p)==="기본"?"맞춤 진료":KEYOF(p)+" 클리닉"}]]`],{cls:"xl one",top:"TREATMENT"})}
+      <div class="k-q"><i>“</i><span ${E}>몸 상태를 꼼꼼히 살피고 <b class="ac">상태에 맞춘 치료</b>로<br>편안한 일상을 돕겠습니다.</span><i>”</i></div>
+      ${rows[0]?`<div class="k-phcap">${ph("treat0",img.treat0,"k-tph")}</div>`:""}
+      <div class="k-tgs ${rows.length%2?"odd":""}">${rows.map(([i,a])=>`<div class="k-tg"><div class="k-tgi">${icon(i)}</div><b ${E}>${esc(a)}</b><span ${E}>${esc(TD[i]||TD.check)}</span></div>`).join("")}</div>
+      <div class="k-note" ${E}>${esc(p.treat.note)}</div>${kfoot(c)}</section>`;}],
+  person:[null,
+    (p,c)=>{const who=p.person.sym.slice(0,3).map(([i,t])=>[i,t]),fs=feats(p,c).slice(0,5);
+      return `<section class="k k-who">${KH([tname(KEYOF(p)),"이런 분들께 [[필요해요]]"],{cls:"md",top:"FOR YOU"})}
+      <div class="k-whol">${who.map(([i,t])=>`<div class="k-whr"><div class="k-gci">${icon(i)}</div><span ${E}>${esc(t)}${ro(t)} 힘드신 분</span>${chk}</div>`).join("")}</div>
+      <div class="k-adv"><div class="k-advh" ${E}>${c.name?`<b class="g">${esc(c.name)}</b>의 `:""}진료 특징</div>${fs.map(([,t],k)=>`<div class="k-fr"><b>${nn(k)}</b><span ${E}>${esc(plain(t))}</span></div>`).join("")}</div>${kfoot(c)}</section>`;}],
+  time:[null,
+    /* 세로 단계 */
+    (p,c)=>`<section class="k k-proc">${KH(p.time.t,{cls:"xl",top:"PROCESS"})}${pill(p.time.note,"soft")}
+      <div class="k-tl">${p.time.steps.map(([a,i,t],k)=>`<div class="k-tli"><div class="k-tln">STEP<b>${nn(k)}</b></div><div class="k-tlc"><div class="k-gci">${icon(i)}</div><div><b ${E}>${esc(a)}</b><span ${E}>${esc(t)}</span></div></div></div>`).join("")}</div>${kfoot(c)}</section>`,
+    /* 화살표 상자 */
+    (p,c)=>`<section class="k k-proc tint">${KH(p.time.t,{cls:"xl",top:"PROCESS"})}
+      <div class="k-chev n${p.time.steps.length}">${p.time.steps.map(([a,i,t],k)=>`<div class="k-cv ${k%2?"dk":""}"><small>STEP ${nn(k)}</small>${icon(i)}<b ${E}>${esc(a)}</b><span ${E}>${esc(t)}</span></div>`).join("")}</div>${pill(p.time.note,"soft")}${kfoot(c)}</section>`],
+  clinic:[null,
+    /* 큰 번호 줄 */
+    (p,c)=>{const fs=feats(p,c).slice(0,3),ps=(c.photos||[]).filter(x=>x&&x.url).slice(0,3);
+      return `<section class="k k-prom">${KH([(c.name?c.name+"의":"우리 한의원의")+" [[약속!]]"],{cls:"xl",top:"PROMISE"})}<div class="k-hw" ${E}>늘 가까이에서 건강을 살피는 주치의가 되겠습니다</div>
+      <div class="k-nrs">${fs.map(([i,t],k)=>`<div class="k-nr"><b class="k-nrn">${nn(k)}</b><div><div class="k-ot" ${E}>${gem(t)}</div><div class="k-od" ${E}>${esc(FD[i]||FD.check)}</div></div></div>`).join("")}</div>
+      ${ps.length?`<div class="k-strip r">${ps.map((x,k)=>ph("fac"+k,x.url,"k-sp")).join("")}</div>`:""}${kfoot(c)}</section>`;},
+    /* 3칸 카드 */
+    (p,c)=>{const fs=feats(p,c).slice(0,3),ps=(c.photos||[]).filter(x=>x&&x.url).slice(0,3);
+      return `<section class="k k-prom tint">${KH([(c.name?c.name+"의":"우리 한의원의")+" [[약속!]]"],{cls:"xl",top:"PROMISE"})}${pill("늘 가까이에서 건강을 살피는 주치의가 되겠습니다.","soft")}
+      <div class="k-c3">${fs.map(([i,t])=>`<div class="k-c3c"><div class="k-tci">${icon(i)}</div><b ${E}>${gem(t)}</b><span ${E}>${esc(FD[i]||FD.check)}</span></div>`).join("")}</div>
+      <div class="k-bluebot">${ps.length?`<div class="k-strip">${ps.map((x,k)=>ph("fac"+k,x.url,"k-sp")).join("")}</div>`:""}
+      <div class="k-q hw white"><i>“</i><span ${E}>편안하고 건강한 일상을 누리실 수 있도록 함께하겠습니다</span><i>”</i></div>${kfoot(c,1)}</div></section>`;}],
+  info:[null,
+    (c)=>{const hs=(c.hours||[]).filter(h=>h&&h[1]),row=(i,l,v,cl)=>`<div class="k-tr2"><div class="k-tl2">${icon(i)}<b>${l}</b></div><div class="k-tv ${cl||""}">${v}</div></div>`;
+      return `<section class="k k-info">${KH([c.name||"","[[진료시간 및 오시는 길]]"].filter(Boolean),{cls:"md",top:"INFO"})}${c.station?map(c):""}
+      <div class="k-tbl">${c.addr?row("pin","주소",`<span ${E}>${esc(c.addr)}</span>${c.way?`<small ${E}>${esc(c.way)}</small>`:""}`):""}
+      ${c.tel?row("phone","전화번호",`<span ${E}>${esc(c.tel)}</span>`,"big"):""}
+      ${hs.length||c.lunch?row("clock","진료시간",`<div class="k-hrs2">${hs.map(h=>`<div><span ${E}>${esc(h[0])}</span><b ${E}>${esc(h[1])}</b></div>`).join("")}${c.lunch?`<div><span>점심시간</span><b ${E}>${esc(c.lunch)}</b></div>`:""}</div>`):""}
+      ${c.parking?row("car","주차",`<span ${E}>${esc(c.parking)}</span>`):""}</div>
+      <div class="k-law dk" ${E}>모든 치료는 개인에 따라 차이가 있을 수 있고 부작용이 생길 수 있습니다.<br>반드시 의료진과 충분히 상담한 뒤 결정하시기 바랍니다.</div>${kfoot(c)}</section>`;}]
+};
+const KX=(k,L,...a)=>{const f=(KV[k]||[])[(L&&L[k])|0];return f?f(...a):K[k](...a);};
+function kbuild(o){const p=T[o.topic]||T["기본"],c=o.clinic,img=o.img||{},on=o.on||{},L=o.look;const out=[];KN=0;
   const add=(k,h)=>{if(on[k]!==false&&h)out.push(`<div class="blk" data-k="${k}">${h}</div>`);};
-  add("hero",K.hero(p,c,img));add("warn",K.warn(p,c));add("list",K.list(p,c,img));add("treat",K.treat(p,c,img));add("person",K.person(p,c));
-  add("time",K.time(p,c));add("clinic",K.clinic(p,c));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,K.doctor(d,k,c)));
-  if(c.room&&c.room.on)add("room",K.room(c,img));add("facility",K.facility(c));add("info",K.info(c));
+  add("hero",KX("hero",L,p,c,img));add("warn",KX("warn",L,p,c));add("list",KX("list",L,p,c,img));add("treat",KX("treat",L,p,c,img));add("person",KX("person",L,p,c));
+  add("time",KX("time",L,p,c));add("clinic",KX("clinic",L,p,c));(c.doctors||[]).filter(d=>d&&d.name).forEach((d,k)=>add("doc"+k,K.doctor(d,k,c)));
+  if(c.room&&c.room.on)add("room",K.room(c,img));add("facility",K.facility(c));add("info",KX("info",L,c));
   return out.join("");}
 
 const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417}
@@ -372,8 +452,8 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-lb.l .k-dot{right:-11px}.bi .k-lb.r .k-dot{left:-11px}
 .bi .k-blue{background:var(--a);color:#fff;border-radius:28px;padding:30px 30px;margin-top:34px;font-size:27px;line-height:1.5;font-weight:500}.bi .k-blue b{font-weight:800}.bi .k-blue.sm{font-size:26px;border-radius:22px;padding:22px}
 .bi .k-hw{font-family:"Nanum Pen Script","Gaegu",cursive;font-size:44px;color:#22262c;margin-bottom:6px;letter-spacing:0}
-.bi .k-paper{position:relative;background:#e8f4fb;margin:34px 0 0;padding:24px 90px 24px 34px;text-align:left;overflow:hidden}
-.bi .k-curl{position:absolute;right:0;bottom:0;width:96px;height:96px;background:linear-gradient(315deg,#f6f7f9 50%,#b9c6d0 50%,#dfe7ee 75%,#f2f6f9);border-radius:0 0 0 18px;box-shadow:-3px -3px 8px rgba(40,60,90,.12)}
+.bi .k-paper{position:relative;background:var(--bg2);margin:34px 0 0;padding:24px 90px 24px 34px;text-align:left;overflow:hidden}
+.bi .k-curl{position:absolute;right:0;bottom:0;width:96px;height:96px;background:linear-gradient(315deg,var(--kbg,#f6f7f9) 50%,#b9c6d0 50%,#dfe7ee 75%,#f2f6f9);border-radius:0 0 0 18px;box-shadow:-3px -3px 8px rgba(40,60,90,.12)}
 .bi .k-cl{display:flex;align-items:center;gap:16px;font-size:26px;padding:15px 0;color:#22262c;text-align:left}.bi .k-paper .k-cl+.k-cl{border-top:1.5px dashed #c7d6e2}.bi .k-cl span{line-height:1.35}
 .bi .k-ck{width:30px;height:30px;flex:none;color:var(--a)}.bi .k-white{margin-top:40px;padding:50px 40px 44px;border:4px solid #eceef1;box-shadow:none}.bi .k-end{font-size:40px;font-weight:900;margin-top:32px;line-height:1.3}
 .bi .k-bandph{position:relative;margin:40px -48px 0}.bi .k-bph{height:420px;border-radius:0}.bi .k-bph img{filter:saturate(.9)}
@@ -385,7 +465,7 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-foot{display:flex;align-items:center;justify-content:center;gap:12px;margin:46px -48px -40px;padding:26px 0 30px}.bi .k-foot.band{background:var(--a);margin-top:46px}.bi .k-foot.band .k-fname{color:#fff}
 .bi .k-logo{max-height:46px;max-width:300px;display:block}.bi .k-foot.band .k-logo,.bi .k-lfoot .k-logo{background:#fff;border-radius:14px;padding:8px 18px;max-height:62px}.bi .k-mark{width:38px;height:30px;border-radius:16px 16px 4px 4px;background:linear-gradient(120deg,#e0388f,#6b3cf0 40%,#1fb6f0 70%,#3fd27a)}.bi .k-fname{font-size:30px;font-weight:900;color:#1d2026}
 .bi .k-who3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}.bi .k-wc{background:#fff;border:2px solid #eceef1;border-radius:22px;padding:22px 10px;font-size:23px;line-height:1.4;display:flex;flex-direction:column;align-items:center;gap:8px}.bi .k-wc .k-ck{width:38px;height:38px}
-.bi .k-adv{background:#e8f4fb;border-radius:30px;margin-top:30px;padding:34px 36px;text-align:left}.bi .k-advh{font-size:44px;font-weight:900;text-align:center;margin-bottom:14px}.bi .k-advh.sm{font-size:30px;text-align:left;color:var(--a);margin:10px 0 4px}
+.bi .k-adv{background:var(--bg2);border-radius:30px;margin-top:30px;padding:34px 36px;text-align:left}.bi .k-advh{font-size:44px;font-weight:900;text-align:center;margin-bottom:14px}.bi .k-advh.sm{font-size:30px;text-align:left;color:var(--a);margin:10px 0 4px}
 .bi .k-advg{display:grid;grid-template-columns:1fr 170px;align-items:end}.bi .k-doc{width:170px;height:270px;display:block}
 .bi .k-ovals{display:flex;flex-direction:column;gap:20px;margin-top:34px}.bi .k-oval{border:3px solid var(--a);border-radius:99px;background:rgba(255,255,255,.85);padding:28px 40px}.bi .k-ot{font-size:38px;font-weight:900;color:var(--a)}.bi .k-ot .g{font-weight:900}.bi .k-od{font-size:24px;margin-top:8px;line-height:1.45}
 .bi .k-bluebot{background:var(--a);margin:44px -48px -40px;padding:34px 30px 0}.bi .k-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.bi .k-sp{aspect-ratio:4/3;border-radius:0}.bi .k-bluebot .k-q{margin-top:24px}.bi .k-bluebot .k-foot{margin:10px -30px 0}
@@ -394,11 +474,11 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-steps.sm .k-st{width:160px;height:160px;border-width:11px}.bi .k-steps.sm .k-sti{font-size:20px}
 .bi .k-phcap{position:relative;margin:34px -10px 0}.bi .k-tph{height:380px;border-radius:6px}.bi .k-cap{position:relative;margin:-70px 40px 0;background:#fff;border:3px solid var(--a);border-radius:99px;padding:24px 50px;display:flex;flex-direction:column;gap:6px;color:var(--a);font-size:24px;line-height:1.4}.bi .k-cap b{font-size:30px;font-weight:900}
 .bi .k-tcs{display:flex;flex-direction:column;gap:22px;margin-top:34px}.bi .k-tc{display:grid;grid-template-columns:150px 1fr;gap:26px;align-items:center;border:3px solid var(--a);border-radius:34px;background:#fff;padding:26px 30px;text-align:left}
-.bi .k-tci{width:150px;height:150px;border-radius:50%;background:#e8f4fb;display:grid;place-items:center;color:var(--a)}.bi .k-tci .ic{width:80px;height:80px;stroke-width:1.4}
+.bi .k-tci{width:150px;height:150px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;color:var(--a)}.bi .k-tci .ic{width:80px;height:80px;stroke-width:1.4}
 .bi .k-tag{display:inline-block;background:var(--a);color:#fff;border-radius:99px;padding:6px 26px;font-size:28px;font-weight:900}.bi .k-tcd{font-size:23px;line-height:1.5;margin-top:12px;color:#22262c}.bi .k-note{font-size:21px;color:#6b7380;margin-top:24px}
 .bi .k-dbox{display:grid;grid-template-columns:1fr 1fr;border:3px solid var(--a);border-radius:30px;overflow:hidden;background:#fff}.bi .k-dl{background:var(--a);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:30px}
 .bi .k-dtt{background:#fff;color:var(--a);border-radius:99px;padding:6px 26px;font-size:26px;font-weight:900}.bi .k-dn{font-size:76px;font-weight:900;line-height:1.1}.bi .k-dr{font-size:26px}.bi .k-dr2{padding:22px}.bi .k-dph{aspect-ratio:3/4;border-radius:16px}
-.bi .k-soft{display:inline-block;background:#e8f4fb;border-radius:99px;padding:14px 36px;font-size:26px;font-weight:700;margin-top:24px}.bi .k-rph{height:440px;margin:30px -24px 0;border-radius:4px}
+.bi .k-soft{display:inline-block;background:var(--bg2);border-radius:99px;padding:14px 36px;font-size:26px;font-weight:700;margin-top:24px}.bi .k-rph{height:440px;margin:30px -24px 0;border-radius:4px}
 .bi .k-ritems{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.bi .k-ri{background:#fff;border-radius:18px;padding:16px;display:flex;flex-direction:column;font-size:21px}.bi .k-ri b{font-size:25px;color:var(--a)}
 .bi .k-flow{display:flex;align-items:center;gap:14px;margin-top:30px}.bi .k-flh{flex:none;width:150px;height:170px;border-radius:26px;background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;font-size:40px;font-weight:900;display:grid;place-items:center;line-height:1.2}.bi .k-flow .k-steps{margin:0}
 .bi .k-floor{display:grid;grid-template-columns:230px 1fr;border:3px solid var(--a);border-radius:30px;overflow:hidden;margin-top:30px;background:#fff}.bi .k-fl{background:var(--a);color:#fff;padding:26px 18px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
@@ -409,7 +489,62 @@ const K_CSS=`.bi[class*="st-card"]{background:#f6f7f9;--a2:#18bdf0;--ink:#121417
 .bi .k-ri2{display:flex;flex-direction:column;align-items:center;gap:4px;color:#ffe9a6}.bi .k-ri2 .ic{width:46px;height:46px}.bi .k-ri2 b{font-size:22px}.bi .k-rv{font-size:25px;font-weight:700;line-height:1.4}.bi .k-rv small{font-size:20px;font-weight:500;opacity:.9}.bi .k-rv.big{font-size:42px;font-weight:900}
 .bi .k-rv.hrs{display:flex;flex-wrap:wrap;gap:6px 0}.bi .k-rv.hrs div{width:50%;display:flex;flex-direction:column;font-size:21px;padding-right:8px}.bi .k-rv.hrs span{color:#ffe9a6;font-weight:700}.bi .k-rv.hrs b{font-size:25px}
 .bi .k-lfoot{background:var(--a);margin:44px -48px -40px;padding:6px 40px 36px}.bi .k-lfoot .k-foot{margin:0;padding:24px 0 14px}.bi .k-lfoot .k-fname{color:#fff}.bi .k-law{color:rgba(255,255,255,.85);font-size:19px;line-height:1.6}
-.bi .k .ph{background:#e9eef0}`;
+.bi .k .ph{background:#e9eef0}
+.bi .k-kk{display:none}
+.bi .k-g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:34px}.bi .k-gc{background:#fff;border-radius:26px;padding:26px 22px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 6px 24px rgba(20,40,80,.07)}.bi .k-gc b{font-size:28px;color:var(--a)}.bi .k-gc span{font-size:22px;color:#4a5260}
+.bi .k-gci{width:84px;height:84px;border-radius:50%;background:var(--bg2);color:var(--a);display:grid;place-items:center;flex:none}.bi .k-gci .ic{width:46px;height:46px}
+.bi .k-mag{position:relative;margin:-64px -48px 0;height:700px;overflow:hidden}.bi .k-magph{position:absolute;inset:0;height:700px;border-radius:0}.bi .k-magph img{object-position:50% 22%}
+.bi .k-magt{position:absolute;left:0;right:0;bottom:0;padding:160px 40px 46px;background:linear-gradient(180deg,transparent,rgba(8,14,28,.82) 52%)}
+.bi .k .k-magt .k-h,.bi .k .k-magt .k-sub{color:#fff}.bi .k.k-hmag .k-magt .k-h .g,.bi.lk-h2 .k.k-hmag .k-magt .k-h>div:nth-child(2) .g{background:none;color:#ffe9a6;-webkit-text-fill-color:#ffe9a6}.bi .k-magt .k-sub{margin-top:16px}.bi .k .k-magt .k-kk span{color:#fff}
+.bi .k-split{display:grid;grid-template-columns:330px 1fr;gap:26px;margin-top:36px;text-align:left}.bi .k-sph{height:470px;border-radius:28px}.bi .k-sph img{object-position:50% 20%}
+.bi .k-nums{display:flex;flex-direction:column;justify-content:center;gap:14px}.bi .k-num{display:flex;gap:16px;align-items:center;background:#fff;border-radius:22px;padding:18px 20px;box-shadow:0 4px 18px rgba(20,40,80,.06)}
+.bi .k-num>b{flex:none;width:58px;height:58px;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:900}.bi .k-num strong{display:block;font-size:26px;font-weight:900;color:var(--a)}.bi .k-num span{display:block;font-size:20px;color:#4a5260;line-height:1.35}
+.bi .k-wgrid{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-top:34px}.bi .k-wg{width:calc(50% - 8px);background:#fff;border:3px solid var(--soft);border-radius:26px;padding:24px 20px;display:flex;align-items:center;gap:18px;text-align:left;font-size:24px;font-weight:600;line-height:1.35}
+.bi .k-wgi{width:72px;height:72px;flex:none;border-radius:20px;background:var(--a);color:#fff;display:grid;place-items:center}.bi .k-wgi .ic{width:42px;height:42px}
+.bi .k-sc{background:#fff;border:3px solid var(--a);border-radius:28px;margin-top:34px;overflow:hidden;text-align:left}.bi .k-sch{background:var(--a);color:#fff;font-size:30px;font-weight:900;padding:18px 30px;text-align:center}
+.bi .k-scr{display:grid;grid-template-columns:56px 1fr 46px;align-items:center;gap:16px;padding:20px 30px;font-size:26px}.bi .k-scr+.k-scr{border-top:2px solid #eef0f3}.bi .k-scr>b{font-size:34px;font-weight:900;color:var(--a);font-style:italic}
+.bi .k-sbx{width:42px;height:42px;border:3px solid var(--a);border-radius:10px;display:grid;place-items:center}.bi .k-sbx .k-ck{width:28px;height:28px}.bi .k-scn{margin-top:30px;color:var(--a)}
+.bi .k-side{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:38px;align-items:center}.bi .k-sideph{height:440px;border-radius:30px}
+.bi .k-sidel{display:flex;flex-direction:column;gap:14px}.bi .k-sb{display:flex;align-items:center;gap:14px;background:#fff;border-radius:22px;padding:18px;text-align:left;font-size:24px;font-weight:600;line-height:1.35;box-shadow:0 4px 16px rgba(20,40,80,.07)}.bi .k-sbi{width:58px;height:58px;flex:none;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center}.bi .k-sbi .ic{width:34px;height:34px}
+.bi .k-tph2{height:400px;border-radius:30px;margin-top:34px}
+.bi .k-zzs{margin-top:20px}.bi .k-zz{display:flex;align-items:center;gap:30px;padding:28px 6px;text-align:left}.bi .k-zz+.k-zz{border-top:2.5px dashed var(--soft)}.bi .k-zz.r{flex-direction:row-reverse;text-align:right}
+.bi .k-zzi{position:relative;width:150px;height:150px;flex:none;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;display:grid;place-items:center}.bi .k-zzi .ic{width:74px;height:74px;stroke-width:1.5}
+.bi .k-zzi b{position:absolute;top:-6px;left:-6px;width:52px;height:52px;border-radius:50%;background:#fff;color:var(--a);border:3px solid var(--a);display:grid;place-items:center;font-size:20px;font-weight:900}
+.bi .k-zzt{flex:1;font-size:23px;line-height:1.5;color:#22262c}.bi .k-zzh{font-size:34px;font-weight:900;color:var(--a);margin-bottom:6px}
+.bi .k-tgs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}.bi .k-tgs.odd .k-tg:last-child{grid-column:span 2}
+.bi .k-tg{background:#fff;border-radius:28px;padding:30px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(20,40,80,.07)}.bi .k-tg b{font-size:30px;font-weight:900;color:var(--a)}.bi .k-tg span{font-size:21px;line-height:1.5;color:#3a404a}
+.bi .k-tgi{width:110px;height:110px;border-radius:50%;background:var(--bg2);color:var(--a);display:grid;place-items:center}.bi .k-tgi .ic{width:60px;height:60px;stroke-width:1.5}
+.bi .k-whol{display:flex;flex-direction:column;gap:14px;margin-top:30px}.bi .k-whr{display:flex;align-items:center;gap:20px;background:#fff;border-radius:99px;padding:14px 30px 14px 16px;font-size:27px;font-weight:700;text-align:left;box-shadow:0 4px 18px rgba(20,40,80,.07)}.bi .k-whr span{flex:1}.bi .k-whr .k-gci{width:70px;height:70px}.bi .k-whr .k-gci .ic{width:38px;height:38px}
+.bi .k-fr{display:flex;align-items:center;gap:18px;padding:14px 0;font-size:26px}.bi .k-fr+.k-fr{border-top:1.5px dashed #c7d6e2}.bi .k-fr b{flex:none;width:52px;height:52px;border-radius:14px;background:var(--a);color:#fff;display:grid;place-items:center;font-size:21px;font-weight:900}
+.bi .k-tl{position:relative;margin:40px 0 10px;text-align:left}.bi .k-tli{display:grid;grid-template-columns:120px 1fr;gap:20px;align-items:center;position:relative;padding-bottom:22px}
+.bi .k-tli:not(:last-child):before{content:"";position:absolute;left:59px;top:100px;bottom:0;border-left:4px dotted var(--a)}
+.bi .k-tln{width:120px;height:120px;border-radius:50%;background:var(--a);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:18px;font-weight:700;letter-spacing:.06em}.bi .k-tln b{font-size:40px;line-height:1;font-weight:900;letter-spacing:0}
+.bi .k-tlc{display:flex;align-items:center;gap:20px;background:#fff;border-radius:26px;padding:22px 26px;box-shadow:0 4px 20px rgba(20,40,80,.07)}.bi .k-tlc b{display:block;font-size:30px;font-weight:900;color:var(--a)}.bi .k-tlc span{display:block;font-size:22px;color:#4a5260}
+.bi .k-chev{display:flex;margin:44px 0 10px}.bi .k-cv{flex:1;min-width:0;height:300px;background:var(--soft);color:var(--ink);clip-path:polygon(0 0,calc(100% - 30px) 0,100% 50%,calc(100% - 30px) 100%,0 100%,30px 50%);margin-left:-14px;padding:0 30px 0 44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.bi .k-cv:first-child{margin-left:0;clip-path:polygon(0 0,calc(100% - 30px) 0,100% 50%,calc(100% - 30px) 100%,0 100%);padding-left:20px}.bi .k-cv.dk{background:var(--a);color:#fff}.bi .k-cv small{font-size:16px;font-weight:800;letter-spacing:.05em;opacity:.8}.bi .k-cv .ic{width:52px;height:52px}.bi .k-cv b{font-size:27px;font-weight:900}.bi .k-cv span{font-size:17px;line-height:1.35}
+.bi .k-nrs{margin-top:30px;text-align:left}.bi .k-nr{display:flex;gap:26px;align-items:flex-start;padding:26px 10px}.bi .k-nr+.k-nr{border-top:2px solid #e3e6ea}.bi .k-nrn{font-size:76px;line-height:.9;font-weight:900;color:var(--soft);-webkit-text-stroke:2px var(--a);font-style:italic}
+.bi .k-prom>.k-hw{font-size:38px;margin-top:14px}.bi .k-strip.r{margin-top:30px}.bi .k-strip.r .k-sp{border-radius:20px}
+.bi .k-c3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:34px}.bi .k-c3c{background:#fff;border-radius:26px;padding:28px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 6px 22px rgba(20,40,80,.07)}.bi .k-c3c .k-tci{width:104px;height:104px}.bi .k-c3c .k-tci .ic{width:56px;height:56px}.bi .k-c3c b{font-size:26px;font-weight:900;color:var(--a);line-height:1.3}.bi .k-c3c span{font-size:19px;line-height:1.5;color:#3a404a}
+.bi .k-tbl{background:#fff;border-radius:28px;border-top:8px solid var(--a);margin-top:30px;padding:10px 34px;text-align:left;box-shadow:0 6px 24px rgba(20,40,80,.07)}.bi .k-tr2{display:grid;grid-template-columns:170px 1fr;gap:18px;padding:22px 0;align-items:center}.bi .k-tr2+.k-tr2{border-top:2px solid #eef0f3}
+.bi .k-tl2{display:flex;align-items:center;gap:10px;color:var(--a)}.bi .k-tl2 .ic{width:34px;height:34px}.bi .k-tl2 b{font-size:24px}.bi .k-tv{font-size:24px;font-weight:600;line-height:1.45}.bi .k-tv small{display:block;font-size:19px;color:#5d6572;font-weight:500}.bi .k-tv.big{font-size:38px;font-weight:900;color:var(--a)}
+.bi .k-hrs2{display:flex;flex-wrap:wrap}.bi .k-hrs2 div{width:50%;display:flex;flex-direction:column;padding:4px 8px 4px 0}.bi .k-hrs2 span{font-size:19px;color:var(--a);font-weight:700}.bi .k-hrs2 b{font-size:23px}.bi .k-law.dk{color:#6b7380;margin-top:26px;font-size:18px;line-height:1.6}
+/* 제목 모양 */
+.bi.lk-h1 .k-kk,.bi.lk-h3 .k-kk{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:14px;font-size:20px;font-weight:800;letter-spacing:.08em;color:var(--a)}
+.bi.lk-h1 .k-kk b{background:var(--a);color:#fff;border-radius:99px;padding:3px 14px;letter-spacing:0}
+.bi.lk-h1 .k .k-h .g{background:linear-gradient(transparent 60%,rgba(255,214,64,.65) 60%);color:var(--a);-webkit-text-fill-color:var(--a)}
+.bi.lk-h2 .k .k-h>div:nth-child(2){display:inline-block;background:var(--a);color:#fff;border-radius:16px;padding:2px 28px 8px;margin-top:12px}.bi.lk-h2 .k .k-h>div:nth-child(2) .g{background:none;color:#ffe9a6;-webkit-text-fill-color:#ffe9a6}
+.bi.lk-h2 .k .k-h .g{background:none;color:var(--a);-webkit-text-fill-color:var(--a)}.bi.lk-h2 .k-pill{background:var(--a)}
+.bi.lk-h3 .k-kk{justify-content:flex-start}.bi.lk-h3 .k-kk b{font-size:44px;font-style:italic;letter-spacing:0;color:var(--soft);-webkit-text-stroke:1.5px var(--a)}
+.bi.lk-h3 .k .k-h{text-align:left;border-left:12px solid var(--a);padding-left:24px}.bi.lk-h3 .k-hw,.bi.lk-h3 .k .k-hero>.k-sub{text-align:left}
+/* 바탕 */
+.bi .k.tint{--kbg:var(--bg2)}.bi.lk-b1 .k,.bi.lk-b3 .k{--kbg:#fff}.bi.lk-b2 .blk:nth-child(even) .k{--kbg:var(--bg2)}.bi.lk-b2 .k.tint .k-wbox{background:var(--bg2)}
+.bi.lk-b1{background:#fff}.bi.lk-b1 .blk+.blk .k{border-top:3px dashed #e3e6ea}.bi.lk-b1 .k-gc,.bi.lk-b1 .k-num,.bi.lk-b1 .k-tg,.bi.lk-b1 .k-c3c,.bi.lk-b1 .k-tlc,.bi.lk-b1 .k-whr,.bi.lk-b1 .k-sb{background:var(--bg2);box-shadow:none}
+.bi.lk-b2 .blk:nth-child(even) .k{background:var(--bg2)}.bi.lk-b2 .k.tint{background:#fff}
+.bi.lk-b3{background:var(--soft)}.bi.lk-b3 .k{background:#fff;margin:24px 24px 0;border-radius:44px;overflow:hidden}.bi.lk-b3 .blk:last-child .k{margin-bottom:24px}.bi.lk-b3 .k.tint{background:#fbfcfd}
+/* 모서리 · 테두리 */
+.bi.lk-s1 .k-card,.bi.lk-s1 .k-tc,.bi.lk-s1 .k-oval,.bi.lk-s1 .k-wbox,.bi.lk-s1 .k-blue,.bi.lk-s1 .k-adv,.bi.lk-s1 .k-wc,.bi.lk-s1 .k-dbox,.bi.lk-s1 .k-floor,.bi.lk-s1 .k-gc,.bi.lk-s1 .k-num,.bi.lk-s1 .k-wg,.bi.lk-s1 .k-sc,.bi.lk-s1 .k-sb,.bi.lk-s1 .k-tg,.bi.lk-s1 .k-tlc,.bi.lk-s1 .k-c3c,.bi.lk-s1 .k-tbl,.bi.lk-s1 .k-sph,.bi.lk-s1 .k-sideph,.bi.lk-s1 .k-tph2{border-radius:8px}
+.bi.lk-s1 .k-pill,.bi.lk-s1 .k-bp,.bi.lk-s1 .k-row,.bi.lk-s1 .k-tag,.bi.lk-s1 .k-soft,.bi.lk-s1 .k-whr,.bi.lk-s1 .k-cap{border-radius:6px}.bi.lk-s1.lk-b3 .k{border-radius:12px}
+.bi.lk-s2 .k-tc,.bi.lk-s2 .k-oval,.bi.lk-s2 .k-dbox,.bi.lk-s2 .k-floor,.bi.lk-s2 .k-wg,.bi.lk-s2 .k-white{border-color:transparent;box-shadow:0 12px 34px rgba(20,40,80,.10)}.bi.lk-s2 .k-pill{box-shadow:0 8px 18px rgba(20,40,80,.18)}`;
 /* 사진 자리마다 '이런 사진이어야 해요' 조건: 함수가 제미나이로 후보를 보고 어울리는 사진만 고름 */
 const PV={"교통사고": "목이나 허리를 손으로 잡고 아파하는 성인 한 명(교통사고 뒤 통증 느낌)", "허리": "허리를 손으로 잡고 아파하는 성인 한 명", "목": "목이나 어깨를 손으로 잡고 아파하는 성인 한 명", "관절": "무릎이나 관절을 손으로 잡고 아파하는 사람 한 명", "두통": "머리를 손으로 짚고 두통을 느끼는 사람 한 명", "다이어트": "줄자로 허리를 재거나 건강한 식단을 든 사람", "비염": "휴지로 코를 풀거나 재채기하는 사람 한 명", "성장": "키를 재거나 밝게 웃는 아이", "여성": "배나 허리를 손으로 감싸고 불편해하는 여성 한 명", "요양": "병원에서 돌봄을 받는 어르신 환자", "피부": "얼굴 피부를 손으로 만지며 살피는 여성 한 명", "기본": "의사와 환자가 상담하는 진료 장면"};
 function photoVet(o){const t=o.topic in PV?o.topic:"기본",tn=t==="기본"?"건강":t,c=o.clinic||{},v={};
@@ -525,6 +660,9 @@ const STYLES={
   card_navy:{name:"카드형 · 네이비",m:"#121417",a:"#1c3f94",a2:"#4f86f7",card:1,css:""},
   card_green:{name:"카드형 · 그린",m:"#121417",a:"#11805a",a2:"#36c48a",card:1,css:""},
   card_coral:{name:"카드형 · 코랄",m:"#121417",a:"#e0533b",a2:"#ff9c6e",card:1,css:""},
+  card_purple:{name:"카드형 · 보라",m:"#121417",a:"#5b3cc4",a2:"#a98bff",card:1,css:""},
+  card_teal:{name:"카드형 · 청록",m:"#121417",a:"#0a8a8a",a2:"#3fd0c9",card:1,css:""},
+  card_brown:{name:"카드형 · 한방 갈색",m:"#1e1712",a:"#8a5a2b",a2:"#d29b5c",card:1,css:""},
   basic:{name:"깔끔 네이비",m:"#16325c",a:"#1f9d6b",css:""},
   pastel:{name:"파스텔 인포그래픽",m:"#1d3b53",a:"#16a3a0",css:`.bi.st-pastel{background:#e6f4f2}.bi.st-pastel .blk{padding:16px 26px}.bi.st-pastel .blk:first-child{padding-top:30px}.bi.st-pastel .blk:last-child{padding-bottom:30px}
 .bi.st-pastel .s{border-radius:40px;background:#fff!important;padding:60px 52px;box-shadow:0 8px 0 rgba(22,163,160,.12)}.bi.st-pastel .sep{display:none}
@@ -555,5 +693,5 @@ const STYLES={
 .bi.st-warm .kick{display:flex;margin-bottom:20px}.bi.st-warm .kick span{background:var(--soft);color:var(--a);border-radius:99px;padding:8px 24px;font-size:26px;font-weight:800}`}
 };
 const STYLE_CSS=Object.values(STYLES).map(x=>x.css).join("\n");
-root.BlogKit={T,topicOf,build,photoQueries,photoVet,photoNeed,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
+root.BlogKit={T,topicOf,build,randLook,lookCls,photoQueries,photoVet,photoNeed,CSS,snap,toBlob,zip,icon,IC,esc,em,STYLES,STYLE_CSS};
 })(window);
