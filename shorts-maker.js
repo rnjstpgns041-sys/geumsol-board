@@ -19,7 +19,20 @@ const LAYOUTS={
 const LAYOUT_KEYS=Object.keys(LAYOUTS);
 function layoutOf(k){return LAYOUTS[k]||LAYOUTS.basic;}
 const FONT='"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-function brandOf(name){const k=Object.keys(BRAND).find(x=>String(name||"").replace(/\s/g,"").includes(x));return k?Object.assign({key:k},BRAND[k]):null;}
+/* 템플릿이 없는 업체: 색 묶음 하나를 골라 깔끔한 기본 디자인으로 만든다 */
+const PAL=[
+  {name:"민트",bg:"#e6f6ef",bg2:"#cfeee0",t1:"#12352a",t2:"#0f9d6b",sub:{bg:"#0f9d6b",fg:"#fff"},endBg:"#eef8f3",line:"#0f9d6b"},
+  {name:"네이비",bg:"#1d2b4f",bg2:"#121c38",t1:"#ffffff",t2:"#7fd1ff",sub:{bg:"rgba(13,22,48,.9)",fg:"#fff"},endBg:"#eef2fa",line:"#1d2b4f"},
+  {name:"코랄",bg:"#fff0ea",bg2:"#ffe0d3",t1:"#2b1a14",t2:"#f0643c",sub:{bg:"#f0643c",fg:"#fff"},endBg:"#fff4ef",line:"#f0643c"},
+  {name:"베이지",bg:"#f4ece0",bg2:"#eadcc6",t1:"#3a2a1a",t2:"#a0662b",sub:{bg:"rgba(40,28,16,.88)",fg:"#fff"},endBg:"#f7f1e8",line:"#a0662b"},
+  {name:"보라",bg:"#2a1f4a",bg2:"#1b1433",t1:"#ffffff",t2:"#ffcf5a",sub:{bg:"#6c4ef5",fg:"#fff"},endBg:"#f3f0fc",line:"#6c4ef5"},
+  {name:"하늘",bg:"#e8f1ff",bg2:"#d4e5ff",t1:"#10233f",t2:"#2c6bed",sub:{bg:"#2c6bed",fg:"#fff"},endBg:"#eef4ff",line:"#2c6bed"}];
+const GEN={};
+function hashOf(s){let h=2166136261;for(const c of String(s))h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0;}
+function genSet(name,o){GEN[String(name||"").replace(/\s/g,"")]=Object.assign(GEN[String(name||"").replace(/\s/g,"")]||{},o||{});}
+function brandOf(name){const n=String(name||"").replace(/\s/g,"");if(!n)return null;const k=Object.keys(BRAND).find(x=>n.includes(x));if(k)return Object.assign({key:k},BRAND[k]);
+  const G=GEN[n]||{},h=hashOf(n),pi=G.pal!=null&&PAL[G.pal]?+G.pal:h%PAL.length;
+  return Object.assign({key:n,gen:true,pal:pi,dir:"g_"+h.toString(36),s1:84,s2:70,photos:0,logo:false,genFoot:true,endName:String(name).trim(),phone:G.phone||""},PAL[pi]);}
 function load(src){return new Promise((ok,no)=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>ok(im);im.onerror=()=>no(new Error("그림을 못 불러왔어요: "+src));im.src=src;});}
 function rng(seed){let s=(seed>>>0)||7;return()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return((s>>>0)%100000)/100000;};}
 const len=s=>String(s).replace(/\s/g,"").length;
@@ -75,13 +88,26 @@ async function prepare(o){const B=o.brand,base=o.base||"";
   const nBrand=photos.length,own=[];
   /* 대본 문장에 맞춰 찾은 사진 (문장마다 하나, 없으면 null = 업체 사진 문장) */
   for(const src of (o.extra||[])){if(!src){own.push(-1);continue;}try{photos.push(await load(src));own.push(photos.length-1);}catch(e){own.push(-1);}}
-  if(!photos.length)throw new Error("쓸 사진이 없어요.");
-  let foot=await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
+  if(!photos.length&&B.gen)for(let i=0;i<3;i++)photos.push(softBg(B,i));
+  let foot=B.genFoot?footOf(B):await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
   /* 가장 크게 확대될 때(약 1.75배)도 선명한 크기까지만 남김 */
   for(let i=0;i<photos.length;i++)photos[i]=shrink(photos[i],W,HEAD+BAND,1.75);
+  if(!photos.length)throw new Error("쓸 사진이 없어요.");
   foot=shrink(foot,W,FOOT,1);if(logo)logo=shrink(logo,logo.width*600/logo.height,600,1);
   return {photos,foot,logo,own,nBrand,nUp};}
 
+/* 새 디자인 업체의 아래 칸: 이름 + 전화번호 띠를 그려서 씀 */
+function footOf(B){const c=document.createElement("canvas");c.width=W;c.height=FOOT;const g=c.getContext("2d");
+  const gr=g.createLinearGradient(0,0,0,FOOT);gr.addColorStop(0,B.endBg);gr.addColorStop(1,"#ffffff");g.fillStyle=gr;g.fillRect(0,0,W,FOOT);
+  g.fillStyle=B.line;g.fillRect(0,0,W,10);g.textAlign="center";g.textBaseline="middle";
+  g.fillStyle="#161616";fitText(g,B.endName,W-160,96,900);g.fillText(B.endName,W/2,B.phone?FOOT/2-62:FOOT/2);
+  if(B.phone){const t="상담문의  "+B.phone;g.font=`700 52px ${FONT}`;const w=g.measureText(t).width+90;g.fillStyle=B.line;g.beginPath();g.roundRect(W/2-w/2,FOOT/2+30,w,96,48);g.fill();
+    g.fillStyle="#ffffff";g.fillText(t,W/2,FOOT/2+80);}
+  return c;}
+/* 사진이 하나도 없을 때 쓰는 은은한 배경 */
+function softBg(B,i){const c=document.createElement("canvas");c.width=W;c.height=HEAD+BAND;const g=c.getContext("2d");
+  const gr=g.createLinearGradient(0,0,W,HEAD+BAND);gr.addColorStop(0,B.endBg);gr.addColorStop(1,B.bg2||B.bg);g.fillStyle=gr;g.fillRect(0,0,W,HEAD+BAND);
+  g.globalAlpha=.18;g.fillStyle=B.line;[[.2,.25,260],[.85,.6,340],[.4,.85,200]].forEach(([x,y,r],k)=>{g.beginPath();g.arc(W*((x+i*.23)%1),(HEAD+BAND)*y,r,0,7);g.fill();});g.globalAlpha=1;return c;}
 /* 위 제목은 영상 내내 같으니 한 번만 그려 두고 붙인다 */
 function headOf(S){if(S.head)return S.head;const c=document.createElement("canvas");c.width=W;c.height=S.L.headH;drawHead(c.getContext("2d"),S);return S.head=c;}
 function drawFrame(g,t,S){const L=S.L;
@@ -91,8 +117,9 @@ function drawHead(g,S){const {B,title,L}=S,HH=L.titleH,ov=!!L.overlay;
   if(ov){const gr=g.createLinearGradient(0,0,0,L.headH);gr.addColorStop(0,"rgba(0,0,0,.78)");gr.addColorStop(0.6,"rgba(0,0,0,.45)");gr.addColorStop(1,"rgba(0,0,0,0)");g.fillStyle=gr;}
   else if(B.bg2){const gr=g.createLinearGradient(0,0,0,L.headH);gr.addColorStop(0,B.bg);gr.addColorStop(1,B.bg2);g.fillStyle=gr;}else g.fillStyle=B.bg;g.fillRect(0,0,W,L.headH);
   g.textAlign="center";g.textBaseline="middle";if(ov){g.shadowColor="rgba(0,0,0,.45)";g.shadowBlur=18;}
-  const s1=fitText(g,title[0],W-90,B.s1);g.fillStyle=ov?"#ffffff":B.t1;g.fillText(title[0],W/2,title[1]?HH*0.42:HH/2);
-  if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=HH*0.42+s1*0.55+s2*0.75;
+  if(B.gen){g.font=`800 44px ${FONT}`;const nw=g.measureText(B.endName).width+70,py=Math.max(50,HH*0.15);g.shadowColor="transparent";g.fillStyle=ov||B.t1==="#ffffff"?"rgba(255,255,255,.18)":B.line;g.beginPath();g.roundRect(W/2-nw/2,py-35,nw,70,35);g.fill();g.fillStyle="#ffffff";g.fillText(B.endName,W/2,py+2);if(ov){g.shadowColor="rgba(0,0,0,.45)";g.shadowBlur=18;}}
+  const s1=fitText(g,title[0],W-90,B.s1);g.fillStyle=ov?"#ffffff":B.t1;const ty=B.gen?HH*0.5:HH*0.42;g.fillText(title[0],W/2,title[1]?ty:(B.gen?HH*0.58:HH/2));
+  if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=ty+s1*0.55+s2*0.75;
     if(B.t2bg){const w=g.measureText(title[1]).width+36;g.fillStyle=B.t2bg;g.fillRect(W/2-w/2,y2-s2*0.68,w,s2*1.36);}
     g.fillStyle=ov&&!B.t2bg?"#ffd84d":B.t2;g.fillText(title[1],W/2,y2);}
   g.shadowColor="transparent";g.shadowBlur=0;}
@@ -124,13 +151,14 @@ function drawMid(g,t,S){const {B,P,A,kw,L}=S,R=L.R;
     g.save();g.translate(W/2,EY+305);g.scale(zz,zz);g.translate(0,(1-e)*140);
     if(A.logo){const h=560,w=A.logo.width*h/A.logo.height;g.drawImage(A.logo,-w/2,-h/2,w,h);}
     else{g.textAlign="center";g.fillStyle="#3a3a3a";fitText(g,kw||B.endName,W-160,84);g.fillText(kw||B.endName,0,-150);
-      g.fillStyle="#151515";fitText(g,B.endName,W-120,128);g.shadowColor="rgba(0,0,0,.25)";g.shadowBlur=14;g.shadowOffsetY=6;g.fillText(B.endName,0,70);g.shadowColor="transparent";}
+      g.fillStyle="#151515";fitText(g,B.endName,W-120,128);g.shadowColor="rgba(0,0,0,.25)";g.shadowBlur=14;g.shadowOffsetY=6;g.fillText(B.endName,0,70);g.shadowColor="transparent";g.shadowBlur=0;g.shadowOffsetY=0;
+      if(B.gen&&B.phone){const t="상담문의  "+B.phone;g.font=`700 54px ${FONT}`;const w=g.measureText(t).width+100;g.fillStyle=B.line;g.beginPath();g.roundRect(-w/2,190,w,104,52);g.fill();g.fillStyle="#fff";g.fillText(t,0,243);}}
     g.restore();
-    const ly=EY+620;g.strokeStyle=B.line;g.lineWidth=3;g.beginPath();g.moveTo(R.x+40,ly);g.lineTo(R.x+R.w-40,ly);g.stroke();
+    if(!B.gen){const ly=EY+620;g.strokeStyle=B.line;g.lineWidth=3;g.beginPath();g.moveTo(R.x+40,ly);g.lineTo(R.x+R.w-40,ly);g.stroke();
     g.fillStyle=B.line;g.save();g.translate(W/2,ly);g.rotate(Math.PI/4);g.fillRect(-9,-9,18,18);g.restore();
     g.font=`700 52px ${FONT}`;const tx=`상담문의 : ${B.phone}`,tw=g.measureText(tx).width,x0=W/2-(tw+80)/2;
     g.fillStyle="#2a2a2a";g.beginPath();g.arc(x0+30,ly+80,30,0,7);g.fill();g.fillStyle="#fff";g.font=`900 34px ${FONT}`;g.fillText("☎",x0+30,ly+82);
-    g.fillStyle="#2a2a2a";g.font=`700 52px ${FONT}`;g.textAlign="left";g.fillText(tx,x0+80,ly+82);g.textAlign="center";g.globalAlpha=1;}
+    g.fillStyle="#2a2a2a";g.font=`700 52px ${FONT}`;g.textAlign="left";g.fillText(tx,x0+80,ly+82);g.textAlign="center";}g.globalAlpha=1;}
   g.restore();
   /* 자막 */
   const sub=P.subs.find(x=>t>=x.t&&t<x.t+x.d);
@@ -251,5 +279,5 @@ async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await 
   const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own});
   const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion,L:layoutOf(o.layout)});return P;}
 
-root.ShortsMaker={make,still,brandOf,titleOf,BRAND,LAYOUTS,LAYOUT_KEYS,bgmBuffer,queryOf,sceneQueries};
+root.ShortsMaker={make,still,brandOf,genSet,PAL,titleOf,BRAND,LAYOUTS,LAYOUT_KEYS,bgmBuffer,queryOf,sceneQueries};
 })(window);
