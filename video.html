@@ -38,8 +38,14 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
 <div class="card mk"><div style="min-width:0">
   <div class="step"><i>1</i>업체와 키워드 고르기</div>
   <div class="grid" style="grid-template-columns:1fr 1fr">
-    <label>업체<select id="client"></select></label>
+    <label>업체<div class="row" style="flex-wrap:nowrap"><select id="client"></select><button class="btn small" id="gennew" type="button" style="white-space:nowrap;height:38px">+ 새 업체</button></div></label>
     <label>키워드<input id="kw" placeholder=""></label>
+  </div>
+  <div id="genbox" style="display:none;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px">
+    <b id="gentitle">새 업체 넣기</b> <span class="muted">템플릿이 없는 업체는 깔끔한 기본 디자인으로 만들어요. 팀 모두 같이 써요.</span>
+    <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:8px"><label>업체 이름<input id="genname" placeholder="예: 바른몸한의원"></label><label>상담 전화번호<input id="genphone" placeholder="예: 051-000-0000"></label></div>
+    <label style="margin-top:8px">색</label><div class="lay" id="genpal" style="margin-top:4px"></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary small" id="gensave" type="button">저장</button><button class="btn small" id="gencancel" type="button">닫기</button><button class="btn small" id="gendel" type="button" style="display:none;margin-left:auto">이 업체 빼기</button><span class="muted" id="genmsg"></span></div>
   </div>
   <div id="kws" class="row" style="margin-top:8px"></div>
   <div class="step"><i>2</i>제목과 대본 확인하기 <span class="muted">자동으로 채워져요. 고칠 곳만 고치세요.</span></div>
@@ -48,7 +54,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
   <div class="row" style="margin-top:8px"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">마음에 안 들면 누르세요. 누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
   <details id="scbox" style="margin-top:8px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
   <div class="step"><i>3</i>영상 만들기 <span class="muted" id="setnote"></span></div>
-  <label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div>
+  <div id="layrow"><label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div></div><div class="muted" id="laylock" style="display:none;margin:0 0 10px">이 업체는 지금 쓰는 업체 템플릿 그대로 만들어요.</div><div id="genedit" style="display:none;margin:-4px 0 10px"><button class="btn small" id="genopen" type="button">이 업체 색·전화번호 바꾸기</button></div>
   <div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end">
     <label>목소리<select id="voice">
       <option value="ko-KR-Neural2-C">남자 (차분)</option><option value="ko-KR-Wavenet-D">남자 (또렷)</option><option value="ko-KR-Neural2-A">여자 (밝게)</option><option value="ko-KR-Neural2-B">여자 (차분)</option><option value="none">목소리 없이</option>
@@ -95,7 +101,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
 </div>
 </div>
 <script src="script-gen.js?v=45"></script>
-<script src="shorts-maker.js?v=47"></script>
+<script src="shorts-maker.js?v=48"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video";
@@ -115,7 +121,7 @@ function cnt(){const n=$("text").value.replace(/\s/g,"").length;$("cnt").textCon
 /* 영상 만들기 업체는 이 세 곳만: [보이는 이름, 순위판 업체를 찾을 단서] */
 const VDCL=[["유당한의원","유당"],["수월한의원","수월"],["정용균변호사","정용균"]];
 let PROF={},LAST="",SEED=Date.now()%100000,AT=0;
-function ckey(){const n=cname();const v=VDCL.find(x=>x[0]===n);return v?v[1]:"";}
+function ckey(){const n=cname();const v=VDCL.find(x=>x[0]===n);if(v)return v[1];const b=n&&window.ShortsMaker&&ShortsMaker.brandOf(n);return b&&b.gen?b.dir:"";}
 function prof(){const k=ckey();return ScriptGen.profileOf(cname(),PROF[k]);}
 let TPLS=[];
 function fill(){const p=prof(),ss=p.ss||{};$("farea").value=p.area||"";$("ffeat").value=(p.feats||[]).join("\n");$("fmsg").textContent="";
@@ -142,6 +148,7 @@ let HP=null,HPCID="";
 const HPK=["homepage","name","intro","slogan","treats","tdesc","why","equip","doctors","hours","lunch","addr","station","walk","parking","tel","way"];
 async function hpLoad(){const cid=$("client").value;HPCID=cid;HP=null;$("hpurl").value="";hpShow();if(!cid)return;
   try{const r=await rest(`docs?coll=eq.blogcfg&id=eq.${encodeURIComponent(cid)}&select=data`);if(HPCID!==cid)return;HP=(r&&r[0]&&r[0].data)||null;}catch(e){}
+  {const b=ShortsMaker.brandOf(cname());if(b&&b.gen&&!b.phone&&HP&&HP.tel){ShortsMaker.genSet(cname(),{phone:HP.tel});preview();}}
   $("hpurl").value=(HP&&HP.homepage)||"";hpShow();}
 function hpFacts(){const h=HP||{},o=[],A=x=>Array.isArray(x)?x.map(String).filter(Boolean):[];
   if(h.intro)o.push("소개: "+h.intro);if(h.slogan)o.push("대표 문구: "+h.slogan);
@@ -200,11 +207,11 @@ async function loadList(){try{const r=await rest("docs?coll=eq.videos&select=id,
 async function poll(){let ch=false;for(const j of LIST.filter(x=>x.status!=="completed"&&x.status!=="failed")){try{const r=await fn({action:"job",id:j.id});if(!r.ok){if(r.error)msg(esc(r.error),"err");continue;}
   if(r.status!==j.status||r.files){j.status=r.status;if(r.files)j.files=r.files;if(r.credits!=null)j.credits=r.credits;if(r.error)j.error=r.error;await save(j);ch=true;if(r.status==="completed")msg(`${esc(j.client)} ${esc(j.kw)} 영상이 완성됐어요.`);}}catch(e){}}if(ch)render();}
 async function start(){$("gate").innerHTML="";$("main").hidden=false;
-  try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");const all=(cs||[]).filter(c=>c.name);CL=VDCL.map(([n,k])=>{const h=all.find(c=>c.name.replace(/\s/g,"").includes(k));return {id:h?h.id:"n:"+k,name:n};});
+  try{const cs=await rest("docs?coll=eq.clients&select=id,data->>name&order=id");const all=(cs||[]).filter(c=>c.name);CL=VDCL.map(([n,k])=>{const h=all.find(c=>c.name.replace(/\s/g,"").includes(k));return {id:h?h.id:"n:"+k,name:n};});ALLC=all;
     try{const fs=await rest("docs?coll=eq.videocfg&select=id,data");(fs||[]).forEach(x=>{PROF[x.id]=x.data;if(x.id.startsWith("ph_"))COPH[x.id.slice(3)]=coNorm(x.data&&x.data.photos);});}catch(e){}
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}catch(e){msg("업체 목록을 불러오지 못했어요. 업체 이름은 비워도 돼요.","warn");}
   const want=(P.get("client")||"").replace(/\s/g,"");
-  $("client").innerHTML=`<option value="">(업체 고르기)</option>`+CL.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+  genList();
   const hit=CL.find(c=>c.id===P.get("cid"))||(want&&CL.find(c=>c.name.replace(/\s/g,"").includes(want)||want.includes(c.name.replace(/\s/g,""))));
   if(hit)$("client").value=hit.id;
   $("kw").value=P.get("kw")||"";
@@ -309,17 +316,42 @@ async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!wi
   try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:$("phmode").value==="match"?[]:coPhotos(),motion:+$("motion").value,layout:layNow()});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
+/* 템플릿이 없는 새 업체: 팀 목록 videocfg/_gen {list:[{name,phone,pal}]} */
+let ALLC=[],GPAL=0;
+function genAll(){return ((PROF._gen&&PROF._gen.list)||[]).filter(x=>x&&x.name);}
+function isGen(){const b=window.ShortsMaker&&ShortsMaker.brandOf(cname());return !!(b&&b.gen);}
+function genList(keep){const cur=keep||$("client").value,G=genAll();
+  G.forEach(x=>ShortsMaker.genSet(x.name,{phone:x.phone||"",pal:x.pal}));
+  CL=CL.filter(c=>c.gen!=="list").concat(G.map(x=>{const n=x.name.replace(/\s/g,""),h=ALLC.find(c=>c.name.replace(/\s/g,"")===n);return {id:h?h.id:"g:"+x.name,name:x.name,gen:"list"};}));
+  const o=c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`;
+  $("client").innerHTML=`<option value="">(업체 고르기)</option><optgroup label="지금 템플릿">${CL.filter(c=>!c.gen).map(o).join("")}</optgroup>`+(CL.some(c=>c.gen)?`<optgroup label="새 디자인">${CL.filter(c=>c.gen).map(o).join("")}</optgroup>`:"");
+  if(cur&&CL.some(c=>c.id===cur))$("client").value=cur;}
+function genPal(){$("genpal").innerHTML=ShortsMaker.PAL.map((p,i)=>`<button type="button" data-gpal="${i}" aria-pressed="${GPAL===i}"><span style="display:inline-block;width:14px;height:14px;border-radius:99px;vertical-align:-2px;margin-right:6px;background:linear-gradient(135deg,${p.bg},${p.line})"></span>${esc(p.name)}</button>`).join("");}
+function genOpen(edit){const b=edit&&ShortsMaker.brandOf(cname());$("genbox").style.display="";$("gentitle").textContent=edit?"이 업체 디자인 바꾸기":"새 업체 넣기";
+  $("genname").value=edit?cname():"";$("genname").disabled=!!edit;$("genphone").value=edit?(b.phone||""):"";GPAL=edit?b.pal:Math.floor(Math.random()*ShortsMaker.PAL.length);$("gendel").style.display=edit?"":"none";$("genmsg").textContent="";genPal();$("genedit").style.display="none";}
+async function genPut(list){const d={list};await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:"_gen",data:d})});PROF._gen=d;}
+$("gennew").onclick=()=>genOpen(false);$("genopen").onclick=()=>genOpen(true);
+$("gencancel").onclick=()=>{$("genbox").style.display="none";layShow();};
+$("genpal").onclick=e=>{const b=e.target.closest("[data-gpal]");if(!b)return;GPAL=+b.dataset.gpal;genPal();};
+$("gensave").onclick=async()=>{const name=$("genname").value.trim().replace(/\s+/g," ");if(!name){$("genmsg").textContent="업체 이름을 넣어 주세요.";return;}
+  if(VDCL.some(([n,k])=>name.replace(/\s/g,"").includes(k))){$("genmsg").textContent="이 업체는 이미 템플릿이 있어요.";return;}
+  const n=name.replace(/\s/g,""),L=genAll().filter(x=>x.name.replace(/\s/g,"")!==n);L.push({name,phone:$("genphone").value.trim(),pal:GPAL});
+  $("gensave").disabled=true;try{await genPut(L);ShortsMaker.genSet(name,{phone:$("genphone").value.trim(),pal:GPAL});genList();const c=CL.find(x=>x.gen&&x.name.replace(/\s/g,"")===n);
+    $("genbox").style.display="none";if(c&&$("client").value!==c.id){$("client").value=c.id;$("client").dispatchEvent(new Event("change"));}else{layShow();preview();}msg(`"${esc(name)}" 업체를 저장했어요. 키워드를 넣으면 대본과 영상이 이 디자인으로 만들어져요.`,"ok");}
+  catch(e){$("genmsg").textContent="저장하지 못했어요. ("+e.message+")";}$("gensave").disabled=false;};
+$("gendel").onclick=async()=>{const n=cname().replace(/\s/g,"");try{await genPut(genAll().filter(x=>x.name.replace(/\s/g,"")!==n));$("genbox").style.display="none";$("client").value="";genList();$("client").dispatchEvent(new Event("change"));}catch(e){$("genmsg").textContent="빼지 못했어요.";}};
+function layShow(){const t=$("client").value&&!isGen();$("layrow").style.display=t?"none":"";$("laylock").style.display=t?"":"none";$("genedit").style.display=isGen()&&$("genbox").style.display==="none"?"":"none";}
 /* 업체마다 목소리·빠르기·음악·움직임·사진·영상 모양을 기억한다 */
 const SETK=["voice","rate","bgm","motion","phmode"];
 function setGet(cid){try{return JSON.parse(ls.get("gs-video-set-"+cid)||"null")}catch(e){return null}}
 function setSave(){const cid=$("client").value;const o={layout:LAY};SETK.forEach(k=>o[k]=k==="bgm"&&$(k).value==="file"?"calm":$(k).value);
   if(cid)ls.set("gs-video-set-"+cid,JSON.stringify(o));ls.set("gs-video-voice",o.voice);ls.set("gs-video-bgm",o.bgm);ls.set("gs-video-ph",o.phmode);ls.set("gs-video-motion",o.motion);ls.set("gs-video-layout",LAY);}
 function setLoad(){const o=setGet($("client").value);if(o)SETK.forEach(k=>{if(o[k]&&[...$(k).options].some(x=>x.value===o[k]))$(k).value=o[k];});
-  if(o&&o.layout)LAY=o.layout;renderLay();$("setnote").textContent=o&&$("client").value?"이 업체에 지난번 쓴 설정을 불러왔어요":"";}
+  if(o&&o.layout)LAY=o.layout;renderLay();layShow();$("setnote").textContent=o&&$("client").value?"이 업체에 지난번 쓴 설정을 불러왔어요":"";}
 /* 영상 모양: 자동이면 업체마다 영상을 만들 때마다 다음 모양으로 바뀐다 */
 let LAY=ls.get("gs-video-layout")||"auto";
 function layN(){return +ls.get("gs-video-lyn-"+($("client").value||"_"))||0;}
-function layNow(){if(LAY!=="auto")return LAY;const K=ShortsMaker.LAYOUT_KEYS;return K[layN()%K.length];}
+function layNow(){if($("client").value&&!isGen())return "basic";if(LAY!=="auto")return LAY;const K=ShortsMaker.LAYOUT_KEYS;return K[layN()%K.length];}
 function renderLay(){if(!window.ShortsMaker)return;const L=ShortsMaker.LAYOUTS,cur=layNow();
   $("lay").innerHTML=`<button type="button" data-lay="auto" aria-pressed="${LAY==="auto"}">자동 번갈아${LAY==="auto"?` <span class="muted">(이번: ${esc(L[cur].name)})</span>`:""}</button>`+ShortsMaker.LAYOUT_KEYS.map(k=>`<button type="button" data-lay="${k}" aria-pressed="${LAY===k}">${esc(L[k].name)}</button>`).join("");}
 $("lay").onclick=e=>{const b=e.target.closest("[data-lay]");if(!b)return;LAY=b.dataset.lay;setSave();renderLay();preview();};
@@ -327,7 +359,7 @@ SETK.forEach(k=>$(k).addEventListener("change",setSave));
 /* 영상 하나 만들기: 성공하면 true. 여러 개 만들기(batch)에서는 끝난 뒤 다음 대본을 미리 쓰지 않는다 */
 async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("\n");
   if(!L.length){msg("대본을 넣어 주세요.","err");return false;}
-  if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요. (유당한의원, 수월한의원, 정용균변호사)","err");return false;}
+  if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요.","err");return false;}
   busy=true;$("go").disabled=true;ls.set("gs-video-voice",$("voice").value);
   try{let audios=[];const v=$("voice").value;
     let extra=null;try{extra=await findPhotos(false);}catch(e){msg(esc(e.message)+" 이번에는 업체 사진만 써요.","warn");}
