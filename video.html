@@ -71,6 +71,13 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
     <button class="btn primary" id="go">영상 만들기</button>
   </div>
+  <details id="bbox" style="margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px"><summary style="cursor:pointer"><b>한 번에 여러 개 만들기</b> <span class="muted" style="font-weight:400">키워드마다 새 제목·대본으로 영상을 차례로 만들어요</span></summary>
+    <div class="grid" style="grid-template-columns:1fr 150px;margin-top:8px;align-items:start"><label>키워드 (한 줄에 하나)<textarea id="bkws" style="min-height:110px" placeholder="예:
+동래교통사고한의원
+동래허리통증
+동래다이어트한약"></textarea></label>
+      <div style="display:grid;gap:8px"><label>키워드마다<select id="bn"><option value="1">1개씩</option><option value="2">2개씩</option><option value="3">3개씩</option></select></label><button class="btn small" id="bfill" type="button">이 업체 키워드 모두 넣기</button></div></div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="bgo" type="button">여러 개 만들기</button><button class="btn small" id="bstop" type="button" style="display:none">멈추기</button><span class="muted" id="binfo">위에서 고른 업체·목소리·음악·사진 설정으로 만들어요. 영상마다 영상 길이만큼 걸리니 이 창을 앞에 띄워 두세요. 처음에 브라우저가 "여러 파일 다운로드"를 물으면 허용을 눌러 주세요.</span></div></details>
   <div id="msg" style="margin-top:10px"></div>
   <details id="scbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
 </div><div class="pv"><canvas id="pv"></canvas><div class="bar"><i id="pbar"></i></div><div class="row" style="justify-content:space-between"><span class="muted" id="pinfo">미리보기</span><button class="btn small" id="pnext">사진 바꿔 보기</button></div></div>
@@ -292,9 +299,10 @@ async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!wi
   try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:$("phmode").value==="match"?[]:coPhotos(),motion:+$("motion").value});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
-$("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
-  if(!L.length){msg("대본을 넣어 주세요.","err");return;}
-  if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요. (유당한의원, 수월한의원, 정용균변호사)","err");return;}
+/* 영상 하나 만들기: 성공하면 true. 여러 개 만들기(batch)에서는 끝난 뒤 다음 대본을 미리 쓰지 않는다 */
+async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("\n");
+  if(!L.length){msg("대본을 넣어 주세요.","err");return false;}
+  if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요. (유당한의원, 수월한의원, 정용균변호사)","err");return false;}
   busy=true;$("go").disabled=true;ls.set("gs-video-voice",$("voice").value);
   try{let audios=[];const v=$("voice").value;
     let extra=null;try{extra=await findPhotos(false);}catch(e){msg(esc(e.message)+" 이번에는 업체 사진만 써요.","warn");}
@@ -317,9 +325,30 @@ $("go").onclick=async()=>{if(busy)return;const L=lines(),text=L.join("\n");
     const done=`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`;
     /* 다음 영상은 다른 제목·대본으로: 방금 쓴 것을 피해서 바로 새로 써 둔다 */
     RECENT.unshift(rec.title.join(" "),L[0]);busy=false;
-    if($("kw").value.trim()||$("client").value){await auto(true);msg(done+" 다음 영상에 쓸 새 제목과 대본을 미리 써 뒀어요.","ok");}else msg(done,"ok");}
+    if(batch){msg(done,"ok");}else if($("kw").value.trim()||$("client").value){await auto(true);msg(done+" 다음 영상에 쓸 새 제목과 대본을 미리 써 뒀어요.","ok");}else msg(done,"ok");
+    $("go").disabled=false;return true;}
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
-  busy=false;$("go").disabled=false;};
+  busy=false;$("go").disabled=false;return false;}
+$("go").onclick=()=>makeOne(false);
+/* 한 번에 여러 개: 키워드마다 새 제목·대본을 쓰고 영상을 차례로 만들어 내려받는다 */
+let BSTOP=false,BRUN=false;
+function bList(){return [...new Set($("bkws").value.split(/[\n,]/).map(s=>s.trim()).filter(Boolean))];}
+function bCount(){const n=bList().length*(+$("bn").value||1);$("bgo").textContent=n?`${n}개 만들기`:"여러 개 만들기";}
+$("bkws").oninput=bCount;$("bn").onchange=bCount;
+$("bfill").onclick=()=>{const cid=$("client").value;if(!cid){msg("업체를 먼저 골라 주세요.","warn");return;}const ks=KW.filter(k=>k.cid===cid).map(k=>k.kw);if(!ks.length){msg("이 업체는 순위판에 등록된 키워드가 없어요. 직접 적어 주세요.","warn");return;}$("bkws").value=ks.join("\n");bCount();};
+$("bstop").onclick=()=>{BSTOP=true;$("bstop").disabled=true;$("binfo").textContent="지금 만드는 영상까지만 만들고 멈춰요…";};
+$("bgo").onclick=async()=>{if(BRUN||busy)return;const ks=bList(),per=+$("bn").value||1;
+  if(!$("client").value||!ShortsMaker.brandOf(cname())){msg("업체를 먼저 골라 주세요.","err");return;}
+  if(!ks.length){msg("키워드를 한 줄에 하나씩 넣어 주세요.","err");return;}
+  const jobs=ks.flatMap(k=>Array.from({length:per},()=>k)),done=[],fail=[];BRUN=true;BSTOP=false;$("bgo").disabled=true;$("bstop").style.display="";$("bstop").disabled=false;
+  for(let i=0;i<jobs.length&&!BSTOP;i++){const k=jobs[i];$("binfo").textContent=`${i+1} / ${jobs.length} · "${k}" 대본 쓰는 중`;
+    $("kw").value=k;renderKws();await auto(true);if(BSTOP)break;
+    $("binfo").textContent=`${i+1} / ${jobs.length} · "${k}" 영상 만드는 중`;
+    const ok=await makeOne(true);(ok?done:fail).push(k);}
+  BRUN=false;$("bgo").disabled=false;$("bstop").style.display="none";
+  const s=`${done.length}개를 만들어 내려받았어요.`+(fail.length?` ${fail.length}개는 못 만들었어요 (${[...new Set(fail)].map(esc).join(", ")}).`:"")+(BSTOP?" 중간에 멈췄어요.":"");
+  $("binfo").textContent=s;msg(s+(done.length?" 아래 만든 영상 목록에서도 볼 수 있어요.":""),fail.length&&!done.length?"err":"ok");
+  if(done.length)await auto(true);};
 $("pnext").onclick=async()=>{SEEDV++;lines().forEach(l=>{delete CACHE[l];});try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
 $("motion").onchange=()=>ls.set("gs-video-motion",$("motion").value);
 $("coadd").onclick=()=>{if(!bdir()){msg("업체를 먼저 골라 주세요.","warn");return;}$("cofile").click();};
