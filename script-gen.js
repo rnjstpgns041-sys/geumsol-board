@@ -72,7 +72,7 @@ function rng(seed){let s=(seed>>>0)||1;return()=>{s^=s<<13;s^=s>>>17;s^=s<<5;ret
 function pick(a,r){return a[Math.floor(r()*a.length)];}
 function len(t){return String(t).replace(/\s/g,"").length;}
 function profileOf(name,saved){const k=Object.keys(VDF).find(x=>String(name||"").replace(/\s/g,"").includes(x));
-  const base=k?VDF[k]:{type:/변호사|법률|법무/.test(name||"")?"law":"clinic",area:"",feats:[]};
+  const base=k?VDF[k]:{type:/변호사|법률|법무/.test(name||"")?"law":/한의원|한방|병원|의원|치과|클리닉|약국|요양/.test(name||"")?"clinic":"shop",area:"",feats:[]};
   return Object.assign({},base,saved||{});}
 /* 키워드에서 지역·업종 말을 빼고 주제만 남긴다 ("부산 중구 교통사고한의원" -> "교통사고") */
 const AREA=/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|창원|마산|진해|김해|양산|거제|통영|진주|동래|해운대|서면|중구|남포|자갈치|사하|연제|수영|금정|북구|남구|동구|서구|기장|시흥|안산|수원|성남|용인|부천|명륜|온천장)/;
