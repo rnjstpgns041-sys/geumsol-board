@@ -19,20 +19,34 @@ const LAYOUTS={
 const LAYOUT_KEYS=Object.keys(LAYOUTS);
 function layoutOf(k){return LAYOUTS[k]||LAYOUTS.basic;}
 const FONT='"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+const FONT_BH='"Black Han Sans","Noto Sans KR","Malgun Gothic",sans-serif';
 /* 템플릿이 없는 업체: 색 묶음 하나를 골라 깔끔한 기본 디자인으로 만든다 */
+/* 새 업체 템플릿: 여러 업종 숏폼에서 흔히 쓰는 모양. tex=배경 질감, tf=제목 글꼴(bh=검은고딕), foot=아래 칸 */
 const PAL=[
-  {name:"민트",bg:"#e6f6ef",bg2:"#cfeee0",t1:"#12352a",t2:"#0f9d6b",sub:{bg:"#0f9d6b",fg:"#fff"},endBg:"#eef8f3",line:"#0f9d6b"},
-  {name:"네이비",bg:"#1d2b4f",bg2:"#121c38",t1:"#ffffff",t2:"#7fd1ff",sub:{bg:"rgba(13,22,48,.9)",fg:"#fff"},endBg:"#eef2fa",line:"#1d2b4f"},
-  {name:"코랄",bg:"#fff0ea",bg2:"#ffe0d3",t1:"#2b1a14",t2:"#f0643c",sub:{bg:"#f0643c",fg:"#fff"},endBg:"#fff4ef",line:"#f0643c"},
-  {name:"베이지",bg:"#f4ece0",bg2:"#eadcc6",t1:"#3a2a1a",t2:"#a0662b",sub:{bg:"rgba(40,28,16,.88)",fg:"#fff"},endBg:"#f7f1e8",line:"#a0662b"},
-  {name:"보라",bg:"#2a1f4a",bg2:"#1b1433",t1:"#ffffff",t2:"#ffcf5a",sub:{bg:"#6c4ef5",fg:"#fff"},endBg:"#f3f0fc",line:"#6c4ef5"},
-  {name:"하늘",bg:"#e8f1ff",bg2:"#d4e5ff",t1:"#10233f",t2:"#2c6bed",sub:{bg:"#2c6bed",fg:"#fff"},endBg:"#eef4ff",line:"#2c6bed"}];
+  {name:"깔끔 화이트",cat:"모든 업종",bg:"#ffffff",bg2:"#f0f0f0",tex:"wave",t1:"#151515",t2:"#e8473c",s1:86,s2:68,sub:{bg:"rgba(0,0,0,.88)",fg:"#fff"},endBg:"#f7f7f7",line:"#e8473c",
+    foot:{bg:"#ffffff",bg2:"#e9e9e9",tex:"wave",fg:"#151515",pfg:"#151515"}},
+  {name:"종이 핑크",cat:"한의원 · 피부 · 꽃집",bg:"#fcdedd",tex:"paper",t1:"#151515",t2:"#e8473c",s1:86,s2:66,sub:{bg:"rgba(0,0,0,.88)",fg:"#fff"},endBg:"#fbdcdb",line:"#8b6b5c",
+    foot:{bg:"#fbd9d8",tex:"paper",fg:"#2b1d18",pfg:"#151515"}},
+  {name:"우드 브라운",cat:"한방 · 카페 · 고깃집",bg:"#54402b",bg2:"#3f2f1f",tex:"paper",t1:"#ffffff",t2:"#ffd43b",s1:80,s2:64,sub:{bg:"rgba(0,0,0,.88)",fg:"#fff"},endBg:"#f3ece1",line:"#8b6b4c",
+    foot:{bg:"#4e3b28",bg2:"#3c2d1e",tex:"paper",fg:"#ffffff",pfg:"#ffffff"}},
+  {name:"맛집 레드",cat:"맛집 · 분식 · 고기",bg:"#d0261d",bg2:"#a81b14",tex:"dots",tf:"bh",t1:"#ffffff",t2:"#151515",t2bg:"#ffd43b",s1:96,s2:70,subStroke:{fg:"#ffe14d",st:"#111"},endBg:"#fff4e0",line:"#d0261d",
+    foot:{bg:"#ffd43b",bg2:"#ffc61a",tex:"dots",fg:"#151515",pill:"#d0261d"}},
+  {name:"카페 크림",cat:"카페 · 베이커리 · 공방",bg:"#f3ebdd",bg2:"#e8dcc6",tex:"paper",t1:"#2f4a3a",t2:"#b0763a",s1:84,s2:64,sub:{bg:"#2f4a3a",fg:"#fff"},endBg:"#f6f0e4",line:"#2f4a3a",
+    foot:{bg:"#efe5d3",tex:"paper",fg:"#2f4a3a",pfg:"#2f4a3a"}},
+  {name:"블랙 네온",cat:"헬스 · 미용 · 네일 · 바",bg:"#0e0e10",bg2:"#1b1b22",tex:"grid",tf:"bh",t1:"#ffffff",t2:"#ff4fa3",s1:94,s2:70,subStroke:{fg:"#ffffff",st:"#000"},endBg:"#141418",endFg:"#ffffff",line:"#ff4fa3",
+    foot:{bg:"#111114",bg2:"#1d1d24",tex:"grid",fg:"#ffffff",pill:"#ff4fa3"}},
+  {name:"메디컬 블루",cat:"병원 · 치과 · 학원",bg:"#1f5fd6",bg2:"#1647a8",tex:"wave",t1:"#ffffff",t2:"#bfe3ff",s1:84,s2:66,sub:{bg:"#0d2f6e",fg:"#fff"},endBg:"#eef4ff",line:"#1f5fd6",
+    foot:{bg:"#ffffff",bg2:"#e8f0ff",tex:"wave",fg:"#12306b",pill:"#1f5fd6"}},
+  {name:"민트 프레시",cat:"피부 · 필라테스 · 미용",bg:"#dff5ee",bg2:"#c7ede0",tex:"wave",t1:"#11372b",t2:"#0d9a6c",s1:84,s2:66,sub:{bg:"#0d9a6c",fg:"#fff"},endBg:"#eefaf5",line:"#0d9a6c",
+    foot:{bg:"#e6f8f1",bg2:"#d2f0e5",tex:"wave",fg:"#11372b",pfg:"#0d7a56"}},
+  {name:"네이비 골드",cat:"법률 · 세무 · 부동산",bg:"#14213d",bg2:"#0b1426",tex:"paper",t1:"#ffffff",t2:"#e6c26e",s1:84,s2:64,sub:{bg:"rgba(10,18,36,.92)",fg:"#e6c26e"},endBg:"#f4f1ea",line:"#b8963e",
+    foot:{bg:"#152340",bg2:"#0c1529",tex:"paper",fg:"#ffffff",pfg:"#e6c26e"}}];
 const GEN={};
 function hashOf(s){let h=2166136261;for(const c of String(s))h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0;}
 function genSet(name,o){GEN[String(name||"").replace(/\s/g,"")]=Object.assign(GEN[String(name||"").replace(/\s/g,"")]||{},o||{});}
 function brandOf(name){const n=String(name||"").replace(/\s/g,"");if(!n)return null;const k=Object.keys(BRAND).find(x=>n.includes(x));if(k)return Object.assign({key:k},BRAND[k]);
   const G=GEN[n]||{},h=hashOf(n),pi=G.pal!=null&&PAL[G.pal]?+G.pal:h%PAL.length;
-  return Object.assign({key:n,gen:true,pal:pi,dir:"g_"+h.toString(36),s1:84,s2:70,photos:0,logo:false,genFoot:true,endName:String(name).trim(),phone:G.phone||""},PAL[pi]);}
+  return Object.assign({key:n,gen:true,pal:pi,dir:"g_"+h.toString(36),s1:84,s2:70,photos:0,logo:false,genFoot:true,endName:String(name).trim(),phone:G.phone||"",logoSrc:G.logo||""},PAL[pi]);}
 function load(src){return new Promise((ok,no)=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>ok(im);im.onerror=()=>no(new Error("그림을 못 불러왔어요: "+src));im.src=src;});}
 function rng(seed){let s=(seed>>>0)||7;return()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return((s>>>0)%100000)/100000;};}
 const len=s=>String(s).replace(/\s/g,"").length;
@@ -48,7 +62,7 @@ function cover(g,im,x,y,w,h,z,px,py){const r=Math.max(w/im.width,h/im.height)*z,
 function shrink(im,w,h,z){const r=Math.min(1,Math.max(w/im.width,h/im.height)*(z||1));if(r>0.92)return im;
   const c=document.createElement("canvas");c.width=Math.max(1,Math.round(im.width*r));c.height=Math.max(1,Math.round(im.height*r));
   const x=c.getContext("2d");x.imageSmoothingQuality="high";x.drawImage(im,0,0,c.width,c.height);return c;}
-function fitText(g,t,max,size,weight){let s=size;do{g.font=`${weight||900} ${s}px ${FONT}`;if(g.measureText(t).width<=max)break;s-=2;}while(s>24);return s;}
+function fitText(g,t,max,size,weight,fam){let s=size;do{g.font=`${weight||900} ${s}px ${fam||FONT}`;if(g.measureText(t).width<=max)break;s-=2;}while(s>24);return s;}
 function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
 const ease=t=>t<0?0:t>1?1:1-Math.pow(1-t,3);
 
@@ -80,7 +94,7 @@ function plan(lines,durs,opt){const T=[],L=[];let t=0.25;const gap=opt.gap==null
   return {subs:T,lines:L,scenes,total,endAt};}
 
 async function prepare(o){const B=o.brand,base=o.base||"";
-  await Promise.all(["900 80px "+FONT,"700 50px "+FONT].map(f=>document.fonts&&document.fonts.load?document.fonts.load(f).catch(()=>{}):0));
+  await Promise.all(["900 80px "+FONT,"700 50px "+FONT,"400 80px "+FONT_BH].map(f=>document.fonts&&document.fonts.load?document.fonts.load(f).catch(()=>{}):0));
   const photos=[];let nUp=0;
   /* 팀이 올린 업체 사진(먼저 씀) + 기본 업체 사진 */
   for(const src of (o.coPhotos||[])){try{photos.push(await load(src));nUp++;}catch(e){}}
@@ -89,20 +103,34 @@ async function prepare(o){const B=o.brand,base=o.base||"";
   /* 대본 문장에 맞춰 찾은 사진 (문장마다 하나, 없으면 null = 업체 사진 문장) */
   for(const src of (o.extra||[])){if(!src){own.push(-1);continue;}try{photos.push(await load(src));own.push(photos.length-1);}catch(e){own.push(-1);}}
   if(!photos.length&&B.gen)for(let i=0;i<3;i++)photos.push(softBg(B,i));
-  let foot=B.genFoot?footOf(B):await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
+  let logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;if(!logo&&B.logoSrc){try{logo=await load(B.logoSrc);}catch(e){}}
+  let foot=B.genFoot?footOf(B,logo):await load(`${base}vbrand/${B.dir}/footer.jpg`);
   /* 가장 크게 확대될 때(약 1.75배)도 선명한 크기까지만 남김 */
   for(let i=0;i<photos.length;i++)photos[i]=shrink(photos[i],W,HEAD+BAND,1.75);
   if(!photos.length)throw new Error("쓸 사진이 없어요.");
   foot=shrink(foot,W,FOOT,1);if(logo)logo=shrink(logo,logo.width*600/logo.height,600,1);
   return {photos,foot,logo,own,nBrand,nUp};}
 
-/* 새 디자인 업체의 아래 칸: 이름 + 전화번호 띠를 그려서 씀 */
-function footOf(B){const c=document.createElement("canvas");c.width=W;c.height=FOOT;const g=c.getContext("2d");
-  const gr=g.createLinearGradient(0,0,0,FOOT);gr.addColorStop(0,B.endBg);gr.addColorStop(1,"#ffffff");g.fillStyle=gr;g.fillRect(0,0,W,FOOT);
-  g.fillStyle=B.line;g.fillRect(0,0,W,10);g.textAlign="center";g.textBaseline="middle";
-  g.fillStyle="#161616";fitText(g,B.endName,W-160,96,900);g.fillText(B.endName,W/2,B.phone?FOOT/2-62:FOOT/2);
-  if(B.phone){const t="상담문의  "+B.phone;g.font=`700 52px ${FONT}`;const w=g.measureText(t).width+90;g.fillStyle=B.line;g.beginPath();g.roundRect(W/2-w/2,FOOT/2+30,w,96,48);g.fill();
-    g.fillStyle="#ffffff";g.fillText(t,W/2,FOOT/2+80);}
+/* 배경 질감: 종이(paper) · 물결(wave) · 점(dots) · 격자(grid). 같은 업체는 늘 같은 무늬 */
+function texFill(g,w,h,kind,c1,c2,seed){const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,c1);gr.addColorStop(1,c2||c1);g.fillStyle=gr;g.fillRect(0,0,w,h);
+  const r=rng(seed||11),dark=lum(c1)<0.45;g.save();
+  if(kind==="paper"){for(let i=0;i<w*h/90;i++){g.fillStyle=(r()<.5)?`rgba(0,0,0,${.02+r()*.035})`:`rgba(255,255,255,${.03+r()*.05})`;g.fillRect(r()*w,r()*h,1+r()*2.2,1+r()*2.2);}
+    g.strokeStyle=dark?"rgba(255,255,255,.05)":"rgba(0,0,0,.045)";g.lineWidth=1;for(let i=0;i<w*h/9000;i++){const x=r()*w,y=r()*h;g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+r()*40-20,y+r()*30-15,x+r()*80-40,y+r()*40-20);g.stroke();}}
+  else if(kind==="wave"){for(let k=0;k<4;k++){g.beginPath();const y=h*(.25+k*.22);g.moveTo(-50,y);g.bezierCurveTo(w*.3,y-120+r()*80,w*.6,y+140-r()*80,w+50,y-40);g.lineTo(w+50,h+10);g.lineTo(-50,h+10);g.closePath();
+      g.fillStyle=dark?`rgba(255,255,255,${.03+k*.012})`:`rgba(255,255,255,${.28-k*.04})`;g.fill();g.strokeStyle=dark?"rgba(255,255,255,.08)":"rgba(0,0,0,.05)";g.lineWidth=2;g.stroke();}}
+  else if(kind==="dots"){g.fillStyle=dark?"rgba(255,255,255,.08)":"rgba(0,0,0,.07)";for(let y=14;y<h;y+=28)for(let x=(y/28%2)*14+14;x<w;x+=28){g.beginPath();g.arc(x,y,3.2,0,7);g.fill();}}
+  else if(kind==="grid"){g.strokeStyle="rgba(255,255,255,.06)";g.lineWidth=1;for(let x=0;x<w;x+=54){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}for(let y=0;y<h;y+=54){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}}
+  g.restore();}
+function lum(c){const m=String(c).match(/#(..)(..)(..)/);if(!m)return .5;const [a,b,d]=m.slice(1).map(x=>parseInt(x,16)/255);return .3*a+.59*b+.11*d;}
+/* 새 업체의 아래 칸: 로고(있으면) + 업체 이름 + 전화번호. 지금 템플릿 세 업체처럼 질감 배경 위에 */
+function footOf(B,logo){const c=document.createElement("canvas");c.width=W;c.height=FOOT;const g=c.getContext("2d"),F=B.foot||{bg:B.endBg,fg:"#151515"};
+  texFill(g,W,FOOT,F.tex,F.bg,F.bg2,hashOf(B.key)+3);g.textAlign="center";g.textBaseline="middle";
+  let y=B.phone?FOOT/2-58:FOOT/2;
+  if(logo){const lh=150,lw=Math.min(560,logo.width*lh/logo.height);g.drawImage(logo,W/2-lw/2,52,lw,lh);y=B.phone?FOOT/2+58:FOOT/2+70;}
+  g.fillStyle=F.fg;const ns=fitText(g,B.endName,W-160,logo?70:B.tf==="bh"?110:100,900,B.tf==="bh"?FONT_BH:FONT);if(B.tf==="bh")g.font=`400 ${ns}px ${FONT_BH}`;g.fillText(B.endName,W/2,y);
+  if(B.phone){const py=logo?y+92:y+122;
+    if(F.pill){g.font=`800 56px ${FONT}`;const t="☎ "+B.phone,w=g.measureText(t).width+100;g.fillStyle=F.pill;g.beginPath();g.roundRect(W/2-w/2,py-52,w,104,52);g.fill();g.fillStyle="#ffffff";g.fillText(t,W/2,py+2);}
+    else{g.fillStyle=F.pfg||F.fg;g.font=`800 ${logo?56:66}px ${FONT}`;g.fillText(B.phone,W/2,py);}}
   return c;}
 /* 사진이 하나도 없을 때 쓰는 은은한 배경 */
 function softBg(B,i){const c=document.createElement("canvas");c.width=W;c.height=HEAD+BAND;const g=c.getContext("2d");
@@ -115,11 +143,12 @@ function drawFrame(g,t,S){const L=S.L;
   else{g.drawImage(headOf(S),0,0);drawMid(g,t,S);}}
 function drawHead(g,S){const {B,title,L}=S,HH=L.titleH,ov=!!L.overlay;
   if(ov){const gr=g.createLinearGradient(0,0,0,L.headH);gr.addColorStop(0,"rgba(0,0,0,.78)");gr.addColorStop(0.6,"rgba(0,0,0,.45)");gr.addColorStop(1,"rgba(0,0,0,0)");g.fillStyle=gr;}
+  else if(B.gen&&B.tex){texFill(g,W,L.headH,B.tex,B.bg,B.bg2,hashOf(B.key));g.fillStyle="rgba(0,0,0,0)";}
   else if(B.bg2){const gr=g.createLinearGradient(0,0,0,L.headH);gr.addColorStop(0,B.bg);gr.addColorStop(1,B.bg2);g.fillStyle=gr;}else g.fillStyle=B.bg;g.fillRect(0,0,W,L.headH);
   g.textAlign="center";g.textBaseline="middle";if(ov){g.shadowColor="rgba(0,0,0,.45)";g.shadowBlur=18;}
   if(B.gen){g.font=`800 44px ${FONT}`;const nw=g.measureText(B.endName).width+70,py=Math.max(50,HH*0.15);g.shadowColor="transparent";g.fillStyle=ov||B.t1==="#ffffff"?"rgba(255,255,255,.18)":B.line;g.beginPath();g.roundRect(W/2-nw/2,py-35,nw,70,35);g.fill();g.fillStyle="#ffffff";g.fillText(B.endName,W/2,py+2);if(ov){g.shadowColor="rgba(0,0,0,.45)";g.shadowBlur=18;}}
-  const s1=fitText(g,title[0],W-90,B.s1);g.fillStyle=ov?"#ffffff":B.t1;const ty=B.gen?HH*0.5:HH*0.42;g.fillText(title[0],W/2,title[1]?ty:(B.gen?HH*0.58:HH/2));
-  if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=ty+s1*0.55+s2*0.75;
+  const BH=B.tf==="bh",TF=BH?FONT_BH:FONT,s1=fitText(g,title[0],W-90,B.s1,BH?400:900,TF);g.fillStyle=ov?"#ffffff":B.t1;const ty=B.gen?HH*0.5:HH*0.42;g.fillText(title[0],W/2,title[1]?ty:(B.gen?HH*0.58:HH/2));
+  if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,BH?400:900,TF),y2=ty+s1*0.55+s2*0.75;
     if(B.t2bg){const w=g.measureText(title[1]).width+36;g.fillStyle=B.t2bg;g.fillRect(W/2-w/2,y2-s2*0.68,w,s2*1.36);}
     g.fillStyle=ov&&!B.t2bg?"#ffd84d":B.t2;g.fillText(title[1],W/2,y2);}
   g.shadowColor="transparent";g.shadowBlur=0;}
@@ -149,10 +178,10 @@ function drawMid(g,t,S){const {B,P,A,kw,L}=S,R=L.R;
   if(t>=P.endAt){const e=ease((t-P.endAt)/0.6),zz=1.08-0.06*ease((t-P.endAt)/(P.total-P.endAt));
     const EY=R.y+(R.h-BAND)/2;g.fillStyle=B.endBg;g.globalAlpha=e;g.fillRect(R.x,R.y,R.w,R.h);
     g.save();g.translate(W/2,EY+305);g.scale(zz,zz);g.translate(0,(1-e)*140);
-    if(A.logo){const h=560,w=A.logo.width*h/A.logo.height;g.drawImage(A.logo,-w/2,-h/2,w,h);}
-    else{g.textAlign="center";g.fillStyle="#3a3a3a";fitText(g,kw||B.endName,W-160,84);g.fillText(kw||B.endName,0,-150);
-      g.fillStyle="#151515";fitText(g,B.endName,W-120,128);g.shadowColor="rgba(0,0,0,.25)";g.shadowBlur=14;g.shadowOffsetY=6;g.fillText(B.endName,0,70);g.shadowColor="transparent";g.shadowBlur=0;g.shadowOffsetY=0;
-      if(B.gen&&B.phone){const t="상담문의  "+B.phone;g.font=`700 54px ${FONT}`;const w=g.measureText(t).width+100;g.fillStyle=B.line;g.beginPath();g.roundRect(-w/2,190,w,104,52);g.fill();g.fillStyle="#fff";g.fillText(t,0,243);}}
+    if(A.logo&&!B.gen){const h=560,w=A.logo.width*h/A.logo.height;g.drawImage(A.logo,-w/2,-h/2,w,h);}
+    else{g.textAlign="center";if(A.logo){const h=230,w=Math.min(620,A.logo.width*h/A.logo.height);g.drawImage(A.logo,-w/2,-150-h/2-10,w,h);}else{g.fillStyle=B.endFg?B.endFg:"#3a3a3a";g.globalAlpha=B.endFg?.8*e:e;fitText(g,kw||B.endName,W-160,84);g.fillText(kw||B.endName,0,-150);}
+      g.globalAlpha=e;g.fillStyle=B.endFg||"#151515";fitText(g,B.endName,W-120,128,B.tf==="bh"?400:900,B.tf==="bh"?FONT_BH:FONT);g.shadowColor="rgba(0,0,0,.25)";g.shadowBlur=14;g.shadowOffsetY=6;g.fillText(B.endName,0,70);g.shadowColor="transparent";g.shadowBlur=0;g.shadowOffsetY=0;
+      if(B.gen&&B.phone){const t="☎ "+B.phone;g.font=`700 54px ${FONT}`;const w=g.measureText(t).width+100;g.fillStyle=B.line;g.beginPath();g.roundRect(-w/2,190,w,104,52);g.fill();g.fillStyle="#fff";g.fillText(t,0,243);}}
     g.restore();
     if(!B.gen){const ly=EY+620;g.strokeStyle=B.line;g.lineWidth=3;g.beginPath();g.moveTo(R.x+40,ly);g.lineTo(R.x+R.w-40,ly);g.stroke();
     g.fillStyle=B.line;g.save();g.translate(W/2,ly);g.rotate(Math.PI/4);g.fillRect(-9,-9,18,18);g.restore();
@@ -166,6 +195,7 @@ function drawMid(g,t,S){const {B,P,A,kw,L}=S,R=L.R;
     if(L.sub==="big"){/* 큰 자막: 굵은 흰 글씨 + 검은 테두리, 길면 두 줄 */
       g.font=`900 82px ${FONT}`;const ls=wrap2(g,sub.c,R.w-100),lh=112,y0=L.subY-(ls.length-1)*lh/2+(1-pop)*16;g.globalAlpha=pop;g.lineJoin="round";
       {const bw=Math.min(R.w-40,Math.max(...ls.map(s=>g.measureText(s).width))+90),bh=ls.length*lh+40;g.fillStyle="rgba(0,0,0,.38)";g.beginPath();g.roundRect(W/2-bw/2,y0-lh/2-20,bw,bh,28);g.fill();}ls.forEach((s,i)=>{const y=y0+i*lh;g.lineWidth=12;g.strokeStyle="rgba(0,0,0,.92)";g.strokeText(s,W/2,y);g.fillStyle=i===ls.length-1&&B.t2bg?B.t2bg:"#ffffff";g.fillText(s,W/2,y);});g.globalAlpha=1;}
+    else if(B.subStroke){g.font=`900 66px ${FONT}`;const y=L.subY+(1-pop)*12;fitText(g,sub.c,R.w-80,66);g.globalAlpha=pop;g.lineJoin="round";g.lineWidth=13;g.strokeStyle=B.subStroke.st;g.strokeText(sub.c,W/2,y);g.fillStyle=B.subStroke.fg;g.fillText(sub.c,W/2,y);g.globalAlpha=1;}
     else{g.font=`700 54px ${FONT}`;const tw=g.measureText(sub.c).width,y=L.subY;
       g.globalAlpha=pop;g.fillStyle=B.sub.bg;g.fillRect(W/2-tw/2-22,y-40,tw+44,80);g.fillStyle=B.sub.fg;g.fillText(sub.c,W/2,y+(1-pop)*12);g.globalAlpha=1;}}
   /* 아래 로고 */
