@@ -56,7 +56,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
   <div class="row" style="margin-top:8px"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">마음에 안 들면 누르세요. 누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
   <details id="scbox" style="margin-top:8px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
   <div class="step"><i>3</i>영상 만들기 <span class="muted" id="setnote"></span></div>
-  <div id="layrow"><label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div></div><div class="muted" id="laylock" style="display:none;margin:0 0 10px">이 업체는 지금 쓰는 업체 템플릿 그대로 만들어요.</div><div id="genedit" style="display:none;margin:-4px 0 10px"><button class="btn small" id="genopen" type="button">이 업체 템플릿·로고·전화번호 바꾸기</button></div>
+  <div id="layrow"><label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div></div><div class="muted" id="laylock" style="display:none;margin:0 0 10px">이 업체는 지금 쓰는 업체 템플릿 그대로 만들어요.</div><label id="logorow" style="display:none;flex-direction:row;align-items:center;gap:6px;margin:-4px 0 10px;font-size:14px;color:var(--fg)"><input type="checkbox" id="logoon" style="width:auto" checked> 로고 넣기 <span class="muted" style="font-weight:400">(빼면 아래 칸과 끝 화면에 업체 이름·전화번호만 나와요)</span></label><div id="genedit" style="display:none;margin:-4px 0 10px"><button class="btn small" id="genopen" type="button">이 업체 템플릿·로고·전화번호 바꾸기</button></div>
   <div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end">
     <label>목소리<select id="voice">
       <option value="ko-KR-Neural2-C">남자 (차분)</option><option value="ko-KR-Wavenet-D">남자 (또렷)</option><option value="ko-KR-Neural2-A">여자 (밝게)</option><option value="ko-KR-Neural2-B">여자 (차분)</option><option value="none">목소리 없이</option>
@@ -103,7 +103,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
 </div>
 </div>
 <script src="script-gen.js?v=45"></script>
-<script src="shorts-maker.js?v=49"></script>
+<script src="shorts-maker.js?v=50"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video";
@@ -315,7 +315,7 @@ function bgmSpec(){const v=$("bgm").value;return v==="file"?BGMF:v;}
 function lines(){return $("text").value.split("\n").map(x=>x.trim()).filter(Boolean);}
 function titleNow(){const L=lines(),d=ShortsMaker.titleOf(L[0]||"");const a=$("t1").value.trim(),b=$("t2").value.trim();return a||b?[a||d[0],b]:d;}
 async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();renderScenes();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
-  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:$("phmode").value==="match"?[]:coPhotos(),motion:+$("motion").value,layout:layNow()});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
+  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:$("phmode").value==="match"?[]:coPhotos(),motion:+$("motion").value,layout:layNow(),noLogo:!$("logoon").checked});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
 /* 템플릿이 없는 새 업체: 팀 목록 videocfg/_gen {list:[{name,phone,pal}]} */
@@ -349,14 +349,14 @@ $("gendel").onclick=async()=>{const n=cname().replace(/\s/g,"");try{await genPut
 /* 로고는 투명 배경을 살려 800px 이하 png로 */
 async function logoBlob(f){const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error("로고 그림을 못 읽었어요"));i.src=URL.createObjectURL(f);});
   const k=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);return new Promise(ok=>c.toBlob(ok,"image/png"));}
-function layShow(){const t=$("client").value&&!isGen();$("layrow").style.display=t?"none":"";$("laylock").style.display=t?"":"none";$("genedit").style.display=isGen()&&$("genbox").style.display==="none"?"":"none";}
+function layShow(){const t=$("client").value&&!isGen(),gb=isGen()&&ShortsMaker.brandOf(cname());$("logorow").style.display=gb&&gb.logoSrc?"flex":"none";$("layrow").style.display=t?"none":"";$("laylock").style.display=t?"":"none";$("genedit").style.display=isGen()&&$("genbox").style.display==="none"?"":"none";}
 /* 업체마다 목소리·빠르기·음악·움직임·사진·영상 모양을 기억한다 */
 const SETK=["voice","rate","bgm","motion","phmode"];
 function setGet(cid){try{return JSON.parse(ls.get("gs-video-set-"+cid)||"null")}catch(e){return null}}
-function setSave(){const cid=$("client").value;const o={layout:LAY};SETK.forEach(k=>o[k]=k==="bgm"&&$(k).value==="file"?"calm":$(k).value);
+function setSave(){const cid=$("client").value;const o={layout:LAY,logo:$("logoon").checked?1:0};SETK.forEach(k=>o[k]=k==="bgm"&&$(k).value==="file"?"calm":$(k).value);
   if(cid)ls.set("gs-video-set-"+cid,JSON.stringify(o));ls.set("gs-video-voice",o.voice);ls.set("gs-video-bgm",o.bgm);ls.set("gs-video-ph",o.phmode);ls.set("gs-video-motion",o.motion);ls.set("gs-video-layout",LAY);}
 function setLoad(){const o=setGet($("client").value);if(o)SETK.forEach(k=>{if(o[k]&&[...$(k).options].some(x=>x.value===o[k]))$(k).value=o[k];});
-  if(o&&o.layout)LAY=o.layout;renderLay();layShow();$("setnote").textContent=o&&$("client").value?"이 업체에 지난번 쓴 설정을 불러왔어요":"";}
+  if(o&&o.layout)LAY=o.layout;$("logoon").checked=!(o&&o.logo===0);renderLay();layShow();$("setnote").textContent=o&&$("client").value?"이 업체에 지난번 쓴 설정을 불러왔어요":"";}
 /* 영상 모양: 자동이면 업체마다 영상을 만들 때마다 다음 모양으로 바뀐다 */
 let LAY=ls.get("gs-video-layout")||"auto";
 function layN(){return +ls.get("gs-video-lyn-"+($("client").value||"_"))||0;}
@@ -364,7 +364,7 @@ function layNow(){if($("client").value&&!isGen())return "basic";if(LAY!=="auto")
 function renderLay(){if(!window.ShortsMaker)return;const L=ShortsMaker.LAYOUTS,cur=layNow();
   $("lay").innerHTML=`<button type="button" data-lay="auto" aria-pressed="${LAY==="auto"}">자동 번갈아${LAY==="auto"?` <span class="muted">(이번: ${esc(L[cur].name)})</span>`:""}</button>`+ShortsMaker.LAYOUT_KEYS.map(k=>`<button type="button" data-lay="${k}" aria-pressed="${LAY===k}">${esc(L[k].name)}</button>`).join("");}
 $("lay").onclick=e=>{const b=e.target.closest("[data-lay]");if(!b)return;LAY=b.dataset.lay;setSave();renderLay();preview();};
-SETK.forEach(k=>$(k).addEventListener("change",setSave));
+SETK.forEach(k=>$(k).addEventListener("change",setSave));$("logoon").onchange=()=>{setSave();preview();};
 /* 영상 하나 만들기: 성공하면 true. 여러 개 만들기(batch)에서는 끝난 뒤 다음 대본을 미리 쓰지 않는다 */
 async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("\n");
   if(!L.length){msg("대본을 넣어 주세요.","err");return false;}
@@ -377,7 +377,7 @@ async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("
         if(!r.ok)throw new Error(r.error||"목소리를 만들지 못했어요.");audios=r.audios.map(b64ab);}
       else msg("구글 음성 키가 아직 없어서 이번에는 목소리 없이 만들어요.","warn");}
     msg("영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 창을 앞에 띄워 두세요.","warn");
-    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,coPhotos:$("phmode").value==="match"?[]:coPhotos(),bgm:bgmSpec(),motion:+$("motion").value,layout:layNow(),canvas:$("pv"),seed:SEEDV,title:titleNow(),
+    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,coPhotos:$("phmode").value==="match"?[]:coPhotos(),bgm:bgmSpec(),motion:+$("motion").value,layout:layNow(),noLogo:!$("logoon").checked,canvas:$("pv"),seed:SEEDV,title:titleNow(),
       onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
     const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
     const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;

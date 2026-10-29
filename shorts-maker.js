@@ -264,7 +264,7 @@ function duck(gp,P,t0,voice){gp.setValueAtTime(1,t0);if(!voice||!P.lines.length)
 /* o: {name, kw, lines[], audios[ArrayBuffer|null], canvas, base, seed, onProgress(p,msg)} → {blob,mime,ext,seconds} */
 async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모양이 없는 업체예요.");
   const lines=o.lines.map(s=>s.trim()).filter(Boolean);if(!lines.length)throw new Error("대본이 비어 있어요.");
-  const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
+  if(o.noLogo)B.logoSrc="";const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
   const ac=new (window.AudioContext||window.webkitAudioContext)();const bufs=[];
   for(const a of (o.audios||[])){try{bufs.push(a?await ac.decodeAudioData(a.slice(0)):null);}catch(e){bufs.push(null);}}
   /* 직접 녹음한 목소리 하나: 문장 길이 비율로 나눔 */
@@ -305,7 +305,7 @@ function ticker(ms){let w=null,cb=null,id=null;
   return {on(f){cb=f;},stop(){cb=null;if(w){w.terminate();URL.revokeObjectURL(w.u);}if(id)clearInterval(id);}};}
 
 /* 미리보기: 소리 없이 화면만 그려 봄 */
-async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
+async function still(o){const B=brandOf(o.name);if(!B)return null;if(o.noLogo)B.logoSrc="";const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
   const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own});
   const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion,L:layoutOf(o.layout)});return P;}
 
