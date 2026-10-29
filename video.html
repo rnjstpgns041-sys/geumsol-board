@@ -102,7 +102,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
 </div>
 </div>
-<script src="script-gen.js?v=45"></script>
+<script src="script-gen.js?v=51"></script>
 <script src="shorts-maker.js?v=50"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
@@ -182,8 +182,8 @@ async function hpRead(url){const u0=new URL(/^https?:/i.test(url)?url:"https://"
 let ATOK=0,RECENT=[];
 /* 이 업체로 최근에 만든 영상의 제목과 첫 문장: 새 대본·제목은 이것들과 다르게 쓴다 */
 function avoidNow(){const cid=$("client").value,o=[];
-  [($("t1").value+" "+$("t2").value).trim(),$("text").value.split("\n")[0]].concat(RECENT,LIST.filter(x=>!cid||x.cid===cid).slice(0,8).flatMap(x=>[(x.title||[]).join(" "),String(x.text||"").split("\n")[0]])).forEach(t=>{t=String(t||"").trim();if(t&&!o.includes(t))o.push(t);});
-  return o.slice(0,12);}
+  [($("t1").value+" "+$("t2").value).trim(),$("text").value.split("\n")[0]].concat(RECENT,LIST.filter(x=>!cid||x.cid===cid).slice(0,15).flatMap(x=>[(x.title||[]).join(" "),String(x.text||"").split("\n")[0]])).forEach(t=>{t=String(t||"").trim();if(t&&!o.includes(t))o.push(t);});
+  return o.slice(0,30);}
 async function auto(force){if(typeof ScriptGen==="undefined")return;const cur=$("text").value.trim();if(!force&&cur&&cur!==LAST)return;if(!$("client").value&&!$("kw").value.trim())return;
   const kw=$("kw").value.trim(),tok=++ATOK;let r=null;
   /* 키워드가 있으면 제미나이가 그 키워드 주제로 새로 쓰고, 안 되면 문장 틀로 */
