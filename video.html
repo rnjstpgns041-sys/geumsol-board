@@ -1,6 +1,6 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>금솔 영상 만들기</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@700;800;900&display=swap">
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017}}
@@ -29,6 +29,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
 .bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0}
 .step{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-size:15.5px;font-weight:800}.step:first-child{margin-top:0}.step i{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:99px;background:var(--accent);color:#fff;font-size:13px}.step .muted{font-weight:400}
 .lay{display:flex;gap:6px;flex-wrap:wrap}.lay button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--fg)}.lay button[aria-pressed=true]{border-color:var(--accent);background:var(--soft);color:var(--accent);font-weight:700}
+.tpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.tpl button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:0;overflow:hidden;cursor:pointer;text-align:left;font:inherit;color:var(--fg)}.tpl button[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}.tpl .sw{height:54px;display:grid;place-items:center;font-weight:900;font-size:15px;padding:0 6px;text-align:center;line-height:1.2}.tpl .sw2{height:22px;display:grid;place-items:center;font-size:12px;font-weight:800}.tpl .nm{padding:5px 8px 7px;font-size:12.5px;font-weight:700}.tpl .nm span{display:block;font-weight:400;color:var(--muted);font-size:11.5px}
 details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}details.more>summary{cursor:pointer;font-weight:700}
 .ph{aspect-ratio:9/16;border-radius:8px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 10px,var(--line) 10px,var(--line) 20px);display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
 </style></head><body><div class="wrap">
@@ -42,9 +43,10 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
     <label>키워드<input id="kw" placeholder=""></label>
   </div>
   <div id="genbox" style="display:none;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px">
-    <b id="gentitle">새 업체 넣기</b> <span class="muted">템플릿이 없는 업체는 깔끔한 기본 디자인으로 만들어요. 팀 모두 같이 써요.</span>
+    <b id="gentitle">새 업체 넣기</b> <span class="muted">업종에 맞는 템플릿을 고르면 위 제목·자막·아래 로고 칸·끝 화면이 그 모양으로 나와요. 팀 모두 같이 써요.</span>
     <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:8px"><label>업체 이름<input id="genname" placeholder="예: 바른몸한의원"></label><label>상담 전화번호<input id="genphone" placeholder="예: 051-000-0000"></label></div>
-    <label style="margin-top:8px">색</label><div class="lay" id="genpal" style="margin-top:4px"></div>
+    <label style="margin-top:8px">템플릿</label><div class="tpl" id="genpal" style="margin-top:4px"></div>
+    <div class="row" style="margin-top:10px"><b style="font-size:13px">로고 <span class="muted" style="font-weight:400">(있으면 아래 칸과 끝 화면에 들어가요. 없어도 돼요)</span></b><button class="btn small" id="genlogobtn" type="button">로고 그림 고르기</button><button class="btn small" id="genlogodel" type="button" style="display:none">로고 빼기</button><img id="genlogoimg" alt="" style="display:none;height:40px;max-width:160px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff"><input type="file" id="genlogo" accept="image/*" hidden></div>
     <div class="row" style="margin-top:10px"><button class="btn primary small" id="gensave" type="button">저장</button><button class="btn small" id="gencancel" type="button">닫기</button><button class="btn small" id="gendel" type="button" style="display:none;margin-left:auto">이 업체 빼기</button><span class="muted" id="genmsg"></span></div>
   </div>
   <div id="kws" class="row" style="margin-top:8px"></div>
@@ -54,7 +56,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
   <div class="row" style="margin-top:8px"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">마음에 안 들면 누르세요. 누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
   <details id="scbox" style="margin-top:8px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
   <div class="step"><i>3</i>영상 만들기 <span class="muted" id="setnote"></span></div>
-  <div id="layrow"><label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div></div><div class="muted" id="laylock" style="display:none;margin:0 0 10px">이 업체는 지금 쓰는 업체 템플릿 그대로 만들어요.</div><div id="genedit" style="display:none;margin:-4px 0 10px"><button class="btn small" id="genopen" type="button">이 업체 색·전화번호 바꾸기</button></div>
+  <div id="layrow"><label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div></div><div class="muted" id="laylock" style="display:none;margin:0 0 10px">이 업체는 지금 쓰는 업체 템플릿 그대로 만들어요.</div><div id="genedit" style="display:none;margin:-4px 0 10px"><button class="btn small" id="genopen" type="button">이 업체 템플릿·로고·전화번호 바꾸기</button></div>
   <div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end">
     <label>목소리<select id="voice">
       <option value="ko-KR-Neural2-C">남자 (차분)</option><option value="ko-KR-Wavenet-D">남자 (또렷)</option><option value="ko-KR-Neural2-A">여자 (밝게)</option><option value="ko-KR-Neural2-B">여자 (차분)</option><option value="none">목소리 없이</option>
@@ -101,7 +103,7 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
 </div>
 </div>
 <script src="script-gen.js?v=45"></script>
-<script src="shorts-maker.js?v=48"></script>
+<script src="shorts-maker.js?v=49"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video";
@@ -317,29 +319,36 @@ async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!wi
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
 /* 템플릿이 없는 새 업체: 팀 목록 videocfg/_gen {list:[{name,phone,pal}]} */
-let ALLC=[],GPAL=0;
+let ALLC=[],GPAL=0,GLOGO="",GLOGOF=null;
+function logoShow(){const u=GLOGOF?URL.createObjectURL(GLOGOF):GLOGO;$("genlogoimg").style.display=u?"":"none";if(u)$("genlogoimg").src=u;$("genlogodel").style.display=u?"":"none";}
 function genAll(){return ((PROF._gen&&PROF._gen.list)||[]).filter(x=>x&&x.name);}
 function isGen(){const b=window.ShortsMaker&&ShortsMaker.brandOf(cname());return !!(b&&b.gen);}
 function genList(keep){const cur=keep||$("client").value,G=genAll();
-  G.forEach(x=>ShortsMaker.genSet(x.name,{phone:x.phone||"",pal:x.pal}));
+  G.forEach(x=>ShortsMaker.genSet(x.name,{phone:x.phone||"",pal:x.pal,logo:x.logo||""}));
   CL=CL.filter(c=>c.gen!=="list").concat(G.map(x=>{const n=x.name.replace(/\s/g,""),h=ALLC.find(c=>c.name.replace(/\s/g,"")===n);return {id:h?h.id:"g:"+x.name,name:x.name,gen:"list"};}));
   const o=c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`;
   $("client").innerHTML=`<option value="">(업체 고르기)</option><optgroup label="지금 템플릿">${CL.filter(c=>!c.gen).map(o).join("")}</optgroup>`+(CL.some(c=>c.gen)?`<optgroup label="새 디자인">${CL.filter(c=>c.gen).map(o).join("")}</optgroup>`:"");
   if(cur&&CL.some(c=>c.id===cur))$("client").value=cur;}
-function genPal(){$("genpal").innerHTML=ShortsMaker.PAL.map((p,i)=>`<button type="button" data-gpal="${i}" aria-pressed="${GPAL===i}"><span style="display:inline-block;width:14px;height:14px;border-radius:99px;vertical-align:-2px;margin-right:6px;background:linear-gradient(135deg,${p.bg},${p.line})"></span>${esc(p.name)}</button>`).join("");}
+function genPal(){$("genpal").innerHTML=ShortsMaker.PAL.map((p,i)=>{const F=p.foot||{};return `<button type="button" data-gpal="${i}" aria-pressed="${GPAL===i}"><div class="sw" style="background:linear-gradient(${p.bg},${p.bg2||p.bg});color:${p.t1};${p.tf==="bh"?"font-family:'Black Han Sans',sans-serif;font-weight:400;":""}">제목 첫 줄<br><span style="color:${p.t2};${p.t2bg?`background:${p.t2bg};padding:0 4px;`:""}">강조 둘째 줄</span></div><div class="sw2" style="background:${F.bg||p.endBg};color:${F.fg||"#151515"}">업체 이름 · 전화</div><div class="nm">${esc(p.name)}<span>${esc(p.cat||"")}</span></div></button>`;}).join("");}
 function genOpen(edit){const b=edit&&ShortsMaker.brandOf(cname());$("genbox").style.display="";$("gentitle").textContent=edit?"이 업체 디자인 바꾸기":"새 업체 넣기";
-  $("genname").value=edit?cname():"";$("genname").disabled=!!edit;$("genphone").value=edit?(b.phone||""):"";GPAL=edit?b.pal:Math.floor(Math.random()*ShortsMaker.PAL.length);$("gendel").style.display=edit?"":"none";$("genmsg").textContent="";genPal();$("genedit").style.display="none";}
+  $("genname").value=edit?cname():"";$("genname").disabled=!!edit;$("genphone").value=edit?(b.phone||""):"";GPAL=edit?b.pal:0;GLOGO=edit?(b.logoSrc||""):"";GLOGOF=null;logoShow();$("gendel").style.display=edit?"":"none";$("genmsg").textContent="";genPal();$("genedit").style.display="none";}
 async function genPut(list){const d={list};await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"videocfg",id:"_gen",data:d})});PROF._gen=d;}
 $("gennew").onclick=()=>genOpen(false);$("genopen").onclick=()=>genOpen(true);
-$("gencancel").onclick=()=>{$("genbox").style.display="none";layShow();};
-$("genpal").onclick=e=>{const b=e.target.closest("[data-gpal]");if(!b)return;GPAL=+b.dataset.gpal;genPal();};
+$("gencancel").onclick=()=>{$("genbox").style.display="none";genList();layShow();preview();};
+$("genpal").onclick=e=>{const b=e.target.closest("[data-gpal]");if(!b)return;GPAL=+b.dataset.gpal;genPal();if($("genname").disabled){ShortsMaker.genSet(cname(),{pal:GPAL});preview();}};
+$("genlogobtn").onclick=()=>$("genlogo").click();$("genlogo").onchange=()=>{const f=$("genlogo").files[0];$("genlogo").value="";if(f){GLOGOF=f;logoShow();}};$("genlogodel").onclick=()=>{GLOGO="";GLOGOF=null;logoShow();};
 $("gensave").onclick=async()=>{const name=$("genname").value.trim().replace(/\s+/g," ");if(!name){$("genmsg").textContent="업체 이름을 넣어 주세요.";return;}
   if(VDCL.some(([n,k])=>name.replace(/\s/g,"").includes(k))){$("genmsg").textContent="이 업체는 이미 템플릿이 있어요.";return;}
-  const n=name.replace(/\s/g,""),L=genAll().filter(x=>x.name.replace(/\s/g,"")!==n);L.push({name,phone:$("genphone").value.trim(),pal:GPAL});
-  $("gensave").disabled=true;try{await genPut(L);ShortsMaker.genSet(name,{phone:$("genphone").value.trim(),pal:GPAL});genList();const c=CL.find(x=>x.gen&&x.name.replace(/\s/g,"")===n);
+  const n=name.replace(/\s/g,""),L=genAll().filter(x=>x.name.replace(/\s/g,"")!==n);
+  $("gensave").disabled=true;try{let logo=GLOGO;if(GLOGOF){$("genmsg").textContent="로고를 올리는 중이에요…";const d=ShortsMaker.brandOf(name).dir,b=await logoBlob(GLOGOF),fn=`logo_${Date.now()}.png`;
+      const r=await fetch(`${SB}/storage/v1/object/files/vphotos/${d}/${fn}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":"image/png"},body:b});if(!r.ok)throw new Error("로고 올리기 "+r.status);logo=`${SB}/storage/v1/object/public/files/vphotos/${d}/${fn}`;GLOGO=logo;GLOGOF=null;}
+    L.push({name,phone:$("genphone").value.trim(),pal:GPAL,logo});await genPut(L);ShortsMaker.genSet(name,{phone:$("genphone").value.trim(),pal:GPAL,logo});genList();const c=CL.find(x=>x.gen&&x.name.replace(/\s/g,"")===n);
     $("genbox").style.display="none";if(c&&$("client").value!==c.id){$("client").value=c.id;$("client").dispatchEvent(new Event("change"));}else{layShow();preview();}msg(`"${esc(name)}" 업체를 저장했어요. 키워드를 넣으면 대본과 영상이 이 디자인으로 만들어져요.`,"ok");}
   catch(e){$("genmsg").textContent="저장하지 못했어요. ("+e.message+")";}$("gensave").disabled=false;};
 $("gendel").onclick=async()=>{const n=cname().replace(/\s/g,"");try{await genPut(genAll().filter(x=>x.name.replace(/\s/g,"")!==n));$("genbox").style.display="none";$("client").value="";genList();$("client").dispatchEvent(new Event("change"));}catch(e){$("genmsg").textContent="빼지 못했어요.";}};
+/* 로고는 투명 배경을 살려 800px 이하 png로 */
+async function logoBlob(f){const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error("로고 그림을 못 읽었어요"));i.src=URL.createObjectURL(f);});
+  const k=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);return new Promise(ok=>c.toBlob(ok,"image/png"));}
 function layShow(){const t=$("client").value&&!isGen();$("layrow").style.display=t?"none":"";$("laylock").style.display=t?"":"none";$("genedit").style.display=isGen()&&$("genbox").style.display==="none"?"":"none";}
 /* 업체마다 목소리·빠르기·음악·움직임·사진·영상 모양을 기억한다 */
 const SETK=["voice","rate","bgm","motion","phmode"];
