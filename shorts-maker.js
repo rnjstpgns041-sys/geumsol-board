@@ -10,6 +10,14 @@ const BRAND={
   "수월":{dir:"suwol",bg:"#54402b",bg2:"#3f2f1f",t1:"#ffffff",t2:"#ffd43b",s1:62,s2:58,sub:{bg:"rgba(0,0,0,.88)",fg:"#fff"},endBg:"#f3ece1",line:"#8b6b4c",phone:"051-243-4300",photos:10,logo:true},
   "정용균":{dir:"jyg",bg:"#fdfdfd",bg2:"#eceae6",t1:"#151515",t2:"#151515",t2bg:"#2ee88a",s1:92,s2:50,sub:{bg:"#2ee88a",fg:"#111"},endBg:"#f5f1ec",line:"#8b7b6c",phone:"010-6407-0503",photos:9,logo:false,endName:"정용균변호사"}
 };
+/* 영상 모양: 같은 업체 색으로 화면 배치만 바꿈. R = 사진 자리, titleH = 제목 자리 높이, headH = 미리 그려 두는 위쪽 판 높이 */
+const LAYOUTS={
+  basic:{name:"기본",headH:HEAD,titleH:HEAD,R:{x:0,y:HEAD,w:W,h:BAND,r:0},sub:"box",subY:HEAD+BAND-150},
+  overlay:{name:"사진 크게",overlay:true,headH:640,titleH:470,R:{x:0,y:0,w:W,h:HEAD+BAND,r:0},sub:"box",subY:HEAD+BAND-170},
+  card:{name:"사진 카드",headH:HEAD+BAND,titleH:430,R:{x:60,y:430,w:W-120,h:900,r:44},sub:"box",subY:430+900-120},
+  bigsub:{name:"큰 자막",headH:HEAD,titleH:HEAD,R:{x:0,y:HEAD,w:W,h:BAND,r:0},sub:"big",subY:HEAD+BAND-250}};
+const LAYOUT_KEYS=Object.keys(LAYOUTS);
+function layoutOf(k){return LAYOUTS[k]||LAYOUTS.basic;}
 const FONT='"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
 function brandOf(name){const k=Object.keys(BRAND).find(x=>String(name||"").replace(/\s/g,"").includes(x));return k?Object.assign({key:k},BRAND[k]):null;}
 function load(src){return new Promise((ok,no)=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>ok(im);im.onerror=()=>no(new Error("그림을 못 불러왔어요: "+src));im.src=src;});}
@@ -70,26 +78,29 @@ async function prepare(o){const B=o.brand,base=o.base||"";
   if(!photos.length)throw new Error("쓸 사진이 없어요.");
   let foot=await load(`${base}vbrand/${B.dir}/footer.jpg`),logo=B.logo?await load(`${base}vbrand/${B.dir}/logo.jpg`):null;
   /* 가장 크게 확대될 때(약 1.75배)도 선명한 크기까지만 남김 */
-  for(let i=0;i<photos.length;i++)photos[i]=shrink(photos[i],W,BAND,1.75);
+  for(let i=0;i<photos.length;i++)photos[i]=shrink(photos[i],W,HEAD+BAND,1.75);
   foot=shrink(foot,W,FOOT,1);if(logo)logo=shrink(logo,logo.width*600/logo.height,600,1);
   return {photos,foot,logo,own,nBrand,nUp};}
 
 /* 위 제목은 영상 내내 같으니 한 번만 그려 두고 붙인다 */
-function headOf(S){if(S.head)return S.head;const c=document.createElement("canvas");c.width=W;c.height=HEAD;drawHead(c.getContext("2d"),S);return S.head=c;}
-function drawFrame(g,t,S){const {B,P,A,kw}=S;
-  g.drawImage(headOf(S),0,0);
-  drawMid(g,t,S);}
-function drawHead(g,S){const {B,title}=S;
-  if(B.bg2){const gr=g.createLinearGradient(0,0,0,HEAD);gr.addColorStop(0,B.bg);gr.addColorStop(1,B.bg2);g.fillStyle=gr;}else g.fillStyle=B.bg;g.fillRect(0,0,W,HEAD);
-  g.textAlign="center";g.textBaseline="middle";
-  const s1=fitText(g,title[0],W-90,B.s1);g.fillStyle=B.t1;g.fillText(title[0],W/2,title[1]?HEAD*0.42:HEAD/2);
-  if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=HEAD*0.42+s1*0.55+s2*0.75;
+function headOf(S){if(S.head)return S.head;const c=document.createElement("canvas");c.width=W;c.height=S.L.headH;drawHead(c.getContext("2d"),S);return S.head=c;}
+function drawFrame(g,t,S){const L=S.L;
+  if(L.overlay){g.fillStyle="#000";g.fillRect(0,0,W,HEAD+BAND);drawMid(g,t,S);const e=t>=S.P.endAt?ease((t-S.P.endAt)/0.6):0;g.globalAlpha=1-e;g.drawImage(headOf(S),0,0);g.globalAlpha=1;}
+  else{g.drawImage(headOf(S),0,0);drawMid(g,t,S);}}
+function drawHead(g,S){const {B,title,L}=S,HH=L.titleH,ov=!!L.overlay;
+  if(ov){const gr=g.createLinearGradient(0,0,0,L.headH);gr.addColorStop(0,"rgba(0,0,0,.78)");gr.addColorStop(0.6,"rgba(0,0,0,.45)");gr.addColorStop(1,"rgba(0,0,0,0)");g.fillStyle=gr;}
+  else if(B.bg2){const gr=g.createLinearGradient(0,0,0,L.headH);gr.addColorStop(0,B.bg);gr.addColorStop(1,B.bg2);g.fillStyle=gr;}else g.fillStyle=B.bg;g.fillRect(0,0,W,L.headH);
+  g.textAlign="center";g.textBaseline="middle";if(ov){g.shadowColor="rgba(0,0,0,.45)";g.shadowBlur=18;}
+  const s1=fitText(g,title[0],W-90,B.s1);g.fillStyle=ov?"#ffffff":B.t1;g.fillText(title[0],W/2,title[1]?HH*0.42:HH/2);
+  if(title[1]){const s2=fitText(g,title[1],W-110,B.s2,900),y2=HH*0.42+s1*0.55+s2*0.75;
     if(B.t2bg){const w=g.measureText(title[1]).width+36;g.fillStyle=B.t2bg;g.fillRect(W/2-w/2,y2-s2*0.68,w,s2*1.36);}
-    g.fillStyle=B.t2;g.fillText(title[1],W/2,y2);}}
-function drawMid(g,t,S){const {B,P,A,kw}=S;
+    g.fillStyle=ov&&!B.t2bg?"#ffd84d":B.t2;g.fillText(title[1],W/2,y2);}
+  g.shadowColor="transparent";g.shadowBlur=0;}
+function drawMid(g,t,S){const {B,P,A,kw,L}=S,R=L.R;
   g.textAlign="center";g.textBaseline="middle";
+  if(R.r){g.save();g.shadowColor="rgba(0,0,0,.28)";g.shadowBlur=40;g.shadowOffsetY=16;g.fillStyle="#000";roundRect(g,R.x,R.y,R.w,R.h,R.r);g.fill();g.restore();}
   /* 가운데 사진: 장면마다 확대·축소·좌우·위아래로 움직이고, 바뀔 때 밀기·겹치기·원·위로 밀기·확대·블라인드 효과 */
-  g.save();g.beginPath();g.rect(0,HEAD,W,BAND);g.clip();
+  g.save();if(R.r)roundRect(g,R.x,R.y,R.w,R.h,R.r);else{g.beginPath();g.rect(R.x,R.y,R.w,R.h);}g.clip();
   let k=P.scenes.findIndex((s,i)=>t>=s.t&&(i===P.scenes.length-1||t<P.scenes[i+1].t));if(k<0)k=0;
   const TR=0.5,am=[0.45,1,1.7][S.mo==null?1:S.mo];
   const sc=P.scenes[k],prev=P.scenes[k-1],p=Math.min(1,(t-sc.t)/Math.max(1,sc.d+TR)),tr=ease((t-sc.t)/TR);
@@ -97,25 +108,25 @@ function drawMid(g,t,S){const {B,P,A,kw}=S;
     switch(s.mv){case 0:z=1.04+0.16*am*q;break;case 1:z=1.04+0.16*am*(1-q);break;
       case 2:z=1.1+0.08*am;px=Math.min(1,am)*(-0.9+1.8*q);break;case 3:z=1.1+0.08*am;px=Math.min(1,am)*(0.9-1.8*q);break;
       case 4:z=1.12+0.08*am;py=Math.min(1,am)*(0.9-1.8*q);break;default:z=1.05+0.13*am*q;px=0.6*Math.min(1,am)*q;py=-0.5*Math.min(1,am)*q;}
-    g.globalAlpha=alpha;cover(g,im,dx||0,HEAD+(dy||0),W,BAND,z*(zx||1),px,py);g.globalAlpha=1;};
+    g.globalAlpha=alpha;cover(g,im,R.x+(dx||0),R.y+(dy||0),R.w,R.h,z*(zx||1),px,py);g.globalAlpha=1;};
   if(prev&&tr<1){const pp=Math.min(1,(t-prev.t)/Math.max(1,prev.d+TR));
     switch(sc.fx){
-      case 0:draw(prev,pp,1,-W*tr);draw(sc,p,1,W*(1-tr));break;
+      case 0:draw(prev,pp,1,-R.w*tr);draw(sc,p,1,R.w*(1-tr));break;
       case 1:draw(prev,pp,1);draw(sc,p,tr);break;
-      case 2:{draw(prev,pp,1);g.save();g.beginPath();g.arc(W/2,HEAD+BAND/2,Math.max(1,tr*W*0.8),0,7);g.clip();draw(sc,p,1);g.restore();break;}
-      case 3:draw(prev,pp,1,0,-BAND*tr);draw(sc,p,1,0,BAND*(1-tr));break;
+      case 2:{draw(prev,pp,1);g.save();g.beginPath();g.arc(R.x+R.w/2,R.y+R.h/2,Math.max(1,tr*R.w*0.8),0,7);g.clip();draw(sc,p,1);g.restore();break;}
+      case 3:draw(prev,pp,1,0,-R.h*tr);draw(sc,p,1,0,R.h*(1-tr));break;
       case 4:draw(prev,pp,1,0,0,1+0.25*tr);draw(sc,p,tr,0,0,1.3-0.3*tr);break;
-      default:{draw(prev,pp,1);g.save();g.beginPath();const n=7,bw=W/n;for(let i=0;i<n;i++)g.rect(i*bw,HEAD,bw*Math.min(1,Math.max(0,tr*1.6-i*0.09)),BAND);g.clip();draw(sc,p,1);g.restore();}}}
+      default:{draw(prev,pp,1);g.save();g.beginPath();const n=7,bw=R.w/n;for(let i=0;i<n;i++)g.rect(R.x+i*bw,R.y,bw*Math.min(1,Math.max(0,tr*1.6-i*0.09)),R.h);g.clip();draw(sc,p,1);g.restore();}}}
   else draw(sc,p,1);
   /* 끝 화면: 로고가 크게 들어왔다가 조금씩 작아짐 */
   if(t>=P.endAt){const e=ease((t-P.endAt)/0.6),zz=1.08-0.06*ease((t-P.endAt)/(P.total-P.endAt));
-    g.fillStyle=B.endBg;g.globalAlpha=e;g.fillRect(0,HEAD,W,BAND);
-    g.save();g.translate(W/2,HEAD+305);g.scale(zz,zz);g.translate(0,(1-e)*140);
+    const EY=R.y+(R.h-BAND)/2;g.fillStyle=B.endBg;g.globalAlpha=e;g.fillRect(R.x,R.y,R.w,R.h);
+    g.save();g.translate(W/2,EY+305);g.scale(zz,zz);g.translate(0,(1-e)*140);
     if(A.logo){const h=560,w=A.logo.width*h/A.logo.height;g.drawImage(A.logo,-w/2,-h/2,w,h);}
     else{g.textAlign="center";g.fillStyle="#3a3a3a";fitText(g,kw||B.endName,W-160,84);g.fillText(kw||B.endName,0,-150);
       g.fillStyle="#151515";fitText(g,B.endName,W-120,128);g.shadowColor="rgba(0,0,0,.25)";g.shadowBlur=14;g.shadowOffsetY=6;g.fillText(B.endName,0,70);g.shadowColor="transparent";}
     g.restore();
-    const ly=HEAD+620;g.strokeStyle=B.line;g.lineWidth=3;g.beginPath();g.moveTo(40,ly);g.lineTo(W-40,ly);g.stroke();
+    const ly=EY+620;g.strokeStyle=B.line;g.lineWidth=3;g.beginPath();g.moveTo(R.x+40,ly);g.lineTo(R.x+R.w-40,ly);g.stroke();
     g.fillStyle=B.line;g.save();g.translate(W/2,ly);g.rotate(Math.PI/4);g.fillRect(-9,-9,18,18);g.restore();
     g.font=`700 52px ${FONT}`;const tx=`상담문의 : ${B.phone}`,tw=g.measureText(tx).width,x0=W/2-(tw+80)/2;
     g.fillStyle="#2a2a2a";g.beginPath();g.arc(x0+30,ly+80,30,0,7);g.fill();g.fillStyle="#fff";g.font=`900 34px ${FONT}`;g.fillText("☎",x0+30,ly+82);
@@ -123,11 +134,19 @@ function drawMid(g,t,S){const {B,P,A,kw}=S;
   g.restore();
   /* 자막 */
   const sub=P.subs.find(x=>t>=x.t&&t<x.t+x.d);
-  if(sub){const pop=ease((t-sub.t)/0.18);g.font=`700 54px ${FONT}`;const tw=g.measureText(sub.c).width,y=HEAD+BAND-150;
-    g.globalAlpha=pop;g.fillStyle=B.sub.bg;g.fillRect(W/2-tw/2-22,y-40,tw+44,80);g.fillStyle=B.sub.fg;g.fillText(sub.c,W/2,y+(1-pop)*12);g.globalAlpha=1;}
+  if(sub&&t<P.endAt){const pop=ease((t-sub.t)/0.18);
+    if(L.sub==="big"){/* 큰 자막: 굵은 흰 글씨 + 검은 테두리, 길면 두 줄 */
+      g.font=`900 82px ${FONT}`;const ls=wrap2(g,sub.c,R.w-100),lh=112,y0=L.subY-(ls.length-1)*lh/2+(1-pop)*16;g.globalAlpha=pop;g.lineJoin="round";
+      {const bw=Math.min(R.w-40,Math.max(...ls.map(s=>g.measureText(s).width))+90),bh=ls.length*lh+40;g.fillStyle="rgba(0,0,0,.38)";g.beginPath();g.roundRect(W/2-bw/2,y0-lh/2-20,bw,bh,28);g.fill();}ls.forEach((s,i)=>{const y=y0+i*lh;g.lineWidth=12;g.strokeStyle="rgba(0,0,0,.92)";g.strokeText(s,W/2,y);g.fillStyle=i===ls.length-1&&B.t2bg?B.t2bg:"#ffffff";g.fillText(s,W/2,y);});g.globalAlpha=1;}
+    else{g.font=`700 54px ${FONT}`;const tw=g.measureText(sub.c).width,y=L.subY;
+      g.globalAlpha=pop;g.fillStyle=B.sub.bg;g.fillRect(W/2-tw/2-22,y-40,tw+44,80);g.fillStyle=B.sub.fg;g.fillText(sub.c,W/2,y+(1-pop)*12);g.globalAlpha=1;}}
   /* 아래 로고 */
   g.drawImage(A.foot,0,HEAD+BAND,W,FOOT);}
 
+/* 한 줄이 넓으면 가운데쯤 띄어쓰기에서 두 줄로 */
+function wrap2(g,s,max){if(g.measureText(s).width<=max)return [s];const w=s.split(" ");if(w.length<2){fitText(g,s,max,82);return [s];}
+  let best=1,bd=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(g.measureText(w.slice(0,i).join(" ")).width-g.measureText(w.slice(i).join(" ")).width);if(d<bd){bd=d;best=i;}}
+  const a=[w.slice(0,best).join(" "),w.slice(best).join(" ")],m=Math.max(...a.map(x=>g.measureText(x).width));if(m>max)fitText(g,a[0].length>a[1].length?a[0]:a[1],max,82);return a;}
 function pickMime(){const c=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
   return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||"";}
 
@@ -195,7 +214,7 @@ async function make(o){const B=brandOf(o.name);if(!B)throw new Error("영상 모
   const tl=lines.reduce((a,l)=>a+len(l),0)||1;
   const durs=lines.map((l,i)=>nar?nar.duration*len(l)/tl-0.001:bufs[i]?bufs[i].duration:Math.max(1.6,len(l)*0.19));
   const P=plan(lines,durs,{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own,gap:nar?0:bufs.some(Boolean)?0.22:0.15});
-  const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion};
+  const S={B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion,L:layoutOf(o.layout)};
   const music=await bgmBuffer(ac,o.bgm,P.total);
   const cv=o.canvas||document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d",{alpha:false});
   drawFrame(g,0,S);
@@ -230,7 +249,7 @@ function ticker(ms){let w=null,cb=null,id=null;
 /* 미리보기: 소리 없이 화면만 그려 봄 */
 async function still(o){const B=brandOf(o.name);if(!B)return null;const A=await prepare({brand:B,base:o.base,photos:o.photos,extra:o.extra,coPhotos:o.coPhotos});
   const lines=o.lines.filter(Boolean),P=plan(lines,lines.map(l=>Math.max(1.6,len(l)*0.19)),{seed:o.seed,nPhotos:A.photos.length,nBrand:A.nBrand,nUp:A.nUp,own:A.own});
-  const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion});return P;}
+  const cv=o.canvas;cv.width=W;cv.height=H;drawFrame(cv.getContext("2d"),o.at==null?1.2:o.at*P.total,{B,P,A,title:o.title||titleOf(lines[0]),kw:o.kw,mo:o.motion,L:layoutOf(o.layout)});return P;}
 
-root.ShortsMaker={make,still,brandOf,titleOf,BRAND,bgmBuffer,queryOf,sceneQueries};
+root.ShortsMaker={make,still,brandOf,titleOf,BRAND,LAYOUTS,LAYOUT_KEYS,bgmBuffer,queryOf,sceneQueries};
 })(window);

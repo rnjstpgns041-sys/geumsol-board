@@ -27,27 +27,42 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
 .sc{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;border-top:1px solid var(--line);padding:8px 0}.sc .th{aspect-ratio:1080/920;border-radius:6px;overflow:hidden;background:var(--bg);display:grid;place-items:center;font-size:11px;color:var(--muted);text-align:center}.sc .th img{width:100%;height:100%;object-fit:cover;display:block}.sc .tx{min-width:0;font-size:13px;display:flex;flex-direction:column;gap:4px}.sc input{flex:1;min-width:0;height:32px}
 .pv{display:flex;flex-direction:column;gap:8px;position:sticky;top:12px}.pv canvas{width:100%;aspect-ratio:9/16;border-radius:12px;background:#111;display:block}
 .bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0}
+.step{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-size:15.5px;font-weight:800}.step:first-child{margin-top:0}.step i{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:99px;background:var(--accent);color:#fff;font-size:13px}.step .muted{font-weight:400}
+.lay{display:flex;gap:6px;flex-wrap:wrap}.lay button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--fg)}.lay button[aria-pressed=true]{border-color:var(--accent);background:var(--soft);color:var(--accent);font-weight:700}
+details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}details.more>summary{cursor:pointer;font-weight:700}
 .ph{aspect-ratio:9/16;border-radius:8px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 10px,var(--line) 10px,var(--line) 20px);display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
 </style></head><body><div class="wrap">
 <div class="card"><div class="row" style="justify-content:space-between"><h1>쇼츠 영상 만들기</h1><a class="btn small" href="blog.html">블로그 이미지 만들기로</a></div><div class="muted">업체와 키워드를 고르면 1분 대본이 자동으로 써지고, [영상 만들기]를 누르면 이 화면에서 바로 쇼츠 영상(세로 1080×1920)이 만들어져요. 업체 영상 모양(위 제목, 사진과 자막, 아래 로고, 끝 로고 화면) 그대로예요. 만든 영상은 팀 모두에게 아래 목록으로 보여요. 크롬이나 엣지로 열어 주세요.</div></div>
 <div id="gate"></div>
 <div id="main" hidden>
 <div class="card mk"><div style="min-width:0">
-  <div class="grid">
+  <div class="step"><i>1</i>업체와 키워드 고르기</div>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
     <label>업체<select id="client"></select></label>
     <label>키워드<input id="kw" placeholder=""></label>
+  </div>
+  <div id="kws" class="row" style="margin-top:8px"></div>
+  <div class="step"><i>2</i>제목과 대본 확인하기 <span class="muted">자동으로 채워져요. 고칠 곳만 고치세요.</span></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:0"><label>영상 위 제목 첫 줄<input id="t1" placeholder="대본을 새로 쓰면 제목도 새로 채워져요"></label><label>제목 둘째 줄 (강조 색)<input id="t2" placeholder=""></label></div>
+  <label style="margin-top:10px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
+  <div class="row" style="margin-top:8px"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">마음에 안 들면 누르세요. 누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
+  <details id="scbox" style="margin-top:8px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
+  <div class="step"><i>3</i>영상 만들기 <span class="muted" id="setnote"></span></div>
+  <label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end">
     <label>목소리<select id="voice">
       <option value="ko-KR-Neural2-C">남자 (차분)</option><option value="ko-KR-Wavenet-D">남자 (또렷)</option><option value="ko-KR-Neural2-A">여자 (밝게)</option><option value="ko-KR-Neural2-B">여자 (차분)</option><option value="none">목소리 없이</option>
     </select></label>
     <label>말 빠르기<select id="rate"><option value="1.0">보통</option><option value="1.1" selected>조금 빠르게</option><option value="1.2">빠르게</option></select></label>
+    <button class="btn primary" id="go" style="height:40px;padding:0 26px">영상 만들기</button>
   </div>
+  <details class="more" id="more"><summary>설정 더 보기 <span class="muted" style="font-weight:400">배경음악 · 사진 · 홈페이지 · 업체 사진 · 업체 특징</span></summary>
   <div class="grid" style="grid-template-columns:1fr 1fr 1.3fr auto;margin-top:8px;align-items:end">
     <label>배경음악<select id="bgm"><option value="calm">잔잔하게</option><option value="bright">밝게</option><option value="file">내 음악 파일 고르기…</option><option value="none">없이</option></select></label>
     <label>사진 움직임<select id="motion"><option value="1">보통</option><option value="2">크게</option><option value="0">조용히</option></select></label>
     <label>사진<select id="phmode"><option value="match">대본에 맞는 사진 섞기</option><option value="brand">업체 사진만</option></select></label>
     <button class="btn small" id="bgmtry" style="height:38px">음악 들어 보기</button>
   </div><input type="file" id="bgmfile" accept="audio/*" hidden><div class="muted" id="bgminfo" style="margin-top:4px"></div>
-  <div id="kws" class="row" style="margin-top:8px"></div>
   <div id="hpbox" style="margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px">
     <b>홈페이지 <span class="muted" style="font-weight:400">(대본에 반영돼요)</span></b>
     <div class="grid" style="grid-template-columns:1fr auto;margin-top:6px;align-items:end"><label>홈페이지 주소<input id="hpurl" placeholder="예: www.yudang.co.kr"></label><button class="btn small" id="hpgo" style="height:38px">홈페이지 읽기</button></div>
@@ -65,12 +80,7 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
     </div><div class="row" style="margin-top:8px"><button class="btn small" id="fsave">특징 저장 (팀 모두에게 적용)</button><span class="muted" id="fmsg"></span></div>
     <details id="fprobe" hidden style="margin-top:8px"><summary class="muted">슈퍼쇼츠 응답 원문 (문제 생기면 이 화면을 찍어 보내 주세요)</summary><pre id="fraw" style="white-space:pre-wrap;font-size:11px;max-height:260px;overflow:auto"></pre></details>
   </details>
-  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px"><label>영상 위 제목 첫 줄<input id="t1" placeholder="대본을 새로 쓰면 제목도 새로 채워져요"></label><label>제목 둘째 줄 (강조 색)<input id="t2" placeholder=""></label></div>
-  <label style="margin-top:12px">대본 <span id="cnt" style="font-weight:400"></span><textarea id="text" placeholder="키워드를 넣으면 업체 특징을 넣은 1분짜리 대본이 여기에 자동으로 채워져요. 직접 고쳐 써도 돼요."></textarea></label>
-  <div class="row" style="margin-top:10px;justify-content:space-between">
-    <div class="row"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
-    <button class="btn primary" id="go">영상 만들기</button>
-  </div>
+  </details>
   <details id="bbox" style="margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px"><summary style="cursor:pointer"><b>한 번에 여러 개 만들기</b> <span class="muted" style="font-weight:400">키워드마다 새 제목·대본으로 영상을 차례로 만들어요</span></summary>
     <div class="grid" style="grid-template-columns:1fr 150px;margin-top:8px;align-items:start"><label>키워드 (한 줄에 하나)<textarea id="bkws" style="min-height:110px" placeholder="예:
 동래교통사고한의원
@@ -79,14 +89,13 @@ textarea{min-height:340px;resize:vertical;line-height:1.6}
       <div style="display:grid;gap:8px"><label>키워드마다<select id="bn"><option value="1">1개씩</option><option value="2">2개씩</option><option value="3">3개씩</option></select></label><button class="btn small" id="bfill" type="button">이 업체 키워드 모두 넣기</button></div></div>
     <div class="row" style="margin-top:8px"><button class="btn primary" id="bgo" type="button">여러 개 만들기</button><button class="btn small" id="bstop" type="button" style="display:none">멈추기</button><span class="muted" id="binfo">위에서 고른 업체·목소리·음악·사진 설정으로 만들어요. 영상마다 영상 길이만큼 걸리니 이 창을 앞에 띄워 두세요. 처음에 브라우저가 "여러 파일 다운로드"를 물으면 허용을 눌러 주세요.</span></div></details>
   <div id="msg" style="margin-top:10px"></div>
-  <details id="scbox" style="margin-top:10px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
 </div><div class="pv"><canvas id="pv"></canvas><div class="bar"><i id="pbar"></i></div><div class="row" style="justify-content:space-between"><span class="muted" id="pinfo">미리보기</span><button class="btn small" id="pnext">사진 바꿔 보기</button></div></div>
 </div>
 <div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2>만든 영상</h2><button class="btn small" id="logout">비밀번호 다시 넣기</button></div><div id="list" class="list"></div></div>
 </div>
 </div>
 <script src="script-gen.js?v=45"></script>
-<script src="shorts-maker.js?v=26a"></script>
+<script src="shorts-maker.js?v=47"></script>
 <script>
 const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi";
 const FN=SB+"/functions/v1/video";
@@ -201,8 +210,9 @@ async function start(){$("gate").innerHTML="";$("main").hidden=false;
   $("kw").value=P.get("kw")||"";
   const v=ls.get("gs-video-voice");if(v&&[...$("voice").options].some(o=>o.value===v))$("voice").value=v;
   [["bgm","gs-video-bgm"],["phmode","gs-video-ph"],["motion","gs-video-motion"]].forEach(([id,k])=>{const x=ls.get(k);if(x&&[...$(id).options].some(o=>o.value===x))$(id).value=x;});
+  setLoad();
   await loadUsed();renderKws();fill();await hpLoad();auto();renderCo();preview();await loadList();poll();}
-$("client").onchange=async()=>{$("t1").value="";$("t2").value="";renderKws();fill();await hpLoad();auto();};
+$("client").onchange=async()=>{setLoad();$("t1").value="";$("t2").value="";renderKws();fill();await hpLoad();auto();};
 $("hpgo").onclick=async()=>{const cid=$("client").value;if(!cid){$("hpmsg").textContent="업체를 먼저 골라 주세요.";return;}
   const url=$("hpurl").value.trim();if(!url){$("hpmsg").textContent="홈페이지 주소를 넣어 주세요.";return;}
   $("hpgo").disabled=true;$("hpmsg").textContent="홈페이지를 읽는 중이에요… (조금 걸려요)";
@@ -296,9 +306,24 @@ function bgmSpec(){const v=$("bgm").value;return v==="file"?BGMF:v;}
 function lines(){return $("text").value.split("\n").map(x=>x.trim()).filter(Boolean);}
 function titleNow(){const L=lines(),d=ShortsMaker.titleOf(L[0]||"");const a=$("t1").value.trim(),b=$("t2").value.trim();return a||b?[a||d[0],b]:d;}
 async function preview(){clearTimeout(PVT);PVT=setTimeout(async()=>{if(busy||!window.ShortsMaker)return;const L=lines();renderScenes();if(!L.length||!ShortsMaker.brandOf(cname())){$("pinfo").textContent=ShortsMaker.brandOf(cname())?"대본을 넣으면 미리보기가 나와요":"이 업체는 영상 모양이 아직 없어요";return;}
-  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:$("phmode").value==="match"?[]:coPhotos(),motion:+$("motion").value});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
+  try{const P=await ShortsMaker.still({name:cname(),kw:$("kw").value.trim(),lines:L,canvas:$("pv"),seed:SEEDV,title:titleNow(),at:0.08,extra:extraNow(),coPhotos:$("phmode").value==="match"?[]:coPhotos(),motion:+$("motion").value,layout:layNow()});$("pinfo").textContent=`미리보기 · 약 ${Math.round(P.total)}초`;}catch(e){$("pinfo").textContent=e.message;}},250);}
 function b64ab(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
 async function upload(blob,name){const r=await fetch(`${SB}/storage/v1/object/files/videos/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":blob.type||"video/mp4"},body:blob});if(!r.ok)throw new Error("올리기 "+r.status);return `${SB}/storage/v1/object/public/files/videos/${name}`;}
+/* 업체마다 목소리·빠르기·음악·움직임·사진·영상 모양을 기억한다 */
+const SETK=["voice","rate","bgm","motion","phmode"];
+function setGet(cid){try{return JSON.parse(ls.get("gs-video-set-"+cid)||"null")}catch(e){return null}}
+function setSave(){const cid=$("client").value;const o={layout:LAY};SETK.forEach(k=>o[k]=k==="bgm"&&$(k).value==="file"?"calm":$(k).value);
+  if(cid)ls.set("gs-video-set-"+cid,JSON.stringify(o));ls.set("gs-video-voice",o.voice);ls.set("gs-video-bgm",o.bgm);ls.set("gs-video-ph",o.phmode);ls.set("gs-video-motion",o.motion);ls.set("gs-video-layout",LAY);}
+function setLoad(){const o=setGet($("client").value);if(o)SETK.forEach(k=>{if(o[k]&&[...$(k).options].some(x=>x.value===o[k]))$(k).value=o[k];});
+  if(o&&o.layout)LAY=o.layout;renderLay();$("setnote").textContent=o&&$("client").value?"이 업체에 지난번 쓴 설정을 불러왔어요":"";}
+/* 영상 모양: 자동이면 업체마다 영상을 만들 때마다 다음 모양으로 바뀐다 */
+let LAY=ls.get("gs-video-layout")||"auto";
+function layN(){return +ls.get("gs-video-lyn-"+($("client").value||"_"))||0;}
+function layNow(){if(LAY!=="auto")return LAY;const K=ShortsMaker.LAYOUT_KEYS;return K[layN()%K.length];}
+function renderLay(){if(!window.ShortsMaker)return;const L=ShortsMaker.LAYOUTS,cur=layNow();
+  $("lay").innerHTML=`<button type="button" data-lay="auto" aria-pressed="${LAY==="auto"}">자동 번갈아${LAY==="auto"?` <span class="muted">(이번: ${esc(L[cur].name)})</span>`:""}</button>`+ShortsMaker.LAYOUT_KEYS.map(k=>`<button type="button" data-lay="${k}" aria-pressed="${LAY===k}">${esc(L[k].name)}</button>`).join("");}
+$("lay").onclick=e=>{const b=e.target.closest("[data-lay]");if(!b)return;LAY=b.dataset.lay;setSave();renderLay();preview();};
+SETK.forEach(k=>$(k).addEventListener("change",setSave));
 /* 영상 하나 만들기: 성공하면 true. 여러 개 만들기(batch)에서는 끝난 뒤 다음 대본을 미리 쓰지 않는다 */
 async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("\n");
   if(!L.length){msg("대본을 넣어 주세요.","err");return false;}
@@ -311,7 +336,7 @@ async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("
         if(!r.ok)throw new Error(r.error||"목소리를 만들지 못했어요.");audios=r.audios.map(b64ab);}
       else msg("구글 음성 키가 아직 없어서 이번에는 목소리 없이 만들어요.","warn");}
     msg("영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 창을 앞에 띄워 두세요.","warn");
-    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,coPhotos:$("phmode").value==="match"?[]:coPhotos(),bgm:bgmSpec(),motion:+$("motion").value,canvas:$("pv"),seed:SEEDV,title:titleNow(),
+    const o=await ShortsMaker.make({name:cname(),kw:$("kw").value.trim(),lines:L,audios,extra,coPhotos:$("phmode").value==="match"?[]:coPhotos(),bgm:bgmSpec(),motion:+$("motion").value,layout:layNow(),canvas:$("pv"),seed:SEEDV,title:titleNow(),
       onProgress:(p,t,T)=>{$("pbar").style.width=p+"%";$("pinfo").textContent=`만드는 중 ${Math.floor(t)}초 / ${Math.round(T)}초`;}});
     const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}`;
     const fname=`${(cname()||"영상").replace(/\s/g,"")}_${($("kw").value.trim()||"쇼츠").replace(/[^\w가-힣]/g,"")}_${stamp}.${o.ext}`;
@@ -320,11 +345,11 @@ async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("
     const url=URL.createObjectURL(o.blob),a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
     $("pbar").style.width="100%";$("pinfo").textContent=`완성 · ${Math.round(o.seconds)}초`;
     let pub="";try{msg("완성! 내 컴퓨터에 내려받았어요. 팀 목록에 올리는 중이에요…","ok");pub=await upload(o.blob,`mk_${stamp}_${Math.random().toString(36).slice(2,7)}.${o.ext}`);}catch(e){}
-    const rec={id:"mk_"+stamp,cid:$("client").value,client:cname(),kw:$("kw").value.trim(),text,title:titleNow(),voice:v,length:"shortform",status:"completed",files:pub?[pub]:[],at:`${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())} ${pd(d.getHours())}:${pd(d.getMinutes())}`,credits:null,error:"",local:true};
+    const rec={id:"mk_"+stamp,cid:$("client").value,client:cname(),kw:$("kw").value.trim(),text,title:titleNow(),voice:v,layout:layNow(),length:"shortform",status:"completed",files:pub?[pub]:[],at:`${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())} ${pd(d.getHours())}:${pd(d.getMinutes())}`,credits:null,error:"",local:true};
     if(!pub)rec.files=[url];LIST.unshift(rec);render();if(pub){try{await save(rec);}catch(e){}}
     const done=`완성됐어요! "${esc(fname)}" 파일로 내려받았어요.${pub?" 아래 팀 목록에도 올렸어요.":" (팀 목록에는 못 올렸어요. 파일은 내 컴퓨터에 있어요.)"}`;
     /* 다음 영상은 다른 제목·대본으로: 방금 쓴 것을 피해서 바로 새로 써 둔다 */
-    RECENT.unshift(rec.title.join(" "),L[0]);busy=false;
+    RECENT.unshift(rec.title.join(" "),L[0]);busy=false;if(LAY==="auto"){ls.set("gs-video-lyn-"+($("client").value||"_"),String(layN()+1));renderLay();}
     if(batch){msg(done,"ok");}else if($("kw").value.trim()||$("client").value){await auto(true);msg(done+" 다음 영상에 쓸 새 제목과 대본을 미리 써 뒀어요.","ok");}else msg(done,"ok");
     $("go").disabled=false;return true;}
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
