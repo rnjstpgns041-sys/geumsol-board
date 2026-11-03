@@ -414,12 +414,14 @@ ${refBrief(refs) || "(없음)"}
 - 뻔한 말("많은 분들이", "오늘은 ~에 대해 알아볼게요") 금지. 없는 사실(경력, 장비, 가격, 진료시간) 지어내지 말 것.
 - ${lawRule}
 - 말투: 쉬운 존댓말(~요, ~습니다 섞기).
-JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
+- 같은 글에 쓸 수 있는 다른 제목도 5개 더: 모두 "${kw}"로 시작, 뒤는 서로 다르게.
+JSON 하나로만: {"title":"제목","titles":["다른 제목1","다른 제목2","다른 제목3","다른 제목4","다른 제목5"],"body":"본문 전체(제목 빼고)"}`;
     try {
       const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000);
       const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
       if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
-      return j({ ok: true, title, body });
+      const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
+      return j({ ok: true, title, body, titles });
     } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
   }
   // 상위 글 하나를 바탕으로 비슷한 듯 다르게 바꿔 쓰기 (흐름·내용 순서·길이는 그대로, 문장은 모두 새로)
@@ -452,12 +454,14 @@ ${src}"""
 - 본문 길이는 공백 빼고 ${Math.round(chars * 0.9)}~${Math.round(chars * 1.1)}자.
 - 사진 자리 표시, 해시태그, 별표(**) 같은 기호는 쓰지 말 것.
 - ${lawRule} 바탕 글에 이런 표현이 있으면 안전한 말로 바꾸기.
-JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
+- 같은 글에 쓸 수 있는 다른 제목도 5개 더: 모두 "${kw}"로 시작, 뒤는 서로 다르게, 공백 포함 18~32자.
+JSON 하나로만: {"title":"제목","titles":["다른 제목1","다른 제목2","다른 제목3","다른 제목4","다른 제목5"],"body":"본문 전체(제목 빼고)"}`;
     try {
       const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 130000, 85000);
       const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
       if (body.replace(/\s/g, "").length < Math.min(600, chars * 0.5)) throw new Error("원고가 너무 짧게 나왔어요");
-      return j({ ok: true, title, body });
+      const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
+      return j({ ok: true, title, body, titles });
     } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
   }
   if (b.action === "wdraft") {

@@ -28,7 +28,7 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.modal>div{background:var(--card);border-radius:14px;padding:16px;max-width:420px;width:100%}
 .srcs.base{margin:4px 0 8px;font-size:13px}.srcs{font-size:13px}.srcs summary{font-size:13px;color:var(--muted)}.srcs ol{margin:6px 0 2px;padding-left:20px}.srcs li{margin:2px 0}
 .hist{display:flex;flex-direction:column;gap:4px;font-size:13.5px}.hist button{border:0;background:none;color:var(--accent);cursor:pointer;font:inherit;text-align:left;padding:2px 0}.hist .hr{display:flex;align-items:center;gap:10px}.hist .hx{color:#b42318;font-size:12.5px;border:1px solid #f1c7c2;border-radius:6px;padding:1px 8px}.hist .hx:hover{background:#fdecea}
-.tl{display:flex;flex-direction:column;gap:12px}.tl h3{margin:0 0 4px;font-size:15px}.tl button,.alts button{display:block;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;margin:4px 0;cursor:pointer;font:inherit;font-size:14px;text-align:left;width:100%}.tl button:hover,.alts button:hover{border-color:var(--accent);background:var(--soft)}.alts{font-size:13px}
+.tl{display:flex;flex-direction:column;gap:12px}.tl h3{margin:0 0 4px;font-size:15px}.tl button,.alts button{display:block;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;margin:4px 0;cursor:pointer;font:inherit;font-size:14px;text-align:left;width:100%}.alts button[aria-current=true]{border-color:var(--accent);background:var(--soft);font-weight:700}.tl button:hover,.alts button:hover{border-color:var(--accent);background:var(--soft)}.alts{font-size:13px}
 .kwbox{min-height:110px;font-size:14px;line-height:1.6}
 .jobs{display:flex;flex-direction:column;gap:6px;margin-top:10px}.job{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;background:var(--card)}.job[aria-current=true]{border-color:var(--accent);background:var(--soft)}
 .job b{min-width:0}.job .s{color:var(--muted)}.job .s.e{color:var(--bad)}.job .s.d{color:var(--accent);font-weight:700}
@@ -130,8 +130,8 @@ $("jobs").addEventListener("click",async e=>{const r=e.target.closest("[data-rj]
   const j=e.target.closest("[data-j]");if(j){CUR=+j.dataset.j;renderAll();$("drc").scrollIntoView({behavior:"smooth"});}});
 function renderDrafts(){const J=JOBS[CUR];const DR=(J&&J.items)||[];$("drc").style.display=DR.length?"":"none";if(!J)return;$("drh").textContent=`「${J.kw}」 원고`;
   $("drs").innerHTML=DR.map((d,i)=>{if(d.state!=="done")return `<div class="dr"><h3>${i+1}. ${esc(d.title)}</h3><div class="muted">${d.err?`<span style="color:var(--bad)">${esc(d.err)}</span> <button class="btn small" data-redo="${i}">다시 쓰기</button>`:"쓰는 중…"}</div></div>`;
-    const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-tt="${i}">제목 후보</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
-    ${d.alts?`<div class="alts"><span class="muted">${d.alts==="wait"?"제목 짓는 중…":"누르면 이 제목으로 바뀌어요"}</span>${d.alts==="wait"?"":d.alts.map((t,k)=>`<button data-alt="${i}:${k}">${esc(t)}</button>`).join("")}</div>`:""}
+    const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-tt="${i}">다른 제목 더</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
+    ${d.alts?`<div class="alts"><span class="muted">${d.alts==="wait"?"다른 제목 짓는 중…":"바꾼 제목 · 누르면 이 제목으로 바뀌어요"}</span>${d.alts==="wait"?"":d.alts.map((t,k)=>`<button data-alt="${i}:${k}" ${t===d.title?'aria-current="true"':""}>${esc(t)}</button>`).join("")}</div>`:""}
     <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill ${d.base?(s.ov>25?"b":s.ov>12?"w":""):(s.ov>5?"b":s.ov>2?"w":"")}">${d.base?"바탕 글과 ":""}겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
     ${d.base?baseLine(d.base):refList(J)}<textarea data-db="${i}">${esc(d.body)}</textarea></div>`;}).join("");}
 /* 이 원고가 보고 쓴 블로그 글 (통합검색 위쪽) */
@@ -143,10 +143,10 @@ let RT=0;function soon(){clearTimeout(RT);RT=setTimeout(()=>{renderJobs();const 
 $("drs").addEventListener("input",e=>{const J=JOBS[CUR],i=e.target.dataset.db;if(i!=null){J.items[i].body=e.target.value;clearTimeout(window._sv);window._sv=setTimeout(()=>saveJob(J),800);}const t=e.target.dataset.dt;if(t!=null)J.items[t].title=e.target.textContent.trim();});
 $("drs").addEventListener("blur",e=>{if(e.target.dataset.db!=null||e.target.dataset.dt!=null){const J=JOBS[CUR],t=e.target.dataset.dt;if(t!=null)J.items[t].title=fixTitle(J.items[t].title,J.kw);saveJob(J);renderDrafts();}},true);
 $("drs").addEventListener("click",async e=>{const J=JOBS[CUR];
-  const al=e.target.closest("[data-alt]");if(al){const [i,k]=al.dataset.alt.split(":").map(Number),d=J.items[i];d.title=d.alts[k];d.alts=null;renderDrafts();saveJob(J);return;}
+  const al=e.target.closest("[data-alt]");if(al){const [i,k]=al.dataset.alt.split(":").map(Number),d=J.items[i];d.title=d.alts[k];renderDrafts();saveJob(J);return;}
   const tt=e.target.closest("[data-tt]");if(tt){const d=J.items[+tt.dataset.tt];if(d.alts==="wait")return;if(!await needPW())return;d.alts="wait";renderDrafts();
     const r=await fn({action:"wtitles",kw:J.kw,n:5,refs:(J.refs||[]).map(slim),avoid:[d.title].concat(HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,20))});
-    const ts=r.ok?[...new Set((r.items||[]).map(x=>fixTitle(x.title,J.kw)))].filter(t=>t!==d.title):[];d.alts=ts.length?ts:null;if(!ts.length)msg("제목을 못 지었어요: "+(r.error||""),"warn");renderDrafts();return;}
+    const ts=r.ok?(r.items||[]).map(x=>x.title):[];d.alts=ts.length?altsOf(J,d,ts):null;if(!ts.length)msg("제목을 못 지었어요: "+(r.error||""),"warn");renderDrafts();return;}
   const c=e.target.closest("[data-cp]");if(c){await copy(full(J.items[+c.dataset.cp]));c.textContent="복사했어요";setTimeout(()=>c.textContent="복사",1500);return;}
   const r=e.target.closest("[data-redo]");if(r){const d=J.items[+r.dataset.redo];d.state="wait";d.err="";renderDrafts();await one(J,d);renderAll();saveJob(J);}});
 function full(d){return d.title+"\n\n"+clean(d.body);}
@@ -160,18 +160,22 @@ let NOONE=false;const isOld=e=>/모르는 요청|unknown action/i.test(e||"");
 async function oneFast(J,d){const A=avgs(J),avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
   for(let k=0;k<2;k++){if(STOP)return true;const r=await fn({action:"wone",kw:J.kw,refs:(J.refs||[]).map(slim),chars:A.chars,avoid});
     if(!r.ok&&isOld(r.error)){NOONE=true;d.title="";return false;}
-    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||d.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
+    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||d.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});d.alts=altsOf(J,d,r.titles);if(stats(d,J).ov<=8)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
   return true;}
 /* 바탕 글 하나 고르기: 통합검색 위쪽부터, 본문을 읽은 글만. 원고가 여러 개면 차례로 다른 글 */
 function baseFor(J,i){const ok=(J.refs||[]).filter(r=>(r.paras||[]).join("").replace(/\s/g,"").length>=300);return ok.length?ok[i%ok.length]:null;}
+function altsOf(J,d,list){const a=[d.title].concat((list||[]).map(t=>fixTitle(t,J.kw)));return [...new Set(a.filter(Boolean))].slice(0,6);}
+async function autoAlts(J,d){if(d.state!=="done"||(Array.isArray(d.alts)&&d.alts.length>1))return;
+  const r=await fn({action:"wtitles",kw:J.kw,n:5,refs:(J.refs||[]).map(slim),avoid:[d.title]});if(r.ok&&(r.items||[]).length)d.alts=altsOf(J,d,r.items.map(x=>x.title));soon();}
 let NOSPIN=false;const nap=ms=>new Promise(z=>setTimeout(z,ms));
 async function spin(J,d){const r0=(d.base&&(J.refs||[]).find(x=>x.url===d.base.url))||baseFor(J,(J.items||[]).indexOf(d));if(!r0)return false;
   d.base={url:r0.url,title:r0.title,total:r0.total,chars:r0.chars};const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
   for(let k=0;k<3;k++){if(STOP)return true;const r=await fn({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0&&d.state==="done"});
     if(!r.ok&&isOld(r.error)){NOSPIN=true;delete d.base;return false;}
-    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=25)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
+    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});d.alts=altsOf(J,d,r.titles);if(stats(d,J).ov<=25)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
   if(d.state!=="done")delete d.base;return d.state==="done";}
-async function one(J,d){const A=avgs(J),f=facts();
+async function one(J,d){await one0(J,d);await autoAlts(J,d);}
+async function one0(J,d){const A=avgs(J),f=facts();
   if(!d.outline&&!NOSPIN&&await spin(J,d))return;
   if(!d.outline&&!NOONE&&await oneFast(J,d))return;
   if(!d.title){const r=await fn({action:"wtitles",kw:J.kw,n:1,name:f.name,refs:(J.refs||[]).map(slim),avoid:[]});const x=r.ok&&(r.items||[])[0];if(!x){d.err=r.error||"제목을 못 정했어요.";return;}Object.assign(d,{title:fixTitle(x.title,J.kw),angle:x.angle,outline:x.outline});}
@@ -224,7 +228,7 @@ $("tcp").onclick=async()=>{await copy(TL.filter(T=>T.ts).map(T=>T.kw+"\n"+T.ts.j
 
 /* ── 팀 기록: docs wdrafts/<id> (키워드 하나 = 하나) ── */
 async function saveJob(J){if(!J.id)return;const items=(J.items||[]).filter(d=>d.state==="done");if(!items.length)return;
-  const data={kw:J.kw,cid:J.cid,client:J.client,at:new Date().toISOString(),items:items.map(d=>({title:d.title,body:d.body,tags:d.tags,base:d.base||null})),src:(J.refs||J.src||[]).map(r=>({url:r.url,title:r.title,total:r.total,chars:r.chars}))};
+  const data={kw:J.kw,cid:J.cid,client:J.client,at:new Date().toISOString(),items:items.map(d=>({title:d.title,body:d.body,tags:d.tags,base:d.base||null,alts:Array.isArray(d.alts)?d.alts:null})),src:(J.refs||J.src||[]).map(r=>({url:r.url,title:r.title,total:r.total,chars:r.chars}))};
   try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"wdrafts",id:J.id,data})});}catch(e){}}
 async function loadHist(){try{const r=await rest("docs?coll=eq.wdrafts&select=id,data&order=updated_at.desc&limit=60");HIST=(r||[]).map(x=>Object.assign({id:x.id},x.data||{}));}catch(e){HIST=[];}
   const gone=goneIds();HIST=HIST.filter(h=>!gone.includes(h.id));
