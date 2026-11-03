@@ -28,6 +28,7 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.modal>div{background:var(--card);border-radius:14px;padding:16px;max-width:420px;width:100%}
 .srcs.base{margin:4px 0 8px;font-size:13px}.srcs{font-size:13px}.srcs summary{font-size:13px;color:var(--muted)}.srcs ol{margin:6px 0 2px;padding-left:20px}.srcs li{margin:2px 0}
 .hist{display:flex;flex-direction:column;gap:4px;font-size:13.5px}.hist button{border:0;background:none;color:var(--accent);cursor:pointer;font:inherit;text-align:left;padding:2px 0}.hist .hr{display:flex;align-items:center;gap:10px}.hist .hx{color:#b42318;font-size:12.5px;border:1px solid #f1c7c2;border-radius:6px;padding:1px 8px}.hist .hx:hover{background:#fdecea}
+.tl{display:flex;flex-direction:column;gap:12px}.tl h3{margin:0 0 4px;font-size:15px}.tl button,.alts button{display:block;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;margin:4px 0;cursor:pointer;font:inherit;font-size:14px;text-align:left;width:100%}.tl button:hover,.alts button:hover{border-color:var(--accent);background:var(--soft)}.alts{font-size:13px}
 .kwbox{min-height:110px;font-size:14px;line-height:1.6}
 .jobs{display:flex;flex-direction:column;gap:6px;margin-top:10px}.job{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;background:var(--card)}.job[aria-current=true]{border-color:var(--accent);background:var(--soft)}
 .job b{min-width:0}.job .s{color:var(--muted)}.job .s.e{color:var(--bad)}.job .s.d{color:var(--accent);font-weight:700}
@@ -41,10 +42,13 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 <select id="n" hidden></select>
 </div>
 <div class="row" style="margin-top:8px"><span class="muted" id="kwcount"></span></div>
-<div class="row" style="margin-top:12px"><button class="btn primary" id="go">상위 글 보고 원고 뽑기</button><button class="btn" id="stop" style="display:none">멈추기</button><span class="muted" id="st"></span></div>
+<div class="row" style="margin-top:12px"><button class="btn primary" id="go">상위 글 보고 원고 뽑기</button><button class="btn" id="tgo">제목만 뽑기</button><button class="btn" id="stop" style="display:none">멈추기</button><span class="muted" id="st"></span></div>
 <div class="bar" style="margin-top:10px;display:none" id="barw"><i id="bar"></i></div>
 <div id="msg" style="margin-top:10px"></div>
 <div class="jobs" id="jobs"></div></div>
+
+<div class="card" id="tc" style="display:none"><div class="row" style="justify-content:space-between"><h2 style="margin:0">제목 후보</h2><button class="btn small" id="tcp">모두 복사</button></div>
+<div class="muted" style="margin:4px 0 10px">키워드는 맨 앞에 그대로 두고 뒤만 다르게 지었어요. 제목을 누르면 복사돼요.</div><div id="tl" class="tl"></div></div>
 
 <div class="card" id="refc" style="display:none"><h2 id="refh">통합검색 위쪽 블로그 글</h2><div class="tbl"><table><thead><tr><th>통합</th><th>블로그탭</th><th>제목 · 소제목</th><th>글자</th><th>사진</th></tr></thead><tbody id="refs"></tbody></table></div><div class="sum" id="avg"></div></div>
 
@@ -126,7 +130,8 @@ $("jobs").addEventListener("click",async e=>{const r=e.target.closest("[data-rj]
   const j=e.target.closest("[data-j]");if(j){CUR=+j.dataset.j;renderAll();$("drc").scrollIntoView({behavior:"smooth"});}});
 function renderDrafts(){const J=JOBS[CUR];const DR=(J&&J.items)||[];$("drc").style.display=DR.length?"":"none";if(!J)return;$("drh").textContent=`「${J.kw}」 원고`;
   $("drs").innerHTML=DR.map((d,i)=>{if(d.state!=="done")return `<div class="dr"><h3>${i+1}. ${esc(d.title)}</h3><div class="muted">${d.err?`<span style="color:var(--bad)">${esc(d.err)}</span> <button class="btn small" data-redo="${i}">다시 쓰기</button>`:"쓰는 중…"}</div></div>`;
-    const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
+    const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-tt="${i}">제목 후보</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
+    ${d.alts?`<div class="alts"><span class="muted">${d.alts==="wait"?"제목 짓는 중…":"누르면 이 제목으로 바뀌어요"}</span>${d.alts==="wait"?"":d.alts.map((t,k)=>`<button data-alt="${i}:${k}">${esc(t)}</button>`).join("")}</div>`:""}
     <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill ${d.base?(s.ov>25?"b":s.ov>12?"w":""):(s.ov>5?"b":s.ov>2?"w":"")}">${d.base?"바탕 글과 ":""}겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
     ${d.base?baseLine(d.base):refList(J)}<textarea data-db="${i}">${esc(d.body)}</textarea></div>`;}).join("");}
 /* 이 원고가 보고 쓴 블로그 글 (통합검색 위쪽) */
@@ -137,7 +142,12 @@ function renderAll(){renderJobs();renderRefs();renderDrafts();}
 let RT=0;function soon(){clearTimeout(RT);RT=setTimeout(()=>{renderJobs();const a=document.activeElement;if(!(a&&a.closest&&a.closest("#drs")))renderDrafts();},150);}
 $("drs").addEventListener("input",e=>{const J=JOBS[CUR],i=e.target.dataset.db;if(i!=null){J.items[i].body=e.target.value;clearTimeout(window._sv);window._sv=setTimeout(()=>saveJob(J),800);}const t=e.target.dataset.dt;if(t!=null)J.items[t].title=e.target.textContent.trim();});
 $("drs").addEventListener("blur",e=>{if(e.target.dataset.db!=null||e.target.dataset.dt!=null){const J=JOBS[CUR],t=e.target.dataset.dt;if(t!=null)J.items[t].title=fixTitle(J.items[t].title,J.kw);saveJob(J);renderDrafts();}},true);
-$("drs").addEventListener("click",async e=>{const J=JOBS[CUR],c=e.target.closest("[data-cp]");if(c){await copy(full(J.items[+c.dataset.cp]));c.textContent="복사했어요";setTimeout(()=>c.textContent="복사",1500);return;}
+$("drs").addEventListener("click",async e=>{const J=JOBS[CUR];
+  const al=e.target.closest("[data-alt]");if(al){const [i,k]=al.dataset.alt.split(":").map(Number),d=J.items[i];d.title=d.alts[k];d.alts=null;renderDrafts();saveJob(J);return;}
+  const tt=e.target.closest("[data-tt]");if(tt){const d=J.items[+tt.dataset.tt];if(d.alts==="wait")return;if(!await needPW())return;d.alts="wait";renderDrafts();
+    const r=await fn({action:"wtitles",kw:J.kw,n:5,refs:(J.refs||[]).map(slim),avoid:[d.title].concat(HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,20))});
+    const ts=r.ok?[...new Set((r.items||[]).map(x=>fixTitle(x.title,J.kw)))].filter(t=>t!==d.title):[];d.alts=ts.length?ts:null;if(!ts.length)msg("제목을 못 지었어요: "+(r.error||""),"warn");renderDrafts();return;}
+  const c=e.target.closest("[data-cp]");if(c){await copy(full(J.items[+c.dataset.cp]));c.textContent="복사했어요";setTimeout(()=>c.textContent="복사",1500);return;}
   const r=e.target.closest("[data-redo]");if(r){const d=J.items[+r.dataset.redo];d.state="wait";d.err="";renderDrafts();await one(J,d);renderAll();saveJob(J);}});
 function full(d){return d.title+"\n\n"+clean(d.body);}
 /* 원고에서 # 표시, [이미지 …] 자리, ** 같은 기호를 빼고 글만 남김 */
@@ -197,7 +207,20 @@ async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.l
   BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
   const ok=JOBS.reduce((s,J)=>s+(J.items||[]).filter(d=>d.state==="done").length,0),bad=JOBS.filter(J=>J.err).length;
   msg(STOP?`멈췄어요. 원고 ${ok}개는 써 두었어요.`:`원고 ${ok}/${total}개를 썼어요.`+(bad?` 키워드 ${bad}개는 못 했어요. 목록에서 "다시"를 눌러 주세요.`:"")+(ok<total&&!bad&&!STOP?` 못 쓴 원고는 그 칸의 "다시 쓰기"를 눌러 주세요.`:""),ok===total?"ok":"warn");}
-$("go").onclick=runAll;$("stop").onclick=()=>{STOP=true;$("st").textContent="지금 쓰는 것까지만 하고 멈춰요…";};
+$("go").onclick=runAll;
+/* 제목만 뽑기: 키워드마다 제목 5개 (키워드는 맨 앞 그대로) */
+let TL=[];
+async function runTitles(){const kws=kwList().slice(0,50);if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
+  if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("tgo").disabled=$("go").disabled=true;
+  TL=kws.map(kw=>({kw,ts:null}));drawTL();$("tc").style.display="";let done=0;prog(.02,`제목 짓는 중… 0/${kws.length}`);
+  const q=TL.slice();await Promise.all([0,1,2].map(async()=>{while(q.length&&!STOP){const T=q.shift();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(T.kw)).slice(0,20);
+    for(let k=0;k<3;k++){const r=await fn({action:"wtitles",kw:T.kw,n:5,refs:[],avoid});if(r.ok&&(r.items||[]).length){T.ts=[...new Set(r.items.map(x=>fixTitle(x.title,T.kw)))];break;}T.err=r.error||"못 지었어요";await nap(2500*(k+1));}
+    done++;prog(done/kws.length,`제목 짓는 중… ${done}/${kws.length}`);drawTL();}}));
+  BUSY=false;$("tgo").disabled=$("go").disabled=false;prog(null);drawTL();const bad=TL.filter(T=>!T.ts).length;msg(bad?`키워드 ${bad}개는 제목을 못 지었어요. 다시 눌러 주세요.`:`제목 ${TL.reduce((s,T)=>s+T.ts.length,0)}개를 지었어요.`,bad?"warn":"ok");$("tc").scrollIntoView({behavior:"smooth"});}
+function drawTL(){$("tl").innerHTML=TL.map(T=>`<div><h3>${esc(T.kw)}</h3>${T.ts?T.ts.map(t=>`<button data-tc="${esc(t)}">${esc(t)}</button>`).join(""):`<span class="muted">${T.err&&T.ts===null&&!BUSY?esc(T.err):"짓는 중…"}</span>`}</div>`).join("");}
+$("tgo").onclick=runTitles;
+$("tl").addEventListener("click",async e=>{const b=e.target.closest("[data-tc]");if(!b)return;await copy(b.dataset.tc);const o=b.textContent;b.textContent="복사했어요";setTimeout(()=>b.textContent=o,1200);});
+$("tcp").onclick=async()=>{await copy(TL.filter(T=>T.ts).map(T=>T.kw+"\n"+T.ts.join("\n")).join("\n\n"));$("tcp").textContent="복사했어요";setTimeout(()=>$("tcp").textContent="모두 복사",1500);};$("stop").onclick=()=>{STOP=true;$("st").textContent="지금 쓰는 것까지만 하고 멈춰요…";};
 
 /* ── 팀 기록: docs wdrafts/<id> (키워드 하나 = 하나) ── */
 async function saveJob(J){if(!J.id)return;const items=(J.items||[]).filter(d=>d.state==="done");if(!items.length)return;
