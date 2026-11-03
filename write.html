@@ -138,7 +138,16 @@ function clean(b){return String(b||"").split("\n").filter(l=>!/^\s*[\[(（]?\s*(
 async function copy(t){try{await navigator.clipboard.writeText(t);}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();}}
 
 /* ── 키워드 하나 돌리기: 상위 글 → 제목 n개 → 원고 n개 ── */
+/* 빠른 길: 함수에 wone(제목+원고 한 번에)이 있으면 그걸 씀. 없으면(함수 옛 판) 제목 → 원고 두 번 부름 */
+let NOONE=false;const isOld=e=>/모르는 요청|unknown action/i.test(e||"");
+async function oneFast(J,d){const A=avgs(J),avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
+  for(let k=0;k<2;k++){if(STOP)return true;const r=await fn({action:"wone",kw:J.kw,refs:(J.refs||[]).map(slim),chars:A.chars,avoid});
+    if(!r.ok&&isOld(r.error)){NOONE=true;d.title="";return false;}
+    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||d.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return true;}else d.err=r.error||"원고를 쓰지 못했어요.";}
+  return true;}
 async function one(J,d){const A=avgs(J),f=facts();
+  if(!d.outline&&!NOONE&&await oneFast(J,d))return;
+  if(!d.title){const r=await fn({action:"wtitles",kw:J.kw,n:1,name:f.name,refs:(J.refs||[]).map(slim),avoid:[]});const x=r.ok&&(r.items||[])[0];if(!x){d.err=r.error||"제목을 못 정했어요.";return;}Object.assign(d,{title:fixTitle(x.title,J.kw),angle:x.angle,outline:x.outline});}
   for(let k=0;k<2;k++){if(STOP)return;const r=await fn({action:"wdraft",kw:J.kw,title:d.title,angle:d.angle,outline:d.outline,refs:(J.refs||[]).map(slim),chars:A.chars,imgs:A.imgs,name:f.name,feats:f.feats,site:f.site});
     if(r.ok){Object.assign(d,{state:"done",body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return;}else d.err=r.error||"원고를 쓰지 못했어요.";}}
 function fnHint(e){return /action|unknown|알 수 없/i.test(e||"")?" (함수를 새로 올려야 해요)":"";}
@@ -146,6 +155,7 @@ async function runJob(J){const f=facts();J.err="";
   if(!J.refs){J.step="refs";soon();let r=await fn({action:"serp",kw:J.kw,n:8,src:"total"});if(!r.ok&&r.blocked){await new Promise(z=>setTimeout(z,3000));r=await fn({action:"serp",kw:J.kw,n:8,src:"total"});}
     if(!r.ok){J.step="";J.err="상위 글을 못 읽었어요: "+(r.error||"")+fnHint(r.error);soon();return;}J.refs=topRefs(r.refs||[]);J.g=null;if(JOBS[CUR]===J)renderRefs();}
   if(STOP)return;
+  if(!J.items&&J.n===1&&!NOONE)J.items=[{title:J.kw,state:"wait"}];
   if(!J.items){J.step="titles";soon();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,30);
     const r=await fn({action:"wtitles",kw:J.kw,n:J.n,name:f.name,refs:J.refs.map(slim),avoid});
     if(!r.ok||!(r.items||[]).length){J.step="";J.err="제목을 못 정했어요: "+(r.error||"")+fnHint(r.error);soon();return;}
@@ -158,7 +168,7 @@ async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.l
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("go").disabled=true;$("stop").style.display="";
   const c=client(),stamp=Date.now().toString(36);JOBS=kws.map((kw,i)=>({kw,n,id:`w${stamp}${i.toString(36)}`,cid:c?c.id:"",client:c?c.name:""}));CUR=0;renderAll();
   const total=kws.length*n;let done=0;TICK=()=>{done++;prog(done/total,`원고 쓰는 중… ${done}/${total}`);};prog(.02,`원고 쓰는 중… 0/${total}`);
-  const q=JOBS.slice();await Promise.all([0,1].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
+  const q=JOBS.slice();await Promise.all([0,1,2,3].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
   BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
   const ok=JOBS.reduce((s,J)=>s+(J.items||[]).filter(d=>d.state==="done").length,0),bad=JOBS.filter(J=>J.err).length;
   msg(STOP?`멈췄어요. 원고 ${ok}개는 써 두었어요.`:`원고 ${ok}/${total}개를 썼어요.`+(bad?` 키워드 ${bad}개는 못 했어요. 목록에서 "다시"를 눌러 주세요.`:"")+(ok<total&&!bad&&!STOP?` 못 쓴 원고는 그 칸의 "다시 쓰기"를 눌러 주세요.`:""),ok===total?"ok":"warn");}

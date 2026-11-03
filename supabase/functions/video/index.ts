@@ -382,12 +382,46 @@ ${refBrief(refs) || "(없음)"}
 - ${lawRule}${avoid.length ? "\n- 이미 쓴 제목(겹치지 않게): " + avoid.join(" / ") : ""}
 JSON 하나로만: {"items":[{"title":"...","angle":"이 글이 다루는 한 줄","outline":["소제목1","소제목2"]}]}`;
     try {
-      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 1.0 } }, Date.now() + 60000);
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 1.0 } }, Date.now() + 60000);
       const items = ((gemJson(d).items || []) as any[]).map((x) => ({ title: String(x.title || "").trim().slice(0, 60), angle: String(x.angle || "").trim().slice(0, 100), outline: (Array.isArray(x.outline) ? x.outline : []).map((s: unknown) => String(s || "").trim().slice(0, 50)).filter(Boolean).slice(0, 7) })).filter((x) => x.title);
       return j({ ok: true, items });
     } catch (e) { return j({ ok: false, error: "제목을 정하지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
   }
   // 원고 한 편: 정해 둔 제목·짜임으로, 상위 글 평균 길이·사진 수에 맞춰 새로 씀
+  // 빠르게: 생각 단계(thinking)를 끄고 부름. 모델이 그 설정을 모르면 끄지 않고 다시 부름
+  async function gemFast(body: any, until: number) {
+    try { return await gemAuto("text", { ...body, generationConfig: { ...(body.generationConfig || {}), thinkingConfig: { thinkingBudget: 0 } } }, until); }
+    catch (e) { if (/thinking|budget|Invalid JSON payload|Unknown name/i.test(String((e as Error).message || e))) return await gemAuto("text", body, until); throw e; }
+  }
+  // 원고 한 편을 제목까지 한 번에 (키워드 하나에 원고 하나일 때, 제미나이를 한 번만 부름)
+  if (b.action === "wone") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const kw = String(b.kw || "").trim().slice(0, 60);
+    if (!kw) return j({ ok: false, error: "키워드를 넣어 주세요." });
+    const refs = Array.isArray(b.refs) ? b.refs : [];
+    const chars = Math.max(1200, Math.min(3000, Number(b.chars) || 1800));
+    const avoid = (Array.isArray(b.avoid) ? b.avoid : []).map((x) => String(x || "").slice(0, 70)).slice(0, 20);
+    const prompt = `네이버 블로그 원고 한 편을 제목까지 써 주세요.
+키워드: ${kw}
+지금 네이버 통합검색 위쪽에 뜨는 블로그 글들 (제목·소제목 흐름·길이만 참고, 문장 베끼기 금지):
+${refBrief(refs) || "(없음)"}
+규칙:
+- 제목은 반드시 "${kw}"로 시작하고 뒤에 검색하는 사람이 궁금해할 증상·상황·고민을 붙여 공백 포함 18~32자. 위 글들 제목과 같은 뒷말 금지.${avoid.length ? " 이미 쓴 제목과도 겹치지 않게: " + avoid.join(" / ") : ""}
+- 위 글들이 많이 다루는 내용은 챙기되, 순서·예시·문장은 새로.
+- 본문은 공백 빼고 ${chars - 150}~${chars + 250}자. 문단은 2~4문장으로 짧게.
+- 소제목 4~6개는 따로 한 줄씩 쓰되 #이나 기호를 붙이지 말 것. 사진 자리 표시, 해시태그, 별표(**) 같은 기호도 쓰지 말 것.
+- 키워드 "${kw}"는 첫 문단에 1번, 본문 전체에 4~6번 자연스럽게.
+- 뻔한 말("많은 분들이", "오늘은 ~에 대해 알아볼게요") 금지. 없는 사실(경력, 장비, 가격, 진료시간) 지어내지 말 것.
+- ${lawRule}
+- 말투: 쉬운 존댓말(~요, ~습니다 섞기).
+JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
+    try {
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000);
+      const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
+      if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
+      return j({ ok: true, title, body });
+    } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+  }
   if (b.action === "wdraft") {
     if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
     const kw = String(b.kw || "").trim().slice(0, 60), name = String(b.name || "").trim().slice(0, 40), title = String(b.title || "").trim().slice(0, 60);
@@ -418,7 +452,7 @@ ${refBrief(refs) || "(없음)"}
 - 말투: 쉬운 존댓말(~요, ~습니다 섞기).
 JSON 하나로만: {"body":"본문 전체(제목 빼고)","tags":["태그 8~12개, # 없이"]}`;
     try {
-      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000);
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000);
       const g = gemJson(d), body = String(g.body || "").trim();
       if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
       return j({ ok: true, title, body, tags: (Array.isArray(g.tags) ? g.tags : []).map((x: unknown) => String(x || "").replace(/^#/, "").trim()).filter(Boolean).slice(0, 14) });
