@@ -156,10 +156,10 @@ function baseFor(J,i){const ok=(J.refs||[]).filter(r=>(r.paras||[]).join("").rep
 let NOSPIN=false;const nap=ms=>new Promise(z=>setTimeout(z,ms));
 async function spin(J,d){const r0=(d.base&&(J.refs||[]).find(x=>x.url===d.base.url))||baseFor(J,(J.items||[]).indexOf(d));if(!r0)return false;
   d.base={url:r0.url,title:r0.title,total:r0.total,chars:r0.chars};const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
-  for(let k=0;k<2;k++){if(STOP)return true;const r=await fn({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0});
+  for(let k=0;k<3;k++){if(STOP)return true;const r=await fn({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0&&d.state==="done"});
     if(!r.ok&&isOld(r.error)){NOSPIN=true;delete d.base;return false;}
     if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=25)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
-  return d.state==="done";}
+  if(d.state!=="done")delete d.base;return d.state==="done";}
 async function one(J,d){const A=avgs(J),f=facts();
   if(!d.outline&&!NOSPIN&&await spin(J,d))return;
   if(!d.outline&&!NOONE&&await oneFast(J,d))return;
