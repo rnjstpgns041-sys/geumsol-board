@@ -124,21 +124,23 @@ $("jobs").addEventListener("click",async e=>{const r=e.target.closest("[data-rj]
 function renderDrafts(){const J=JOBS[CUR];const DR=(J&&J.items)||[];$("drc").style.display=DR.length?"":"none";if(!J)return;$("drh").textContent=`「${J.kw}」 원고`;
   $("drs").innerHTML=DR.map((d,i)=>{if(d.state!=="done")return `<div class="dr"><h3>${i+1}. ${esc(d.title)}</h3><div class="muted">${d.err?`<span style="color:var(--bad)">${esc(d.err)}</span> <button class="btn small" data-redo="${i}">다시 쓰기</button>`:"쓰는 중…"}</div></div>`;
     const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
-    <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill">소제목 ${s.heads}개</span><span class="pill">사진 자리 ${s.imgs}개</span><span class="pill ${s.ov>5?"b":s.ov>2?"w":""}">겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
-    <textarea data-db="${i}">${esc(d.body)}</textarea><div class="muted">태그: ${esc((d.tags||[]).map(t=>"#"+t).join(" "))}</div></div>`;}).join("");}
+    <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill ${s.ov>5?"b":s.ov>2?"w":""}">겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
+    <textarea data-db="${i}">${esc(d.body)}</textarea></div>`;}).join("");}
 function renderAll(){renderJobs();renderRefs();renderDrafts();}
 let RT=0;function soon(){clearTimeout(RT);RT=setTimeout(()=>{renderJobs();const a=document.activeElement;if(!(a&&a.closest&&a.closest("#drs")))renderDrafts();},150);}
 $("drs").addEventListener("input",e=>{const J=JOBS[CUR],i=e.target.dataset.db;if(i!=null){J.items[i].body=e.target.value;clearTimeout(window._sv);window._sv=setTimeout(()=>saveJob(J),800);}const t=e.target.dataset.dt;if(t!=null)J.items[t].title=e.target.textContent.trim();});
 $("drs").addEventListener("blur",e=>{if(e.target.dataset.db!=null||e.target.dataset.dt!=null){const J=JOBS[CUR],t=e.target.dataset.dt;if(t!=null)J.items[t].title=fixTitle(J.items[t].title,J.kw);saveJob(J);renderDrafts();}},true);
 $("drs").addEventListener("click",async e=>{const J=JOBS[CUR],c=e.target.closest("[data-cp]");if(c){await copy(full(J.items[+c.dataset.cp]));c.textContent="복사했어요";setTimeout(()=>c.textContent="복사",1500);return;}
   const r=e.target.closest("[data-redo]");if(r){const d=J.items[+r.dataset.redo];d.state="wait";d.err="";renderDrafts();await one(J,d);renderAll();saveJob(J);}});
-function full(d){return d.title+"\n\n"+d.body+"\n\n"+(d.tags||[]).map(t=>"#"+t).join(" ");}
+function full(d){return d.title+"\n\n"+clean(d.body);}
+/* 원고에서 # 표시, [이미지 …] 자리, ** 같은 기호를 빼고 글만 남김 */
+function clean(b){return String(b||"").split("\n").filter(l=>!/^\s*[\[(（]?\s*(이미지|사진|그림)\s*\d*\s*[:：]/.test(l)&&!/^\s*(#[^\s#]+\s*)+$/.test(l)).map(l=>l.replace(/\[(이미지|사진|그림)[^\]]*\]/g,"").replace(/^\s*#+\s*/,"").replace(/\*\*|__/g,"").replace(/(^|\s)#[^\s#]+/g,"$1").replace(/ {2,}/g," ").trimEnd()).join("\n").replace(/\n{3,}/g,"\n\n").trim();}
 async function copy(t){try{await navigator.clipboard.writeText(t);}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();}}
 
 /* ── 키워드 하나 돌리기: 상위 글 → 제목 n개 → 원고 n개 ── */
 async function one(J,d){const A=avgs(J),f=facts();
   for(let k=0;k<2;k++){if(STOP)return;const r=await fn({action:"wdraft",kw:J.kw,title:d.title,angle:d.angle,outline:d.outline,refs:(J.refs||[]).map(slim),chars:A.chars,imgs:A.imgs,name:f.name,feats:f.feats,site:f.site});
-    if(r.ok){Object.assign(d,{state:"done",body:r.body,tags:r.tags||[],err:""});if(stats(d,J).ov<=8)return;}else d.err=r.error||"원고를 쓰지 못했어요.";}}
+    if(r.ok){Object.assign(d,{state:"done",body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return;}else d.err=r.error||"원고를 쓰지 못했어요.";}}
 function fnHint(e){return /action|unknown|알 수 없/i.test(e||"")?" (함수를 새로 올려야 해요)":"";}
 async function runJob(J){const f=facts();J.err="";
   if(!J.refs){J.step="refs";soon();let r=await fn({action:"serp",kw:J.kw,n:8,src:"total"});if(!r.ok&&r.blocked){await new Promise(z=>setTimeout(z,3000));r=await fn({action:"serp",kw:J.kw,n:8,src:"total"});}
@@ -171,7 +173,7 @@ async function loadHist(){try{const r=await rest("docs?coll=eq.wdrafts&select=id
   $("hist").innerHTML=HIST.length?HIST.map(h=>`<button data-h="${esc(h.id)}">${esc((h.at||"").slice(0,10))} · ${esc(h.kw)} · ${(h.items||[]).length}개</button>`).join(""):`<span class="muted">아직 없어요.</span>`;}
 $("hist").addEventListener("click",e=>{const b=e.target.closest("[data-h]");if(!b||BUSY)return;const h=HIST.find(x=>x.id===b.dataset.h);if(!h)return;
   /* 한 번 열면 기록에서 지움 (열린 원고는 화면에 남음, 고쳐도 다시 기록되지 않음) */
-  JOBS=[{kw:h.kw,n:(h.items||[]).length,id:"",cid:h.cid,client:h.client,refs:null,items:(h.items||[]).map(x=>Object.assign({state:"done"},x))}];CUR=0;renderAll();$("drc").scrollIntoView({behavior:"smooth"});
+  JOBS=[{kw:h.kw,n:(h.items||[]).length,id:"",cid:h.cid,client:h.client,refs:null,items:(h.items||[]).map(x=>Object.assign({state:"done"},x,{body:clean(x.body)}))}];CUR=0;renderAll();$("drc").scrollIntoView({behavior:"smooth"});
   HIST=HIST.filter(x=>x.id!==h.id);b.remove();if(!HIST.length)$("hist").innerHTML=`<span class="muted">아직 없어요.</span>`;
   ls.set("gs-write-gone",JSON.stringify(goneIds().concat(h.id).slice(-300)));
   rest(`docs?coll=eq.wdrafts&id=eq.${encodeURIComponent(h.id)}`,{method:"DELETE"}).catch(()=>{});});
