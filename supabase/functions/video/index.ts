@@ -347,14 +347,15 @@ JSON 하나로만: {"title":["제목 첫 줄","제목 둘째 줄"],"lines":["문
     const [bh, th] = await Promise.all([nget("https://search.naver.com/search.naver?ssc=tab.blog.all&query=" + q), nget("https://search.naver.com/search.naver?where=nexearch&query=" + q)]);
     const links = (s: string) => [...new Set([...s.matchAll(/blog\.naver\.com\/([A-Za-z0-9_-]+)\/(\d{6,})/g)].map((m) => m[1] + "/" + m[2]))];
     const bl = links(bh), tl = links(th);
-    if (!bl.length) return j({ ok: false, blocked: true, error: "네이버 검색 결과를 읽지 못했어요." });
-    const pick = bl.slice(0, n);
-    const refs = await Promise.all(pick.map(async (id, i) => {
+    if (!bl.length && !tl.length) return j({ ok: false, blocked: true, error: "네이버 검색 결과를 읽지 못했어요." });
+    // src "total": 통합검색에 뜨는 블로그 순서대로 (모자라면 블로그탭으로 채움)
+    const pick = (b.src === "total" ? [...new Set([...tl, ...bl])] : bl).slice(0, n);
+    const refs = await Promise.all(pick.map(async (id) => {
       const [bid, no] = id.split("/");
       const h = await nget(`https://m.blog.naver.com/PostView.naver?blogId=${bid}&logNo=${no}`, 12000);
       const p = h ? parsePost(h) : { title: "", heads: [], paras: [], chars: 0, imgs: 0, map: false };
       const ti = tl.indexOf(id);
-      return { url: `https://blog.naver.com/${id}`, rank: i + 1, total: ti >= 0 ? ti + 1 : 0, title: p.title, heads: p.heads, chars: p.chars, imgs: p.imgs, map: p.map, kwN: p.paras.join("").replace(/\s/g, "").split(kw.replace(/\s+/g, "")).length - 1, paras: p.paras.slice(0, 400) };
+      return { url: `https://blog.naver.com/${id}`, rank: bl.indexOf(id) + 1, total: ti >= 0 ? ti + 1 : 0, title: p.title, heads: p.heads, chars: p.chars, imgs: p.imgs, map: p.map, kwN: p.paras.join("").replace(/\s/g, "").split(kw.replace(/\s+/g, "")).length - 1, paras: p.paras.slice(0, 400) };
     }));
     return j({ ok: true, kw, refs });
   }
