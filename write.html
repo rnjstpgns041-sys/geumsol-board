@@ -27,27 +27,30 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
 .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.modal>div{background:var(--card);border-radius:14px;padding:16px;max-width:420px;width:100%}
 .hist{display:flex;flex-direction:column;gap:4px;font-size:13.5px}.hist button{border:0;background:none;color:var(--accent);cursor:pointer;font:inherit;text-align:left;padding:2px 0}
+.kwbox{min-height:110px;font-size:14px;line-height:1.6}
+.jobs{display:flex;flex-direction:column;gap:6px;margin-top:10px}.job{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;background:var(--card)}.job[aria-current=true]{border-color:var(--accent);background:var(--soft)}
+.job b{min-width:0}.job .s{color:var(--muted)}.job .s.e{color:var(--bad)}.job .s.d{color:var(--accent);font-weight:700}
+.form{grid-template-columns:1fr 1.6fr 90px 1fr}@media(max-width:800px){.form{grid-template-columns:1fr 1fr}.form .wide{grid-column:1/-1}}
 </style></head><body><div class="wrap">
 <div class="card"><div class="row" style="justify-content:space-between"><h1>원고 여러 개 뽑기</h1><div class="row"><a class="btn small" href="blog.html">블로그 이미지</a><a class="btn small" href="video.html">영상 만들기</a></div></div>
-<div class="muted" style="margin-top:4px">키워드를 넣으면 지금 네이버 블로그탭 위쪽 글들의 길이·소제목·사진 수를 보고, 키워드를 제목 맨 앞에 둔 새 원고를 한 번에 여러 개 써요. 남의 글 문장은 가져오지 않고 짜임만 참고해요.</div></div>
+<div class="muted" style="margin-top:4px">키워드를 한 줄에 하나씩 넣으면(최대 50개) 키워드마다 지금 네이버 블로그탭 위쪽 글들의 길이·소제목·사진 수를 보고, 키워드를 제목 맨 앞에 둔 새 원고를 자동으로 써요. 위쪽 글과 비슷한 짜임으로 쓰되 문장은 새로 써요 (같은 문장은 네이버가 유사문서로 묶어서 안 떠요).</div></div>
 
 <div class="card"><div class="form">
 <label>업체<select id="client"></select></label>
-<label>키워드<input id="kw" list="kwl" placeholder="예: 이수역한의원"><datalist id="kwl"></datalist></label>
-<label>몇 개<select id="n"></select></label>
+<label class="wide">키워드 (한 줄에 하나, 최대 50개)<textarea id="kw" class="kwbox" placeholder="이수역한의원&#10;원주교통사고한의원&#10;…"></textarea></label>
+<label>키워드마다<select id="n"></select></label>
 <label>주제 (안 써도 돼요)<input id="topic" placeholder="예: 교통사고, 다이어트"></label>
 </div>
-<div class="row" style="margin-top:12px"><button class="btn primary" id="go">상위 글 보고 원고 뽑기</button><button class="btn" id="look">상위 글만 보기</button><span class="muted" id="st"></span></div>
+<div class="row" style="margin-top:8px"><button class="btn small" id="fillkw">이 업체 순위판 키워드 넣기</button><span class="muted" id="kwcount"></span></div>
+<div class="row" style="margin-top:12px"><button class="btn primary" id="go">상위 글 보고 원고 뽑기</button><button class="btn" id="stop" style="display:none">멈추기</button><span class="muted" id="st"></span></div>
 <div class="bar" style="margin-top:10px;display:none" id="barw"><i id="bar"></i></div>
-<div id="msg" style="margin-top:10px"></div></div>
+<div id="msg" style="margin-top:10px"></div>
+<div class="jobs" id="jobs"></div></div>
 
-<div class="card" id="refc" style="display:none"><h2>지금 위쪽에 뜨는 글 (블로그탭)</h2><div class="tbl"><table><thead><tr><th>블로그탭</th><th>통합</th><th>제목 · 소제목</th><th>글자</th><th>사진</th></tr></thead><tbody id="refs"></tbody></table></div><div class="sum" id="avg"></div></div>
+<div class="card" id="refc" style="display:none"><h2 id="refh">지금 위쪽에 뜨는 글 (블로그탭)</h2><div class="tbl"><table><thead><tr><th>블로그탭</th><th>통합</th><th>제목 · 소제목</th><th>글자</th><th>사진</th></tr></thead><tbody id="refs"></tbody></table></div><div class="sum" id="avg"></div></div>
 
-<div class="card" id="tlc" style="display:none"><h2>제목 (키워드는 맨 앞 그대로, 뒤만 고쳐도 돼요)</h2><div class="tl" id="tl"></div>
-<div class="row" style="margin-top:12px"><button class="btn primary" id="write">이 제목들로 원고 쓰기</button><button class="btn" id="retitle">제목 다시 정하기</button></div></div>
-
-<div class="card" id="drc" style="display:none"><div class="row" style="justify-content:space-between"><h2 style="margin:0">원고</h2><div class="row"><button class="btn small" id="zip">모두 받기 (txt 묶음)</button><button class="btn small" id="cpall">모두 복사</button></div></div>
-<div class="muted" style="margin:4px 0 10px">겹침은 위쪽 글들과 같은 글자 줄이 얼마나 되는지예요. 5% 넘으면 그 부분을 고쳐 주세요. 붉은 낱말은 의료광고법에 걸릴 수 있는 말이에요.</div>
+<div class="card" id="drc" style="display:none"><div class="row" style="justify-content:space-between"><h2 style="margin:0" id="drh">원고</h2><div class="row"><button class="btn small" id="zip">전체 받기 (txt 묶음)</button><button class="btn small" id="cpall">이 키워드 모두 복사</button></div></div>
+<div class="muted" style="margin:4px 0 10px">겹침은 위쪽 글들과 같은 글자 줄이 얼마나 되는지예요. 5% 넘으면 그 부분을 고쳐 주세요. 붉은 낱말은 의료광고법에 걸릴 수 있는 말이에요. 위 목록에서 키워드를 누르면 그 키워드 원고가 보여요.</div>
 <div id="drs" style="display:flex;flex-direction:column;gap:12px"></div></div>
 
 <div class="card"><h2>최근에 뽑은 원고</h2><div class="hist" id="hist"><span class="muted">불러오는 중…</span></div></div>
@@ -57,7 +60,7 @@ const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9H
 const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ls={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}};
 const P=new URLSearchParams(location.search);
-let PW=ls.get("gs-video-pw"),CL=[],KW=[],CFG={},REFS=[],ITEMS=[],DR=[],BUSY=false,SETID="";
+let PW=ls.get("gs-video-pw"),CL=[],KW=[],CFG={},JOBS=[],CUR=0,BUSY=false,STOP=false,HIST=[];
 async function rest(p,o){o=o||{};const r=await fetch(SB+"/rest/v1/"+p,{method:o.method||"GET",headers:Object.assign({apikey:KEY,"x-team-key":"","Content-Type":"application/json"},o.headers||{}),body:o.body});if(!r.ok)throw new Error("자료 칸 "+r.status);const t=await r.text();return t?JSON.parse(t):null;}
 async function fn(b){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),160000);let r;
   try{r=await fetch(FN,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json","x-video-key":PW},body:JSON.stringify(b),signal:ctl.signal});}
@@ -75,7 +78,7 @@ async function needPW(){if(PW)return true;return new Promise(ok=>{const m=docume
 
 /* ── 업체 ── */
 function client(){return CL.find(c=>c.id===$("client").value)||null;}
-async function onClient(){const c=client();$("kwl").innerHTML=KW.filter(k=>!c||k.cid===c.id).map(k=>`<option value="${esc(k.kw)}">`).join("");CFG={};
+async function onClient(){const c=client();CFG={};
   if(c){try{const r=await rest(`docs?coll=eq.blogcfg&id=eq.${encodeURIComponent(c.id)}&select=data`);CFG=(r&&r[0]&&r[0].data)||{};}catch(e){}}}
 function facts(){const c=client();if(!c)return {name:"",feats:[],site:""};const i=c.info||{},f=[];
   (CFG.feats||[]).forEach(x=>f.push(typeof x==="string"?x:(x.t||x.title||"")));(CFG.treats||[]).forEach(x=>f.push("진료: "+(typeof x==="string"?x:(x.title||x.t||""))));
@@ -84,70 +87,94 @@ function facts(){const c=client();if(!c)return {name:"",feats:[],site:""};const 
   if(CFG.hours&&CFG.hours.length)f.push("진료시간: "+CFG.hours.map(h=>typeof h==="string"?h:[h.d,h.t].filter(Boolean).join(" ")).join(", "));if(tel)f.push("전화: "+tel);
   return {name:CFG.name||c.name,feats:f.filter(Boolean).slice(0,12),site:String(CFG.siteText||i.intro||"").slice(0,2000)};}
 
-/* ── 1. 상위 글 ── */
-function kwv(){return $("kw").value.trim().replace(/\s+/g," ");}
-async function lookRefs(){const kw=kwv();if(!kw){msg("키워드를 넣어 주세요.","warn");return false;}
-  prog(.08,"네이버 상위 글 읽는 중…");const r=await fn({action:"serp",kw,n:6});
-  if(!r.ok){prog(null);msg(esc(r.error||"상위 글을 읽지 못했어요.")+(r.blocked?" 잠시 뒤 다시 눌러 주세요.":(/action|알 수 없|unknown/i.test(r.error||"")?" 함수를 새로 올려야 해요.":"")),"err");return false;}
-  REFS=r.refs||[];renderRefs();return true;}
-function avgs(){const ok=REFS.filter(r=>r.chars>300);const a=k=>ok.length?Math.round(ok.reduce((s,r)=>s+(r[k]||0),0)/ok.length):0;
-  return {chars:a("chars")||1800,imgs:a("imgs")||8,heads:ok.length?Math.round(ok.reduce((s,r)=>s+(r.heads||[]).length,0)/ok.length):5,kwN:a("kwN"),n:ok.length};}
-function renderRefs(){$("refc").style.display="";
-  $("refs").innerHTML=REFS.map(r=>`<tr><td class="n">${r.rank}위</td><td class="n">${r.total?r.total+"번째":"<span class=muted>없음</span>"}</td><td><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title||r.url)}</a>${(r.heads||[]).length?`<div class="heads">${(r.heads||[]).slice(0,6).map(esc).join(" · ")}</div>`:""}</td><td class="n">${(r.chars||0).toLocaleString()}</td><td class="n">${r.imgs||0}</td></tr>`).join("");
-  const A=avgs();$("avg").innerHTML=`<div>평균 글자 (공백 빼고)<b>${A.chars.toLocaleString()}자</b></div><div>평균 사진<b>${A.imgs}장</b></div><div>평균 소제목<b>${A.heads}개</b></div><div>키워드 들어간 횟수<b>${A.kwN}번</b></div><div>통합에도 뜨는 글<b>${REFS.filter(r=>r.total).length}개</b></div>`;}
+/* ── 키워드 목록 ── */
+const norm=k=>String(k||"").trim().replace(/\s+/g," ");
+function kwList(){const seen=new Set();return $("kw").value.split(/\n|,/).map(norm).filter(k=>k&&!seen.has(k)&&seen.add(k));}
+function kwCount(){const n=kwList().length;$("kwcount").textContent=n?`키워드 ${n}개${n>50?" (50개까지만 써요)":""} · 원고 ${Math.min(n,50)*(+$("n").value)}개`:"";}
+$("kw").addEventListener("input",()=>{kwCount();ls.set("gs-write-kws",$("kw").value);});$("n").onchange=kwCount;
+$("fillkw").onclick=()=>{const c=client();if(!c){msg("업체를 먼저 골라 주세요.","warn");return;}const ks=KW.filter(k=>k.cid===c.id).map(k=>norm(k.kw));if(!ks.length){msg("이 업체는 순위판 키워드가 없어요.","warn");return;}
+  const have=kwList();$("kw").value=[...new Set(have.concat(ks))].slice(0,50).join("\n");kwCount();ls.set("gs-write-kws",$("kw").value);};
+
+/* ── 상위 글 ── */
 const slim=r=>({title:r.title,heads:(r.heads||[]).slice(0,10),chars:r.chars,imgs:r.imgs});
+function avgs(J){const ok=(J.refs||[]).filter(r=>r.chars>300);const a=k=>ok.length?Math.round(ok.reduce((s,r)=>s+(r[k]||0),0)/ok.length):0;
+  return {chars:a("chars")||1800,imgs:a("imgs")||8,heads:ok.length?Math.round(ok.reduce((s,r)=>s+(r.heads||[]).length,0)/ok.length):5,kwN:a("kwN"),n:ok.length};}
+function renderRefs(){const J=JOBS[CUR];if(!J||!J.refs){$("refc").style.display="none";return;}$("refc").style.display="";$("refh").textContent=`「${J.kw}」 지금 위쪽에 뜨는 글 (블로그탭)`;
+  $("refs").innerHTML=J.refs.map(r=>`<tr><td class="n">${r.rank}위</td><td class="n">${r.total?r.total+"번째":"<span class=muted>없음</span>"}</td><td><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title||r.url)}</a>${(r.heads||[]).length?`<div class="heads">${(r.heads||[]).slice(0,6).map(esc).join(" · ")}</div>`:""}</td><td class="n">${(r.chars||0).toLocaleString()}</td><td class="n">${r.imgs||0}</td></tr>`).join("");
+  const A=avgs(J);$("avg").innerHTML=`<div>평균 글자 (공백 빼고)<b>${A.chars.toLocaleString()}자</b></div><div>평균 사진<b>${A.imgs}장</b></div><div>평균 소제목<b>${A.heads}개</b></div><div>키워드 들어간 횟수<b>${A.kwN}번</b></div><div>통합에도 뜨는 글<b>${J.refs.filter(r=>r.total).length}개</b></div>`;}
 
-/* ── 2. 제목 ── */
-function fixTitle(t){const kw=kwv();t=String(t||"").trim();if(!kw)return t;if(t.startsWith(kw))return t;const pat=[...kw.replace(/\s/g,"")].map(ch=>ch.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s*"),s=t.replace(new RegExp("^"+pat+"\\s*"),"");return (kw+" "+s.replace(/^[,\s·:|-]+/,"")).trim();}
-async function titles(){const f=facts(),n=+$("n").value;prog(.25,"제목과 짜임 정하는 중…");
-  const avoid=DR.map(d=>d.title).concat(HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(kwv()))).slice(0,30);
-  const r=await fn({action:"wtitles",kw:kwv(),n,name:f.name,topic:$("topic").value.trim(),refs:REFS.map(slim),avoid});
-  if(!r.ok||!(r.items||[]).length){prog(null);msg(esc(r.error||"제목을 정하지 못했어요.")+(/action|unknown/i.test(r.error||"")?" 함수를 새로 올려야 해요.":""),"err");return false;}
-  ITEMS=r.items.slice(0,n).map(x=>Object.assign(x,{title:fixTitle(x.title)}));renderTitles();return true;}
-function renderTitles(){$("tlc").style.display="";$("tl").innerHTML=ITEMS.map((x,i)=>`<div class="it"><div class="no">${i+1}</div><div><input data-ti="${i}" value="${esc(x.title)}"><div class="ol">${esc(x.angle||"")}${x.outline&&x.outline.length?" · "+x.outline.map(esc).join(" / "):""}</div></div><button class="btn small" data-tdel="${i}">빼기</button></div>`).join("");}
-$("tl").addEventListener("change",e=>{const i=e.target.dataset.ti;if(i==null)return;ITEMS[i].title=fixTitle(e.target.value);e.target.value=ITEMS[i].title;});
-$("tl").addEventListener("click",e=>{const d=e.target.closest("[data-tdel]");if(!d)return;ITEMS.splice(+d.dataset.tdel,1);renderTitles();});
+/* ── 제목: 키워드는 맨 앞 그대로 ── */
+function fixTitle(t,kw){t=String(t||"").trim();if(!kw)return t;if(t.startsWith(kw))return t;const pat=[...kw.replace(/\s/g,"")].map(ch=>ch.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s*"),s=t.replace(new RegExp("^"+pat+"\\s*"),"");return (kw+" "+s.replace(/^[,\s·:|-]+/,"")).trim();}
 
-/* ── 3. 원고 ── */
+/* ── 원고 검사 ── */
 const LAW=["최고","최초","유일","1위","완치","100%","부작용 없","부작용이 없","보장","확실","특효","특진","후기","체험담","전후","할인","이벤트","무료","가장 좋","기적","획기적","완벽","즉시 효과","영구"];
-function lawHits(t){return LAW.filter(w=>t.includes(w));}
-let REFG=null;function grams(s){const t=s.replace(/[\s\u200b.,!?·…"'“”‘’()\[\]~-]/g,""),g=new Set();for(let i=0;i+12<=t.length;i++)g.add(t.slice(i,i+12));return g;}
-function overlap(body){if(!REFG){REFG=new Set();REFS.forEach(r=>grams((r.paras||[]).join("")).forEach(x=>REFG.add(x)));}
-  const t=body.replace(/\[이미지[^\]]*\]|^##\s.*$/gm,"").replace(/[\s\u200b.,!?·…"'“”‘’()\[\]~-]/g,"");if(t.length<13||!REFG.size)return 0;let hit=0,all=0;for(let i=0;i+12<=t.length;i+=3){all++;if(REFG.has(t.slice(i,i+12)))hit++;}return Math.round(hit/all*1000)/10;}
-function stats(d){const b=d.body||"",kw=kwv(),plain=b.replace(/\[이미지[^\]]*\]/g,"").replace(/^##\s*/gm,"");
-  return {chars:plain.replace(/\s/g,"").length,kwN:plain.replace(/\s/g,"").split(kw.replace(/\s/g,"")).length-1,heads:(b.match(/^##\s/gm)||[]).length,imgs:(b.match(/\[이미지[^\]]*\]/g)||[]).length,law:lawHits(plain),ov:overlap(b)};}
-function renderDrafts(){$("drc").style.display=DR.length?"":"none";
-  $("drs").innerHTML=DR.map((d,i)=>{if(d.state==="wait")return `<div class="dr"><h3>${i+1}. ${esc(d.title)}</h3><div class="muted">${d.err?`<span style="color:var(--bad)">${esc(d.err)}</span> <button class="btn small" data-redo="${i}">다시 쓰기</button>`:"쓰는 중…"}</div></div>`;
-    const s=stats(d);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
+const lawHits=t=>LAW.filter(w=>t.includes(w));
+const CLEAN=/[\s​.,!?·…"'“”‘’()\[\]~-]/g;
+function refGrams(J){if(!J.g){J.g=new Set();(J.refs||[]).forEach(r=>{const t=(r.paras||[]).join("").replace(CLEAN,"");for(let i=0;i+12<=t.length;i++)J.g.add(t.slice(i,i+12));});}return J.g;}
+function overlap(body,J){const G=refGrams(J),t=body.replace(/\[이미지[^\]]*\]|^##\s.*$/gm,"").replace(CLEAN,"");if(t.length<13||!G.size)return 0;let hit=0,all=0;for(let i=0;i+12<=t.length;i+=3){all++;if(G.has(t.slice(i,i+12)))hit++;}return Math.round(hit/all*1000)/10;}
+function stats(d,J){const b=d.body||"",plain=b.replace(/\[이미지[^\]]*\]/g,"").replace(/^##\s*/gm,"");
+  return {chars:plain.replace(/\s/g,"").length,kwN:plain.replace(/\s/g,"").split(J.kw.replace(/\s/g,"")).length-1,heads:(b.match(/^##\s/gm)||[]).length,imgs:(b.match(/\[이미지[^\]]*\]/g)||[]).length,law:lawHits(plain),ov:overlap(b,J)};}
+
+/* ── 화면 ── */
+function jobState(J){const d=(J.items||[]).filter(x=>x.state==="done").length,n=J.n||0;
+  if(J.err)return `<span class="s e">${esc(J.err)}</span>`;if(J.step==="refs")return `<span class="s">상위 글 읽는 중…</span>`;if(J.step==="titles")return `<span class="s">제목 정하는 중…</span>`;
+  if(!J.items)return `<span class="s">기다리는 중</span>`;const bad=J.items.filter(x=>x.err&&x.state!=="done").length;
+  return `<span class="s ${d===J.items.length?"d":bad?"e":""}">원고 ${d}/${J.items.length}${bad?` · ${bad}개 못 씀`:""}</span>`;}
+function renderJobs(){$("jobs").innerHTML=JOBS.length>1||JOBS.some(J=>J.err)?JOBS.map((J,i)=>`<div class="job" data-j="${i}" aria-current="${i===CUR}"><b>${i+1}. ${esc(J.kw)}</b>${jobState(J)}${J.err?`<button class="btn small" data-rj="${i}">다시</button>`:""}</div>`).join(""):"";}
+$("jobs").addEventListener("click",async e=>{const r=e.target.closest("[data-rj]");if(r){e.stopPropagation();if(BUSY)return;const J=JOBS[+r.dataset.rj];J.err="";J.refs=null;J.items=null;BUSY=true;await runJob(J);BUSY=false;renderAll();return;}
+  const j=e.target.closest("[data-j]");if(j){CUR=+j.dataset.j;renderAll();$("drc").scrollIntoView({behavior:"smooth"});}});
+function renderDrafts(){const J=JOBS[CUR];const DR=(J&&J.items)||[];$("drc").style.display=DR.length?"":"none";if(!J)return;$("drh").textContent=`「${J.kw}」 원고`;
+  $("drs").innerHTML=DR.map((d,i)=>{if(d.state!=="done")return `<div class="dr"><h3>${i+1}. ${esc(d.title)}</h3><div class="muted">${d.err?`<span style="color:var(--bad)">${esc(d.err)}</span> <button class="btn small" data-redo="${i}">다시 쓰기</button>`:"쓰는 중…"}</div></div>`;
+    const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
     <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill">소제목 ${s.heads}개</span><span class="pill">사진 자리 ${s.imgs}개</span><span class="pill ${s.ov>5?"b":s.ov>2?"w":""}">겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
     <textarea data-db="${i}">${esc(d.body)}</textarea><div class="muted">태그: ${esc((d.tags||[]).map(t=>"#"+t).join(" "))}</div></div>`;}).join("");}
-$("drs").addEventListener("input",e=>{const i=e.target.dataset.db;if(i!=null){DR[i].body=e.target.value;clearTimeout(window._sv);window._sv=setTimeout(()=>{saveSet();const dr=e.target.closest(".dr"),s=stats(DR[i]);/* 칸 다시 그리면 커서가 튀니 숫자만 */},800);}const t=e.target.dataset.dt;if(t!=null)DR[t].title=e.target.textContent.trim();});
-$("drs").addEventListener("blur",e=>{if(e.target.dataset.db!=null||e.target.dataset.dt!=null)renderDrafts();},true);
-$("drs").addEventListener("click",async e=>{const c=e.target.closest("[data-cp]");if(c){await copy(full(DR[+c.dataset.cp]));c.textContent="복사했어요";setTimeout(()=>c.textContent="복사",1500);return;}
-  const r=e.target.closest("[data-redo]");if(r&&!BUSY){const i=+r.dataset.redo;DR[i].state="wait";DR[i].err="";renderDrafts();BUSY=true;await one(i);BUSY=false;renderDrafts();saveSet();}});
+function renderAll(){renderJobs();renderRefs();renderDrafts();}
+let RT=0;function soon(){clearTimeout(RT);RT=setTimeout(()=>{renderJobs();const a=document.activeElement;if(!(a&&a.closest&&a.closest("#drs")))renderDrafts();},150);}
+$("drs").addEventListener("input",e=>{const J=JOBS[CUR],i=e.target.dataset.db;if(i!=null){J.items[i].body=e.target.value;clearTimeout(window._sv);window._sv=setTimeout(()=>saveJob(J),800);}const t=e.target.dataset.dt;if(t!=null)J.items[t].title=e.target.textContent.trim();});
+$("drs").addEventListener("blur",e=>{if(e.target.dataset.db!=null||e.target.dataset.dt!=null){const J=JOBS[CUR],t=e.target.dataset.dt;if(t!=null)J.items[t].title=fixTitle(J.items[t].title,J.kw);saveJob(J);renderDrafts();}},true);
+$("drs").addEventListener("click",async e=>{const J=JOBS[CUR],c=e.target.closest("[data-cp]");if(c){await copy(full(J.items[+c.dataset.cp]));c.textContent="복사했어요";setTimeout(()=>c.textContent="복사",1500);return;}
+  const r=e.target.closest("[data-redo]");if(r){const d=J.items[+r.dataset.redo];d.state="wait";d.err="";renderDrafts();await one(J,d);renderAll();saveJob(J);}});
 function full(d){return d.title+"\n\n"+d.body+"\n\n"+(d.tags||[]).map(t=>"#"+t).join(" ");}
 async function copy(t){try{await navigator.clipboard.writeText(t);}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();}}
-async function one(i){const d=DR[i],A=avgs(),f=facts();
-  for(let k=0;k<2;k++){const r=await fn({action:"wdraft",kw:kwv(),title:d.title,angle:d.angle,outline:d.outline,refs:REFS.map(slim),chars:A.chars,imgs:A.imgs,name:f.name,feats:f.feats,site:f.site});
-    if(r.ok){Object.assign(d,{state:"done",body:r.body,tags:r.tags||[],err:""});if(stats(d).ov<=8)return;}else d.err=r.error||"원고를 쓰지 못했어요.";}
-  if(d.state!=="done")d.state="wait";}
-async function writeAll(){if(BUSY)return;if(!ITEMS.length){msg("제목이 없어요.","warn");return;}BUSY=true;$("write").disabled=true;
-  DR=ITEMS.map(x=>({title:fixTitle(x.title),angle:x.angle,outline:x.outline,state:"wait"}));SETID="w"+Date.now().toString(36);renderDrafts();
-  let done=0;const q=DR.map((_,i)=>i),N=DR.length;prog(.35,`원고 쓰는 중… 0/${N}`);
-  await Promise.all([0,1,2].map(async()=>{while(q.length){const i=q.shift();await one(i);done++;prog(.35+.65*done/N,`원고 쓰는 중… ${done}/${N}`);renderDrafts();}}));
-  BUSY=false;$("write").disabled=false;const bad=DR.filter(d=>d.state!=="done").length;prog(null);
-  msg(bad?`${N-bad}개를 썼고 ${bad}개는 못 썼어요. 그 칸의 "다시 쓰기"를 눌러 주세요.`:`원고 ${N}개를 다 썼어요. 복사해서 블로그에 붙여 넣으면 돼요.`,bad?"warn":"ok");saveSet();}
 
-/* ── 팀 기록: docs wdrafts/<id> ── */
-let HIST=[];
-async function saveSet(){if(!SETID||!DR.some(d=>d.state==="done"))return;const c=client();
-  const data={kw:kwv(),cid:c?c.id:"",client:c?c.name:"",at:new Date().toISOString(),items:DR.filter(d=>d.state==="done").map(d=>({title:d.title,body:d.body,tags:d.tags}))};
-  try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"wdrafts",id:SETID,data})});loadHist();}catch(e){}}
-async function loadHist(){try{const r=await rest("docs?coll=eq.wdrafts&select=id,data&order=updated_at.desc&limit=30");HIST=(r||[]).map(x=>Object.assign({id:x.id},x.data||{}));}catch(e){HIST=[];}
+/* ── 키워드 하나 돌리기: 상위 글 → 제목 n개 → 원고 n개 ── */
+async function one(J,d){const A=avgs(J),f=facts();
+  for(let k=0;k<2;k++){if(STOP)return;const r=await fn({action:"wdraft",kw:J.kw,title:d.title,angle:d.angle,outline:d.outline,refs:(J.refs||[]).map(slim),chars:A.chars,imgs:A.imgs,name:f.name,feats:f.feats,site:f.site});
+    if(r.ok){Object.assign(d,{state:"done",body:r.body,tags:r.tags||[],err:""});if(stats(d,J).ov<=8)return;}else d.err=r.error||"원고를 쓰지 못했어요.";}}
+function fnHint(e){return /action|unknown|알 수 없/i.test(e||"")?" (함수를 새로 올려야 해요)":"";}
+async function runJob(J){const f=facts();J.err="";
+  if(!J.refs){J.step="refs";soon();let r=await fn({action:"serp",kw:J.kw,n:6});if(!r.ok&&r.blocked){await new Promise(z=>setTimeout(z,3000));r=await fn({action:"serp",kw:J.kw,n:6});}
+    if(!r.ok){J.step="";J.err="상위 글을 못 읽었어요: "+(r.error||"")+fnHint(r.error);soon();return;}J.refs=r.refs||[];J.g=null;if(JOBS[CUR]===J)renderRefs();}
+  if(STOP)return;
+  if(!J.items){J.step="titles";soon();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,30);
+    const r=await fn({action:"wtitles",kw:J.kw,n:J.n,name:f.name,topic:$("topic").value.trim(),refs:J.refs.map(slim),avoid});
+    if(!r.ok||!(r.items||[]).length){J.step="";J.err="제목을 못 정했어요: "+(r.error||"")+fnHint(r.error);soon();return;}
+    J.items=r.items.slice(0,J.n).map(x=>({title:fixTitle(x.title,J.kw),angle:x.angle,outline:x.outline,state:"wait"}));}
+  J.step="";soon();
+  const q=J.items.filter(d=>d.state!=="done");await Promise.all([0,1].map(async()=>{while(q.length&&!STOP){const d=q.shift();await one(J,d);TICK();soon();}}));
+  saveJob(J);soon();}
+let TICK=()=>{};
+async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
+  if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("go").disabled=true;$("stop").style.display="";
+  const c=client(),stamp=Date.now().toString(36);JOBS=kws.map((kw,i)=>({kw,n,id:`w${stamp}${i.toString(36)}`,cid:c?c.id:"",client:c?c.name:""}));CUR=0;renderAll();
+  const total=kws.length*n;let done=0;TICK=()=>{done++;prog(done/total,`원고 쓰는 중… ${done}/${total}`);};prog(.02,`원고 쓰는 중… 0/${total}`);
+  const q=JOBS.slice();await Promise.all([0,1].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
+  BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
+  const ok=JOBS.reduce((s,J)=>s+(J.items||[]).filter(d=>d.state==="done").length,0),bad=JOBS.filter(J=>J.err).length;
+  msg(STOP?`멈췄어요. 원고 ${ok}개는 써 두었어요.`:`원고 ${ok}/${total}개를 썼어요.`+(bad?` 키워드 ${bad}개는 못 했어요. 목록에서 "다시"를 눌러 주세요.`:"")+(ok<total&&!bad&&!STOP?` 못 쓴 원고는 그 칸의 "다시 쓰기"를 눌러 주세요.`:""),ok===total?"ok":"warn");}
+$("go").onclick=runAll;$("stop").onclick=()=>{STOP=true;$("st").textContent="지금 쓰는 것까지만 하고 멈춰요…";};
+
+/* ── 팀 기록: docs wdrafts/<id> (키워드 하나 = 하나) ── */
+async function saveJob(J){const items=(J.items||[]).filter(d=>d.state==="done");if(!items.length)return;
+  const data={kw:J.kw,cid:J.cid,client:J.client,at:new Date().toISOString(),items:items.map(d=>({title:d.title,body:d.body,tags:d.tags}))};
+  try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"wdrafts",id:J.id,data})});}catch(e){}}
+async function loadHist(){try{const r=await rest("docs?coll=eq.wdrafts&select=id,data&order=updated_at.desc&limit=60");HIST=(r||[]).map(x=>Object.assign({id:x.id},x.data||{}));}catch(e){HIST=[];}
   $("hist").innerHTML=HIST.length?HIST.map(h=>`<button data-h="${esc(h.id)}">${esc((h.at||"").slice(0,10))} · ${esc(h.client||"업체 없음")} · ${esc(h.kw)} · ${(h.items||[]).length}개</button>`).join(""):`<span class="muted">아직 없어요.</span>`;}
-$("hist").addEventListener("click",e=>{const b=e.target.closest("[data-h]");if(!b)return;const h=HIST.find(x=>x.id===b.dataset.h);if(!h)return;
-  SETID=h.id;$("kw").value=h.kw||"";if(h.cid&&CL.some(c=>c.id===h.cid)){$("client").value=h.cid;onClient();}DR=(h.items||[]).map(x=>Object.assign({state:"done"},x));renderDrafts();$("drc").scrollIntoView({behavior:"smooth"});});
+$("hist").addEventListener("click",e=>{const b=e.target.closest("[data-h]");if(!b||BUSY)return;const h=HIST.find(x=>x.id===b.dataset.h);if(!h)return;
+  if(h.cid&&CL.some(c=>c.id===h.cid)){$("client").value=h.cid;onClient();}
+  JOBS=[{kw:h.kw,n:(h.items||[]).length,id:h.id,cid:h.cid,client:h.client,refs:null,items:(h.items||[]).map(x=>Object.assign({state:"done"},x))}];CUR=0;renderAll();$("drc").scrollIntoView({behavior:"smooth"});});
 
+/* ── 받기 ── */
 /* ── 받기 ── */
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
 function crc32(u){let c=0xffffffff;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xffffffff)>>>0;}
@@ -158,24 +185,18 @@ function zip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
   const cs=cen.reduce((a,b)=>a+(b.byteLength||b.length),0),end=new DataView(new ArrayBuffer(22));end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cs,true);end.setUint32(16,off,true);
   return new Blob([...parts,...cen,end.buffer],{type:"application/zip"});}
 const fname=s=>String(s||"").replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,50);
-$("zip").onclick=()=>{const ok=DR.filter(d=>d.state==="done");if(!ok.length)return;const z=zip(ok.map((d,i)=>({name:`${String(i+1).padStart(2,"0")}_${fname(d.title)}.txt`,text:"\ufeff"+full(d).replace(/\n/g,"\r\n")})));
-  const a=document.createElement("a");a.href=URL.createObjectURL(z);a.download=`원고_${fname(kwv())}_${new Date().toISOString().slice(0,10)}.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
-$("cpall").onclick=async()=>{const ok=DR.filter(d=>d.state==="done");await copy(ok.map(full).join("\n\n────────────\n\n"));$("cpall").textContent="복사했어요";setTimeout(()=>$("cpall").textContent="모두 복사",1500);};
 
-/* ── 버튼 ── */
-$("look").onclick=async()=>{if(BUSY||!await needPW())return;BUSY=true;msg("");REFG=null;if(await lookRefs()){prog(null);msg("위쪽 글을 읽었어요. 원고를 뽑으려면 '상위 글 보고 원고 뽑기'를 눌러 주세요.");}BUSY=false;};
-$("go").onclick=async()=>{if(BUSY||!await needPW())return;BUSY=true;msg("");REFG=null;$("go").disabled=true;
-  const ok=await lookRefs()&&await titles();BUSY=false;$("go").disabled=false;if(ok)await writeAll();};
-$("retitle").onclick=async()=>{if(BUSY||!await needPW())return;BUSY=true;await titles();prog(null);BUSY=false;};
-$("write").onclick=writeAll;$("client").onchange=onClient;
-$("kw").addEventListener("change",()=>{ls.set("gs-write-kw",kwv());});
+$("zip").onclick=()=>{const files=[];JOBS.forEach((J,ji)=>(J.items||[]).filter(d=>d.state==="done").forEach((d,i)=>files.push({name:`${String(ji+1).padStart(2,"0")}_${fname(J.kw)}/${String(i+1).padStart(2,"0")}_${fname(d.title)}.txt`,text:"﻿"+full(d).replace(/\n/g,"\r\n")})));
+  if(!files.length)return;const z=zip(files),a=document.createElement("a");a.href=URL.createObjectURL(z);a.download=`원고_${JOBS.length>1?"키워드"+JOBS.length+"개":fname(JOBS[0].kw)}_${new Date().toISOString().slice(0,10)}.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
+$("cpall").onclick=async()=>{const J=JOBS[CUR];const ok=((J&&J.items)||[]).filter(d=>d.state==="done");if(!ok.length)return;await copy(ok.map(full).join("\n\n────────────\n\n"));$("cpall").textContent="복사했어요";setTimeout(()=>$("cpall").textContent="이 키워드 모두 복사",1500);};
+$("client").onchange=onClient;
 
-async function start(){$("n").innerHTML=[1,2,3,4,5,6,7,8,9,10].map(n=>`<option ${n===5?"selected":""}>${n}</option>`).join("");
+async function start(){$("n").innerHTML=[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}" ${n===1?"selected":""}>${n}개</option>`).join("");
   try{const cs=await rest("docs?coll=eq.clients&select=id,data");CL=(cs||[]).map(x=>Object.assign({id:x.id},x.data||{})).filter(c=>c.name).sort((a,b)=>(a.order??999)-(b.order??999)||a.id.localeCompare(b.id));
     const ks=await rest("docs?coll=eq.keywords&select=id,cid:data->>clientId,kw:data->>keyword");KW=(ks||[]).filter(k=>k.kw);}catch(e){msg("업체 목록을 불러오지 못했어요. 업체 없이도 쓸 수 있어요.","warn");}
   $("client").innerHTML=`<option value="">(업체 없이)</option>`+CL.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
   const want=(P.get("client")||"").replace(/\s/g,""),hit=CL.find(c=>c.id===P.get("cid"))||(want&&CL.find(c=>c.name.replace(/\s/g,"").includes(want)));if(hit)$("client").value=hit.id;
-  $("kw").value=P.get("kw")||ls.get("gs-write-kw")||"";await onClient();loadHist();}
+  $("kw").value=P.get("kw")||ls.get("gs-write-kws")||ls.get("gs-write-kw")||"";kwCount();await onClient();loadHist();}
 start();
 </script>
 </body></html>
