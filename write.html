@@ -26,7 +26,7 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .dr h3{margin:0;font-size:16px}.pills{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:12px;border-radius:99px;padding:2px 10px;background:var(--soft);color:var(--accent);font-weight:700}.pill.w{background:var(--warnbg);color:var(--warn)}.pill.b{background:var(--badbg);color:var(--bad)}
 .bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
 .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}.modal>div{background:var(--card);border-radius:14px;padding:16px;max-width:420px;width:100%}
-.srcs{font-size:13px}.srcs summary{font-size:13px;color:var(--muted)}.srcs ol{margin:6px 0 2px;padding-left:20px}.srcs li{margin:2px 0}
+.srcs.base{margin:4px 0 8px;font-size:13px}.srcs{font-size:13px}.srcs summary{font-size:13px;color:var(--muted)}.srcs ol{margin:6px 0 2px;padding-left:20px}.srcs li{margin:2px 0}
 .hist{display:flex;flex-direction:column;gap:4px;font-size:13.5px}.hist button{border:0;background:none;color:var(--accent);cursor:pointer;font:inherit;text-align:left;padding:2px 0}.hist .hr{display:flex;align-items:center;gap:10px}.hist .hx{color:#b42318;font-size:12.5px;border:1px solid #f1c7c2;border-radius:6px;padding:1px 8px}.hist .hx:hover{background:#fdecea}
 .kwbox{min-height:110px;font-size:14px;line-height:1.6}
 .jobs{display:flex;flex-direction:column;gap:6px;margin-top:10px}.job{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;background:var(--card)}.job[aria-current=true]{border-color:var(--accent);background:var(--soft)}
@@ -49,7 +49,7 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 <div class="card" id="refc" style="display:none"><h2 id="refh">통합검색 위쪽 블로그 글</h2><div class="tbl"><table><thead><tr><th>통합</th><th>블로그탭</th><th>제목 · 소제목</th><th>글자</th><th>사진</th></tr></thead><tbody id="refs"></tbody></table></div><div class="sum" id="avg"></div></div>
 
 <div class="card" id="drc" style="display:none"><div class="row" style="justify-content:space-between"><h2 style="margin:0" id="drh">원고</h2><div class="row"><button class="btn small" id="zip">전체 받기 (txt 묶음)</button><button class="btn small" id="cpall">이 키워드 모두 복사</button></div></div>
-<div class="muted" style="margin:4px 0 10px">겹침은 위쪽 글들과 같은 글자 줄이 얼마나 되는지예요. 5% 넘으면 그 부분을 고쳐 주세요. 붉은 낱말은 의료광고법에 걸릴 수 있는 말이에요. 위 목록에서 키워드를 누르면 그 키워드 원고가 보여요.</div>
+<div class="muted" style="margin:4px 0 10px">원고마다 통합검색 위쪽 블로그 글 하나를 골라 흐름은 살리고 문장만 바꿔 썼어요. 겹침은 그 바탕 글과 똑같은 글자 줄이 얼마나 되는지예요. 25% 넘으면 그 부분을 조금 더 고쳐 주세요. 붉은 낱말은 의료광고법에 걸릴 수 있는 말이에요. 위 목록에서 키워드를 누르면 그 키워드 원고가 보여요.</div>
 <div id="drs" style="display:flex;flex-direction:column;gap:12px"></div></div>
 
 <div class="card"><h2>최근에 뽑은 원고</h2><div class="hist" id="hist"><span class="muted">불러오는 중…</span></div></div>
@@ -110,9 +110,10 @@ const LAW=["최고","최초","유일","1위","완치","100%","부작용 없","�
 const lawHits=t=>LAW.filter(w=>t.includes(w));
 const CLEAN=/[\s​.,!?·…"'“”‘’()\[\]~-]/g;
 function refGrams(J){if(!J.g){J.g=new Set();(J.refs||[]).forEach(r=>{const t=(r.paras||[]).join("").replace(CLEAN,"");for(let i=0;i+12<=t.length;i++)J.g.add(t.slice(i,i+12));});}return J.g;}
-function overlap(body,J){const G=refGrams(J),t=body.replace(/\[이미지[^\]]*\]|^##\s.*$/gm,"").replace(CLEAN,"");if(t.length<13||!G.size)return 0;let hit=0,all=0;for(let i=0;i+12<=t.length;i+=3){all++;if(G.has(t.slice(i,i+12)))hit++;}return Math.round(hit/all*1000)/10;}
+function baseGrams(J,d){const u=d&&d.base&&d.base.url;if(!u)return null;const r=(J.refs||[]).find(x=>x.url===u);if(!r||!(r.paras||[]).length)return null;if(!r.g){r.g=new Set();const t=r.paras.join("").replace(CLEAN,"");for(let i=0;i+12<=t.length;i++)r.g.add(t.slice(i,i+12));}return r.g;}
+function overlap(body,J,d){const G=baseGrams(J,d)||refGrams(J),t=body.replace(/\[이미지[^\]]*\]|^##\s.*$/gm,"").replace(CLEAN,"");if(t.length<13||!G.size)return 0;let hit=0,all=0;for(let i=0;i+12<=t.length;i+=3){all++;if(G.has(t.slice(i,i+12)))hit++;}return Math.round(hit/all*1000)/10;}
 function stats(d,J){const b=d.body||"",plain=b.replace(/\[이미지[^\]]*\]/g,"").replace(/^##\s*/gm,"");
-  return {chars:plain.replace(/\s/g,"").length,kwN:plain.replace(/\s/g,"").split(J.kw.replace(/\s/g,"")).length-1,heads:(b.match(/^##\s/gm)||[]).length,imgs:(b.match(/\[이미지[^\]]*\]/g)||[]).length,law:lawHits(plain),ov:overlap(b,J)};}
+  return {chars:plain.replace(/\s/g,"").length,kwN:plain.replace(/\s/g,"").split(J.kw.replace(/\s/g,"")).length-1,heads:(b.match(/^##\s/gm)||[]).length,imgs:(b.match(/\[이미지[^\]]*\]/g)||[]).length,law:lawHits(plain),ov:overlap(b,J,d)};}
 
 /* ── 화면 ── */
 function jobState(J){const d=(J.items||[]).filter(x=>x.state==="done").length,n=J.n||0;
@@ -125,11 +126,12 @@ $("jobs").addEventListener("click",async e=>{const r=e.target.closest("[data-rj]
 function renderDrafts(){const J=JOBS[CUR];const DR=(J&&J.items)||[];$("drc").style.display=DR.length?"":"none";if(!J)return;$("drh").textContent=`「${J.kw}」 원고`;
   $("drs").innerHTML=DR.map((d,i)=>{if(d.state!=="done")return `<div class="dr"><h3>${i+1}. ${esc(d.title)}</h3><div class="muted">${d.err?`<span style="color:var(--bad)">${esc(d.err)}</span> <button class="btn small" data-redo="${i}">다시 쓰기</button>`:"쓰는 중…"}</div></div>`;
     const s=stats(d,J);return `<div class="dr"><div class="row" style="justify-content:space-between"><h3>${i+1}. <span contenteditable="true" data-dt="${i}">${esc(d.title)}</span></h3><div class="row"><button class="btn small" data-cp="${i}">복사</button><button class="btn small" data-redo="${i}">다시 쓰기</button></div></div>
-    <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill ${s.ov>5?"b":s.ov>2?"w":""}">겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
-    ${refList(J)}<textarea data-db="${i}">${esc(d.body)}</textarea></div>`;}).join("");}
+    <div class="pills"><span class="pill">${s.chars.toLocaleString()}자</span><span class="pill ${s.kwN<3||s.kwN>9?"w":""}">키워드 ${s.kwN}번</span><span class="pill ${d.base?(s.ov>25?"b":s.ov>12?"w":""):(s.ov>5?"b":s.ov>2?"w":"")}">${d.base?"바탕 글과 ":""}겹침 ${s.ov}%</span>${s.law.length?`<span class="pill b">조심할 말: ${esc(s.law.join(", "))}</span>`:`<span class="pill">법 위험 말 없음</span>`}</div>
+    ${d.base?baseLine(d.base):refList(J)}<textarea data-db="${i}">${esc(d.body)}</textarea></div>`;}).join("");}
 /* 이 원고가 보고 쓴 블로그 글 (통합검색 위쪽) */
 function refList(J){const rs=(J.refs||J.src||[]).filter(r=>r.url);if(!rs.length)return "";
   return `<details class="srcs" open><summary>참고한 블로그 글 ${rs.length}개 (통합검색 위쪽)</summary><ol>${rs.map(r=>`<li><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title||r.url)}</a> <span class="muted">${r.total?"통합 "+r.total+"번째":""}${r.chars?" · "+Number(r.chars).toLocaleString()+"자":""}</span></li>`).join("")}</ol></details>`;}
+function baseLine(r){return `<div class="srcs base">바꿔 쓴 글: <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title||r.url)}</a> <span class="muted">${r.total?"통합 "+r.total+"번째":""}${r.chars?" · "+Number(r.chars).toLocaleString()+"자":""}</span></div>`;}
 function renderAll(){renderJobs();renderRefs();renderDrafts();}
 let RT=0;function soon(){clearTimeout(RT);RT=setTimeout(()=>{renderJobs();const a=document.activeElement;if(!(a&&a.closest&&a.closest("#drs")))renderDrafts();},150);}
 $("drs").addEventListener("input",e=>{const J=JOBS[CUR],i=e.target.dataset.db;if(i!=null){J.items[i].body=e.target.value;clearTimeout(window._sv);window._sv=setTimeout(()=>saveJob(J),800);}const t=e.target.dataset.dt;if(t!=null)J.items[t].title=e.target.textContent.trim();});
@@ -149,7 +151,17 @@ async function oneFast(J,d){const A=avgs(J),avoid=HIST.flatMap(h=>(h.items||[]).
     if(!r.ok&&isOld(r.error)){NOONE=true;d.title="";return false;}
     if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||d.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return true;}else d.err=r.error||"원고를 쓰지 못했어요.";}
   return true;}
+/* 바탕 글 하나 고르기: 통합검색 위쪽부터, 본문을 읽은 글만. 원고가 여러 개면 차례로 다른 글 */
+function baseFor(J,i){const ok=(J.refs||[]).filter(r=>(r.paras||[]).join("").replace(/\s/g,"").length>=300);return ok.length?ok[i%ok.length]:null;}
+let NOSPIN=false;
+async function spin(J,d){const r0=(d.base&&(J.refs||[]).find(x=>x.url===d.base.url))||baseFor(J,(J.items||[]).indexOf(d));if(!r0)return false;
+  d.base={url:r0.url,title:r0.title,total:r0.total,chars:r0.chars};const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
+  for(let k=0;k<2;k++){if(STOP)return true;const r=await fn({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0});
+    if(!r.ok&&isOld(r.error)){NOSPIN=true;delete d.base;return false;}
+    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=25)return true;}else d.err=r.error||"원고를 쓰지 못했어요.";}
+  return true;}
 async function one(J,d){const A=avgs(J),f=facts();
+  if(!d.outline&&!NOSPIN&&await spin(J,d))return;
   if(!d.outline&&!NOONE&&await oneFast(J,d))return;
   if(!d.title){const r=await fn({action:"wtitles",kw:J.kw,n:1,name:f.name,refs:(J.refs||[]).map(slim),avoid:[]});const x=r.ok&&(r.items||[])[0];if(!x){d.err=r.error||"제목을 못 정했어요.";return;}Object.assign(d,{title:fixTitle(x.title,J.kw),angle:x.angle,outline:x.outline});}
   for(let k=0;k<2;k++){if(STOP)return;const r=await fn({action:"wdraft",kw:J.kw,title:d.title,angle:d.angle,outline:d.outline,refs:(J.refs||[]).map(slim),chars:A.chars,imgs:A.imgs,name:f.name,feats:f.feats,site:f.site});
@@ -180,7 +192,7 @@ $("go").onclick=runAll;$("stop").onclick=()=>{STOP=true;$("st").textContent="지
 
 /* ── 팀 기록: docs wdrafts/<id> (키워드 하나 = 하나) ── */
 async function saveJob(J){if(!J.id)return;const items=(J.items||[]).filter(d=>d.state==="done");if(!items.length)return;
-  const data={kw:J.kw,cid:J.cid,client:J.client,at:new Date().toISOString(),items:items.map(d=>({title:d.title,body:d.body,tags:d.tags})),src:(J.refs||J.src||[]).map(r=>({url:r.url,title:r.title,total:r.total,chars:r.chars}))};
+  const data={kw:J.kw,cid:J.cid,client:J.client,at:new Date().toISOString(),items:items.map(d=>({title:d.title,body:d.body,tags:d.tags,base:d.base||null})),src:(J.refs||J.src||[]).map(r=>({url:r.url,title:r.title,total:r.total,chars:r.chars}))};
   try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"wdrafts",id:J.id,data})});}catch(e){}}
 async function loadHist(){try{const r=await rest("docs?coll=eq.wdrafts&select=id,data&order=updated_at.desc&limit=60");HIST=(r||[]).map(x=>Object.assign({id:x.id},x.data||{}));}catch(e){HIST=[];}
   const gone=goneIds();HIST=HIST.filter(h=>!gone.includes(h.id));
