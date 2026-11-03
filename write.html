@@ -32,7 +32,7 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .job b{min-width:0}.job .s{color:var(--muted)}.job .s.e{color:var(--bad)}.job .s.d{color:var(--accent);font-weight:700}
 .form{grid-template-columns:1fr}@media(max-width:800px){.form{grid-template-columns:1fr 1fr}.form .wide{grid-column:1/-1}}
 </style></head><body><div class="wrap">
-<div class="card"><div class="row" style="justify-content:space-between"><h1>원고 여러 개 뽑기</h1><div class="row"><a class="btn small" href="blog.html">블로그 이미지</a><a class="btn small" href="video.html">영상 만들기</a></div></div>
+<div class="card"><div class="row" style="justify-content:space-between"><h1>원고 여러 개 뽑기</h1></div>
 <div class="muted" style="margin-top:4px">키워드를 한 줄에 하나씩 넣으면(최대 50개) 키워드마다 지금 네이버 통합검색 위쪽에 뜨는 블로그 글들의 길이·소제목·사진 수를 보고, 키워드를 제목 맨 앞에 둔 새 원고를 자동으로 써요. 위쪽 글과 비슷한 짜임으로 쓰되 문장은 새로 써요 (같은 문장은 네이버가 유사문서로 묶어서 안 떠요).</div></div>
 
 <div class="card"><div class="form">
@@ -163,13 +163,19 @@ async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.l
 $("go").onclick=runAll;$("stop").onclick=()=>{STOP=true;$("st").textContent="지금 쓰는 것까지만 하고 멈춰요…";};
 
 /* ── 팀 기록: docs wdrafts/<id> (키워드 하나 = 하나) ── */
-async function saveJob(J){const items=(J.items||[]).filter(d=>d.state==="done");if(!items.length)return;
+async function saveJob(J){if(!J.id)return;const items=(J.items||[]).filter(d=>d.state==="done");if(!items.length)return;
   const data={kw:J.kw,cid:J.cid,client:J.client,at:new Date().toISOString(),items:items.map(d=>({title:d.title,body:d.body,tags:d.tags}))};
   try{await rest("docs?on_conflict=coll,id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({coll:"wdrafts",id:J.id,data})});}catch(e){}}
 async function loadHist(){try{const r=await rest("docs?coll=eq.wdrafts&select=id,data&order=updated_at.desc&limit=60");HIST=(r||[]).map(x=>Object.assign({id:x.id},x.data||{}));}catch(e){HIST=[];}
-  $("hist").innerHTML=HIST.length?HIST.map(h=>`<button data-h="${esc(h.id)}">${esc((h.at||"").slice(0,10))} · ${esc(h.client||"업체 없음")} · ${esc(h.kw)} · ${(h.items||[]).length}개</button>`).join(""):`<span class="muted">아직 없어요.</span>`;}
+  const gone=goneIds();HIST=HIST.filter(h=>!gone.includes(h.id));
+  $("hist").innerHTML=HIST.length?HIST.map(h=>`<button data-h="${esc(h.id)}">${esc((h.at||"").slice(0,10))} · ${esc(h.kw)} · ${(h.items||[]).length}개</button>`).join(""):`<span class="muted">아직 없어요.</span>`;}
 $("hist").addEventListener("click",e=>{const b=e.target.closest("[data-h]");if(!b||BUSY)return;const h=HIST.find(x=>x.id===b.dataset.h);if(!h)return;
-  JOBS=[{kw:h.kw,n:(h.items||[]).length,id:h.id,cid:h.cid,client:h.client,refs:null,items:(h.items||[]).map(x=>Object.assign({state:"done"},x))}];CUR=0;renderAll();$("drc").scrollIntoView({behavior:"smooth"});});
+  /* 한 번 열면 기록에서 지움 (열린 원고는 화면에 남음, 고쳐도 다시 기록되지 않음) */
+  JOBS=[{kw:h.kw,n:(h.items||[]).length,id:"",cid:h.cid,client:h.client,refs:null,items:(h.items||[]).map(x=>Object.assign({state:"done"},x))}];CUR=0;renderAll();$("drc").scrollIntoView({behavior:"smooth"});
+  HIST=HIST.filter(x=>x.id!==h.id);b.remove();if(!HIST.length)$("hist").innerHTML=`<span class="muted">아직 없어요.</span>`;
+  ls.set("gs-write-gone",JSON.stringify(goneIds().concat(h.id).slice(-300)));
+  rest(`docs?coll=eq.wdrafts&id=eq.${encodeURIComponent(h.id)}`,{method:"DELETE"}).catch(()=>{});});
+function goneIds(){try{return JSON.parse(ls.get("gs-write-gone")||"[]")}catch(e){return []}}
 
 /* ── 받기 ── */
 /* ── 받기 ── */
