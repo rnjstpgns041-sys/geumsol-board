@@ -149,17 +149,17 @@ let NOONE=false;const isOld=e=>/모르는 요청|unknown action/i.test(e||"");
 async function oneFast(J,d){const A=avgs(J),avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
   for(let k=0;k<2;k++){if(STOP)return true;const r=await fn({action:"wone",kw:J.kw,refs:(J.refs||[]).map(slim),chars:A.chars,avoid});
     if(!r.ok&&isOld(r.error)){NOONE=true;d.title="";return false;}
-    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||d.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return true;}else d.err=r.error||"원고를 쓰지 못했어요.";}
+    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||d.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=8)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
   return true;}
 /* 바탕 글 하나 고르기: 통합검색 위쪽부터, 본문을 읽은 글만. 원고가 여러 개면 차례로 다른 글 */
 function baseFor(J,i){const ok=(J.refs||[]).filter(r=>(r.paras||[]).join("").replace(/\s/g,"").length>=300);return ok.length?ok[i%ok.length]:null;}
-let NOSPIN=false;
+let NOSPIN=false;const nap=ms=>new Promise(z=>setTimeout(z,ms));
 async function spin(J,d){const r0=(d.base&&(J.refs||[]).find(x=>x.url===d.base.url))||baseFor(J,(J.items||[]).indexOf(d));if(!r0)return false;
   d.base={url:r0.url,title:r0.title,total:r0.total,chars:r0.chars};const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
   for(let k=0;k<2;k++){if(STOP)return true;const r=await fn({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0});
     if(!r.ok&&isOld(r.error)){NOSPIN=true;delete d.base;return false;}
-    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=25)return true;}else d.err=r.error||"원고를 쓰지 못했어요.";}
-  return true;}
+    if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:""});if(stats(d,J).ov<=25)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
+  return d.state==="done";}
 async function one(J,d){const A=avgs(J),f=facts();
   if(!d.outline&&!NOSPIN&&await spin(J,d))return;
   if(!d.outline&&!NOONE&&await oneFast(J,d))return;
@@ -180,11 +180,19 @@ async function runJob(J){const f=facts();J.err="";
   const q=J.items.filter(d=>d.state!=="done");await Promise.all([0,1].map(async()=>{while(q.length&&!STOP){const d=q.shift();await one(J,d);TICK();soon();}}));
   saveJob(J);soon();}
 let TICK=()=>{};
+/* 못 쓴 원고·못 읽은 키워드를 하나씩 천천히 다시 (두 번까지) */
+async function retryFailed(){for(let round=0;round<2&&!STOP;round++){
+  const bad=JOBS.filter(J=>J.err||(J.items||[]).some(d=>d.state!=="done"));if(!bad.length)return;
+  await nap(4000);
+  for(const J of bad){if(STOP)return;if(J.err){if(J.items)continue;J.err="";J.refs=null;$("st").textContent=`다시 해 보는 중… ${J.kw}`;await runJob(J);soon();continue;}
+    for(const d of J.items.filter(d=>d.state!=="done")){if(STOP)return;$("st").textContent=`못 쓴 원고 다시 쓰는 중… ${J.kw}`;d.state="wait";d.err="";soon();await one(J,d);soon();}
+    saveJob(J);}}}
 async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("go").disabled=true;$("stop").style.display="";
   const c=client(),stamp=Date.now().toString(36);JOBS=kws.map((kw,i)=>({kw,n,id:`w${stamp}${i.toString(36)}`,cid:c?c.id:"",client:c?c.name:""}));CUR=0;renderAll();
   const total=kws.length*n;let done=0;TICK=()=>{done++;prog(done/total,`원고 쓰는 중… ${done}/${total}`);};prog(.02,`원고 쓰는 중… 0/${total}`);
   const q=JOBS.slice();await Promise.all([0,1,2,3].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
+  await retryFailed();
   BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
   const ok=JOBS.reduce((s,J)=>s+(J.items||[]).filter(d=>d.state==="done").length,0),bad=JOBS.filter(J=>J.err).length;
   msg(STOP?`멈췄어요. 원고 ${ok}개는 써 두었어요.`:`원고 ${ok}/${total}개를 썼어요.`+(bad?` 키워드 ${bad}개는 못 했어요. 목록에서 "다시"를 눌러 주세요.`:"")+(ok<total&&!bad&&!STOP?` 못 쓴 원고는 그 칸의 "다시 쓰기"를 눌러 주세요.`:""),ok===total?"ok":"warn");}
