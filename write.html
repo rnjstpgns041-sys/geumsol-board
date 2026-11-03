@@ -119,7 +119,8 @@ function stats(d,J){const b=d.body||"",plain=b.replace(/\[이미지[^\]]*\]/g,""
 function jobState(J){const d=(J.items||[]).filter(x=>x.state==="done").length,n=J.n||0;
   if(J.err)return `<span class="s e">${esc(J.err)}</span>`;if(J.step==="refs")return `<span class="s">상위 글 읽는 중…</span>`;if(J.step==="titles")return `<span class="s">제목 정하는 중…</span>`;
   if(!J.items)return `<span class="s">기다리는 중</span>`;const bad=J.items.filter(x=>x.err&&x.state!=="done").length;
-  return `<span class="s ${d===J.items.length?"d":bad?"e":""}">원고 ${d}/${J.items.length}${bad?` · ${bad}개 못 씀`:""}</span>`;}
+  const why=bad?String((J.items.find(x=>x.err&&x.state!=="done")||{}).err||"").replace(/^원고를 쓰지 못했어요\.?\s*/,"").slice(0,90):"";
+  return `<span class="s ${d===J.items.length?"d":bad?"e":""}">원고 ${d}/${J.items.length}${bad?` · ${bad}개 못 씀${why?` <small class="muted">${esc(why)}</small>`:""}`:""}</span>`;}
 function renderJobs(){$("jobs").innerHTML=JOBS.length>1||JOBS.some(J=>J.err)?JOBS.map((J,i)=>`<div class="job" data-j="${i}" aria-current="${i===CUR}"><b>${i+1}. ${esc(J.kw)}</b>${jobState(J)}${J.err?`<button class="btn small" data-rj="${i}">다시</button>`:""}</div>`).join(""):"";}
 $("jobs").addEventListener("click",async e=>{const r=e.target.closest("[data-rj]");if(r){e.stopPropagation();if(BUSY)return;const J=JOBS[+r.dataset.rj];J.err="";J.refs=null;J.items=null;BUSY=true;await runJob(J);BUSY=false;renderAll();return;}
   const j=e.target.closest("[data-j]");if(j){CUR=+j.dataset.j;renderAll();$("drc").scrollIntoView({behavior:"smooth"});}});
@@ -191,7 +192,7 @@ async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.l
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("go").disabled=true;$("stop").style.display="";
   const c=client(),stamp=Date.now().toString(36);JOBS=kws.map((kw,i)=>({kw,n,id:`w${stamp}${i.toString(36)}`,cid:c?c.id:"",client:c?c.name:""}));CUR=0;renderAll();
   const total=kws.length*n;let done=0;TICK=()=>{done++;prog(done/total,`원고 쓰는 중… ${done}/${total}`);};prog(.02,`원고 쓰는 중… 0/${total}`);
-  const q=JOBS.slice();await Promise.all([0,1,2,3].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
+  const q=JOBS.slice();await Promise.all([0,1,2].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
   await retryFailed();
   BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
   const ok=JOBS.reduce((s,J)=>s+(J.items||[]).filter(d=>d.state==="done").length,0),bad=JOBS.filter(J=>J.err).length;

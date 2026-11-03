@@ -125,14 +125,14 @@ Deno.serve(async (req) => {
     const extra = kind === "image" ? ["gemini-2.5-flash-image"] : ["gemini-flash-latest", "gemini-flash-lite-latest", ...pro];
     return [...new Set([...list, ...pre, ...extra])];
   }
-  async function gemAuto(kind: "text" | "image", body: unknown, until = 0) {
+  async function gemAuto(kind: "text" | "image", body: unknown, until = 0, cap = 45000) {
     let last: unknown = null; const tried: string[] = [];
     // 없는 모델이면 다음 모델로, 붐비면(503·429) 잠깐 쉬고 한 번 더 한 뒤 다음 모델로
     for (const m of (await models(kind)).slice(0, 8)) {
       if (until && Date.now() > until - 4000) break; // 시간이 다 되면 그만 (함수가 통째로 끊기지 않게)
       tried.push(m);
       for (let k = 0; k < 2; k++) {
-        try { return await gem(m, body, until); } catch (e) {
+        try { return await gem(m, body, until, cap); } catch (e) {
           last = e; const t = String((e as Error).message || e);
           if (/quota|exceeded/i.test(t)) break; // 이 모델 사용량이 다 됨: 기다리지 말고 다음 모델로
           if (/high demand|overloaded|unavailable|try again|503|429|RESOURCE_EXHAUSTED|rate/i.test(t)) { if (k === 0) { await new Promise((r) => setTimeout(r, 2500)); continue; } break; }
@@ -144,8 +144,8 @@ Deno.serve(async (req) => {
     const msg = String((last as Error)?.message || last || "쓸 수 있는 제미나이 모델을 찾지 못했어요.");
     throw new Error(msg.slice(0, 120) + " [시도한 모델: " + tried.join(", ") + "]");
   }
-  async function gem(model: string, body: unknown, until = 0) {
-    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), until ? Math.max(3000, Math.min(45000, until - Date.now())) : 90000);
+  async function gem(model: string, body: unknown, until = 0, cap = 45000) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), until ? Math.max(3000, Math.min(cap, until - Date.now())) : 90000);
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(gemk), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal }).catch((e) => { throw new Error(ctl.signal.aborted ? "제미나이 응답이 너무 늦어요 (503)" : String((e as Error).message || e)); }).finally(() => clearTimeout(tm));
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(String(d?.error?.message || r.status).split(gemk).join("[키]").slice(0, 240) + (r.status === 404 || r.status === 503 || r.status === 429 ? " (" + r.status + ")" : ""));
@@ -389,9 +389,9 @@ JSON 하나로만: {"items":[{"title":"...","angle":"이 글이 다루는 한 �
   }
   // 원고 한 편: 정해 둔 제목·짜임으로, 상위 글 평균 길이·사진 수에 맞춰 새로 씀
   // 빠르게: 생각 단계(thinking)를 끄고 부름. 모델이 그 설정을 모르면 끄지 않고 다시 부름
-  async function gemFast(body: any, until: number) {
-    try { return await gemAuto("text", { ...body, generationConfig: { ...(body.generationConfig || {}), thinkingConfig: { thinkingBudget: 0 } } }, until); }
-    catch (e) { if (/thinking|budget|Invalid JSON payload|Unknown name/i.test(String((e as Error).message || e))) return await gemAuto("text", body, until); throw e; }
+  async function gemFast(body: any, until: number, cap = 45000) {
+    try { return await gemAuto("text", { ...body, generationConfig: { ...(body.generationConfig || {}), thinkingConfig: { thinkingBudget: 0 } } }, until, cap); }
+    catch (e) { if (/thinking|budget|Invalid JSON payload|Unknown name/i.test(String((e as Error).message || e))) return await gemAuto("text", body, until, cap); throw e; }
   }
   // 원고 한 편을 제목까지 한 번에 (키워드 하나에 원고 하나일 때, 제미나이를 한 번만 부름)
   if (b.action === "wone") {
@@ -429,7 +429,7 @@ JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
     const ref = b.ref || {};
     const paras = (Array.isArray(ref.paras) ? ref.paras : []).map((x: unknown) => String(x || "").trim()).filter(Boolean);
     let src = "", used = 0;
-    for (const p of paras) { if (used + p.length > 7000) break; src += p + "\n"; used += p.length; }
+    for (const p of paras) { if (used + p.length > 5000) break; src += p + "\n"; used += p.length; }
     if (!kw || src.replace(/\s/g, "").length < 200) return j({ ok: false, error: "바탕 글 내용을 읽지 못했어요." });
     const heads = (Array.isArray(ref.heads) ? ref.heads : []).map((x: unknown) => String(x || "").slice(0, 60)).slice(0, 14);
     const chars = Math.max(800, Math.min(4000, src.replace(/\s/g, "").length));
@@ -454,7 +454,7 @@ ${src}"""
 - ${lawRule} 바탕 글에 이런 표현이 있으면 안전한 말로 바꾸기.
 JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
     try {
-      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 110000);
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 130000, 85000);
       const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
       if (body.replace(/\s/g, "").length < Math.min(600, chars * 0.5)) throw new Error("원고가 너무 짧게 나왔어요");
       return j({ ok: true, title, body });
