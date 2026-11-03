@@ -422,6 +422,44 @@ JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
       return j({ ok: true, title, body });
     } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
   }
+  // 상위 글 하나를 바탕으로 비슷한 듯 다르게 바꿔 쓰기 (흐름·내용 순서·길이는 그대로, 문장은 모두 새로)
+  if (b.action === "wspin") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const kw = String(b.kw || "").trim().slice(0, 60);
+    const ref = b.ref || {};
+    const paras = (Array.isArray(ref.paras) ? ref.paras : []).map((x: unknown) => String(x || "").trim()).filter(Boolean);
+    let src = "", used = 0;
+    for (const p of paras) { if (used + p.length > 7000) break; src += p + "\n"; used += p.length; }
+    if (!kw || src.replace(/\s/g, "").length < 200) return j({ ok: false, error: "바탕 글 내용을 읽지 못했어요." });
+    const heads = (Array.isArray(ref.heads) ? ref.heads : []).map((x: unknown) => String(x || "").slice(0, 60)).slice(0, 14);
+    const chars = Math.max(800, Math.min(4000, src.replace(/\s/g, "").length));
+    const avoid = (Array.isArray(b.avoid) ? b.avoid : []).map((x) => String(x || "").slice(0, 70)).slice(0, 20);
+    const strong = !!b.strong;
+    const prompt = `아래 네이버 블로그 글 한 편을 바탕으로, 비슷한 듯 다른 새 글로 바꿔 써 주세요.
+키워드: ${kw}
+바탕 글 제목: ${String(ref.title || "").slice(0, 80)}
+바탕 글 소제목: ${heads.join(" | ") || "(없음)"}
+바탕 글 본문:
+"""
+${src}"""
+규칙:
+- 바탕 글의 흐름, 다루는 내용, 순서, 소제목 수, 길이는 거의 그대로 따라가기. 내용을 새로 더하거나 크게 빼지 말 것.
+- 문장은 하나도 그대로 옮기지 말고 모두 바꿔 쓰기: 낱말을 비슷한 말로 바꾸고, 문장 짜임과 끝맺음을 바꾸고, 문장을 나누거나 합치기.${strong ? " 바탕 글과 6글자 넘게 똑같이 이어지는 부분이 없게 더 많이 바꾸기." : ""}
+- 소제목도 같은 뜻으로 말만 바꿔서 따로 한 줄씩. #이나 기호는 붙이지 말 것.
+- 바탕 글에 나온 병원·업체 이름, 원장 이름, 주소, 전화번호, 블로그 주인 이야기는 빼거나 일반적인 말로 바꾸기.
+- 제목은 반드시 "${kw}"로 시작하고, 뒤는 바탕 글 제목과 비슷한 뜻이되 다른 말로. 공백 포함 18~32자.${avoid.length ? " 이미 쓴 제목과 겹치지 않게: " + avoid.join(" / ") : ""}
+- 키워드 "${kw}"는 첫 문단에 1번, 본문 전체에 4~6번 자연스럽게.
+- 본문 길이는 공백 빼고 ${Math.round(chars * 0.9)}~${Math.round(chars * 1.1)}자.
+- 사진 자리 표시, 해시태그, 별표(**) 같은 기호는 쓰지 말 것.
+- ${lawRule} 바탕 글에 이런 표현이 있으면 안전한 말로 바꾸기.
+JSON 하나로만: {"title":"제목","body":"본문 전체(제목 빼고)"}`;
+    try {
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 110000);
+      const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
+      if (body.replace(/\s/g, "").length < Math.min(600, chars * 0.5)) throw new Error("원고가 너무 짧게 나왔어요");
+      return j({ ok: true, title, body });
+    } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+  }
   if (b.action === "wdraft") {
     if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
     const kw = String(b.kw || "").trim().slice(0, 60), name = String(b.name || "").trim().slice(0, 40), title = String(b.title || "").trim().slice(0, 60);
