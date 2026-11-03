@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return j({ ok: false, error: "요청이 비어 있어요." }, 400); }
 
-  if (b.action === "ping") return j({ ok: true, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim(), photos: !!((Deno.env.get("PIXABAY_KEY") || "").trim() || (Deno.env.get("PEXELS_KEY") || "").trim()), gemini: !!(Deno.env.get("GEMINI_KEY") || "").trim() });
+  if (b.action === "ping") return j({ ok: true, ss: !!key, ssv: 2, tts: !!(Deno.env.get("GOOGLE_TTS_KEY") || "").trim(), photos: !!((Deno.env.get("PIXABAY_KEY") || "").trim() || (Deno.env.get("PEXELS_KEY") || "").trim()), gemini: !!(Deno.env.get("GEMINI_KEY") || "").trim() });
 
   // 구글 음성: 문장마다 mp3를 만들어 돌려줌 (사이트에서 영상에 붙임). 비밀값 GOOGLE_TTS_KEY
   if (b.action === "tts") {
@@ -542,12 +542,19 @@ JSON 하나로만 답해요: {${slots.map((_, i) => `"${LET[i]}":[0번 점수, 1
   if (b.action === "make") {
     const text = String(b.text || "").trim();
     if (!text) return j({ ok: false, error: "대본을 넣어 주세요." }, 400);
-    const voice = VOICES.includes(String(b.voice)) ? String(b.voice) : "doyun";
-    const lengthMode = b.length === "longform" ? "longform" : "shortform";
+    // 목소리·길이를 안 넘기면 슈퍼쇼츠 콘솔의 자동화 기본설정(저장한 목소리·길이)을 그대로 씀
+    const voice = VOICES.includes(String(b.voice)) ? String(b.voice) : undefined;
+    const lengthMode = b.length === "longform" || b.length === "shortform" ? String(b.length) : undefined;
+    // 대본을 그대로 쓰는 방식(direct)은 사진이 1장 이상 있어야 함: 사이트가 문장마다 고른 사진 주소(https)를 넘김
+    const images = (Array.isArray(b.images) ? b.images : []).map((u) => String(u || "").trim()).filter((u) => /^https:\/\/[^\s"'<>]{4,600}$/.test(u)).slice(0, 60);
     // 업체별 슈퍼쇼츠 디자인·제목 (사이트의 업체 설정에서 넘어옴). 정해진 모양만 통과시킴
     const o = (b.opts && typeof b.opts === "object") ? b.opts as Record<string, unknown> : {};
     const id = (v: unknown) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) ? v : undefined;
-    const body: Record<string, unknown> = { sourceText: text, planningMode: o.planningMode === "auto" ? "auto" : "direct", variantCount: 1, lengthMode, voice };
+    const body: Record<string, unknown> = { sourceText: text, planningMode: o.planningMode === "auto" ? "auto" : "direct", variantCount: 1 };
+    if (lengthMode) body.lengthMode = lengthMode;
+    if (voice) body.voice = voice;
+    if (images.length) body.imageInventory = images.map((url, i) => ({ idx: i + 1, url, kind: "image" }));
+    else if (body.planningMode === "direct") return j({ ok: false, error: "슈퍼쇼츠에 보낼 사진이 없어요. 업체 사진을 넣거나 사진 키(PIXABAY_KEY)를 확인해 주세요." });
     if (id(o.contentTemplateId)) body.contentTemplateId = o.contentTemplateId;
     // 디자인을 따로 안 골랐으면 슈퍼쇼츠에 저장된 디자인 중 업체 이름이 같은 것을 자동으로 씀
     let tpl = "";
