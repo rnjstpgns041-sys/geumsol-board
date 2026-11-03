@@ -1,6 +1,7 @@
 // 금솔 팀 사이트 영상 만들기: 슈퍼쇼츠 키를 Supabase 비밀값(SUPERSHORTS_KEY)에 숨겨 두고 대신 불러 주는 함수.
 // 필요한 비밀값(Edge Functions > Secrets): SUPERSHORTS_KEY (ss_live_...), VIDEO_PW (영상 비밀번호)
 // 있으면 쓰는 비밀값: GOOGLE_TTS_KEY (구글 음성), PIXABAY_KEY 또는 PEXELS_KEY (대본에 맞는 무료 사진), GEMINI_KEY (홈페이지 정리·나노바나나)
+// 원고 여러 개 뽑기(write.html): action serp(네이버 상위 글 모양) · wtitles(제목·짜임) · wdraft(원고 한 편), GEMINI_KEY 사용
 // 함수 설정에서 "Verify JWT"는 꺼 두세요 (사이트는 로그인 없이 부름, 대신 VIDEO_PW로 막음).
 const SS = "https://www.supershorts.co.kr/api/business";
 const cors = {
@@ -317,6 +318,110 @@ JSON 하나로만: {"title":["제목 첫 줄","제목 둘째 줄"],"lines":["문
       const g = gemJson(d), title = (Array.isArray(g.title) ? g.title : []).map((x: unknown) => String(x || "").trim().slice(0, 24)).filter(Boolean).slice(0, 2);
       return j({ ok: true, lines, title });
     } catch (e) { return j({ ok: false, error: "대본을 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+  }
+  // ── 원고 여러 개 뽑기 (write.html) ──
+  // 네이버 상위 글 모으기: 블로그탭 위에서부터 n개 + 통합검색에 같이 뜨는지. 글은 모양(길이·소제목·사진 수)과 첫머리만 돌려줌
+  const NV_UA = { "User-Agent": UA["User-Agent"], "Accept-Language": "ko-KR,ko;q=0.9" };
+  const unesc = (s: string) => s.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&middot;/g, "·").replace(/&hellip;/g, "…").replace(/&[lr]squo;/g, "'").replace(/&[lr]dquo;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16))).replace(/&amp;/g, "&");
+  const strip = (s: string) => unesc(s.replace(/<[^>]+>/g, " ")).replace(/​/g, "").replace(/\s+/g, " ").trim();
+  function parsePost(h: string) {
+    const tm = h.match(/se-title-text[^>]*>([\s\S]*?)<\/div>/) || h.match(/<title>([\s\S]*?)<\/title>/);
+    const title = tm ? strip(tm[1]).replace(/\s*:\s*네이버 블로그\s*$/, "") : "";
+    const heads: string[] = [];
+    for (const m of h.matchAll(/se-section-(?:sectionTitle|quotation)[\s\S]*?(?=<div class="se-component |$)/g)) { const t = strip(m[0].replace(/^[^>]*>/, "")); if (t && t.length <= 60) heads.push(t); }
+    const paras = [...h.matchAll(/<p class="se-text-paragraph[^"]*"[^>]*>([\s\S]*?)<\/p>/g)].map((m) => strip(m[1])).filter(Boolean);
+    const body = paras.filter((p) => p !== title && !heads.includes(p));
+    const chars = body.join("").replace(/\s/g, "").length;
+    const imgs = (h.match(/se-module-image"/g) || h.match(/se-module-image/g) || []).length;
+    return { title, heads: heads.slice(0, 14), paras: body, chars, imgs, map: /se-placesMap/.test(h) };
+  }
+  async function nget(u: string, ms = 10000) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+    try { const r = await fetch(u, { headers: NV_UA, signal: ctl.signal }); return r.ok ? await r.text() : ""; } catch { return ""; } finally { clearTimeout(tm); }
+  }
+  if (b.action === "serp") {
+    const kw = String(b.kw || "").trim().slice(0, 60);
+    if (!kw) return j({ ok: false, error: "키워드를 넣어 주세요." });
+    const n = Math.max(3, Math.min(10, Number(b.n) || 6));
+    const q = encodeURIComponent(kw);
+    const [bh, th] = await Promise.all([nget("https://search.naver.com/search.naver?ssc=tab.blog.all&query=" + q), nget("https://search.naver.com/search.naver?where=nexearch&query=" + q)]);
+    const links = (s: string) => [...new Set([...s.matchAll(/blog\.naver\.com\/([A-Za-z0-9_-]+)\/(\d{6,})/g)].map((m) => m[1] + "/" + m[2]))];
+    const bl = links(bh), tl = links(th);
+    if (!bl.length) return j({ ok: false, blocked: true, error: "네이버 검색 결과를 읽지 못했어요." });
+    const pick = bl.slice(0, n);
+    const refs = await Promise.all(pick.map(async (id, i) => {
+      const [bid, no] = id.split("/");
+      const h = await nget(`https://m.blog.naver.com/PostView.naver?blogId=${bid}&logNo=${no}`, 12000);
+      const p = h ? parsePost(h) : { title: "", heads: [], paras: [], chars: 0, imgs: 0, map: false };
+      const ti = tl.indexOf(id);
+      return { url: `https://blog.naver.com/${id}`, rank: i + 1, total: ti >= 0 ? ti + 1 : 0, title: p.title, heads: p.heads, chars: p.chars, imgs: p.imgs, map: p.map, kwN: p.paras.join("").replace(/\s/g, "").split(kw.replace(/\s+/g, "")).length - 1, paras: p.paras.slice(0, 400) };
+    }));
+    return j({ ok: true, kw, refs });
+  }
+  // 상위 글 모양을 보고 제목 n개 + 글마다 다른 짜임을 정함 (키워드는 제목 맨 앞 그대로)
+  const lawRule = "의료광고법: 최고, 최초, 유일, 1위, 완치, 100%, 부작용 없음, 보장, 확실, 특효, 치료 후기·체험담, 전후 비교, 가격 할인·이벤트, 다른 병원 비교·비방 금지. 효과는 '도움이 될 수 있어요'처럼 조심스럽게.";
+  const refBrief = (refs: any[]) => refs.slice(0, 8).map((r, i) => `${i + 1}) 제목: ${String(r.title || "").slice(0, 70)} / ${r.chars || 0}자, 사진 ${r.imgs || 0}장\n   소제목: ${(r.heads || []).slice(0, 10).map((x: string) => String(x).slice(0, 40)).join(" | ") || "(없음)"}`).join("\n");
+  if (b.action === "wtitles") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const kw = String(b.kw || "").trim().slice(0, 60), name = String(b.name || "").trim().slice(0, 40);
+    const n = Math.max(1, Math.min(10, Number(b.n) || 5));
+    const refs = Array.isArray(b.refs) ? b.refs : [];
+    const avoid = (Array.isArray(b.avoid) ? b.avoid : []).map((x) => String(x || "").slice(0, 70)).slice(0, 40);
+    const topic = String(b.topic || "").trim().slice(0, 80);
+    const prompt = `네이버 블로그 원고 ${n}개의 제목과 짜임을 정해 주세요.
+키워드: ${kw}
+업체: ${name || "(없음)"}${topic ? "\n주제(이 주제로만): " + topic : ""}
+지금 네이버에서 이 키워드 위쪽에 뜨는 글들 (참고만, 베끼기 금지):
+${refBrief(refs) || "(없음)"}
+규칙:
+- 제목은 반드시 "${kw}"로 시작하고, 그 뒤만 서로 다르게 지어 주세요. 키워드 낱말 순서·띄어쓰기를 바꾸지 마세요.
+- 제목 전체 길이는 공백 포함 18~32자. 뒤쪽은 검색하는 사람이 궁금해할 증상·상황·고민으로 (예: 증상 이름, 대상, 시기, 질문).
+- ${n}개의 제목은 뒤쪽 주제가 서로 겹치지 않게. 위 상위 글 제목과 같은 뒷말도 쓰지 마세요.
+- 글마다 소제목 4~6개 짜임(outline)도 정해 주세요. 상위 글들이 많이 다루는 내용은 챙기되, 순서와 말은 우리 것으로.
+- ${lawRule}${avoid.length ? "\n- 이미 쓴 제목(겹치지 않게): " + avoid.join(" / ") : ""}
+JSON 하나로만: {"items":[{"title":"...","angle":"이 글이 다루는 한 줄","outline":["소제목1","소제목2"]}]}`;
+    try {
+      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 1.0 } }, Date.now() + 60000);
+      const items = ((gemJson(d).items || []) as any[]).map((x) => ({ title: String(x.title || "").trim().slice(0, 60), angle: String(x.angle || "").trim().slice(0, 100), outline: (Array.isArray(x.outline) ? x.outline : []).map((s: unknown) => String(s || "").trim().slice(0, 50)).filter(Boolean).slice(0, 7) })).filter((x) => x.title);
+      return j({ ok: true, items });
+    } catch (e) { return j({ ok: false, error: "제목을 정하지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+  }
+  // 원고 한 편: 정해 둔 제목·짜임으로, 상위 글 평균 길이·사진 수에 맞춰 새로 씀
+  if (b.action === "wdraft") {
+    if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
+    const kw = String(b.kw || "").trim().slice(0, 60), name = String(b.name || "").trim().slice(0, 40), title = String(b.title || "").trim().slice(0, 60);
+    if (!kw || !title) return j({ ok: false, error: "키워드와 제목이 필요해요." });
+    const outline = (Array.isArray(b.outline) ? b.outline : []).map((s) => String(s || "").slice(0, 50)).slice(0, 7);
+    const refs = Array.isArray(b.refs) ? b.refs : [];
+    const chars = Math.max(1200, Math.min(3000, Number(b.chars) || 1800)), imgs = Math.max(3, Math.min(20, Number(b.imgs) || 8));
+    const site = String(b.site || "").trim().slice(0, 2500);
+    const feats = (Array.isArray(b.feats) ? b.feats : []).map((x) => String(x || "").slice(0, 120)).filter(Boolean).slice(0, 8);
+    const prompt = `네이버 블로그 원고 한 편을 써 주세요.
+제목: ${title}
+키워드: ${kw}
+업체: ${name || "(없음)"}
+이 글의 방향: ${String(b.angle || "").slice(0, 100)}
+소제목 짜임: ${outline.join(" / ") || "(알아서 4~6개)"}
+업체 사실(여기 있는 것만 사실로 쓰기):
+${feats.map((f) => "- " + f).join("\n") || "- (없음)"}
+${site ? "업체 홈페이지 내용:\n" + site + "\n" : ""}지금 위쪽에 뜨는 글들의 모양 (길이·짜임 참고만, 문장 베끼기 금지):
+${refBrief(refs) || "(없음)"}
+규칙:
+- 본문은 공백 빼고 ${chars - 150}~${chars + 250}자. 문단은 2~4문장, 짧게 끊어 읽기 쉽게.
+- 소제목은 "## "로 시작하는 줄로 ${Math.max(4, outline.length)}개 안팎.
+- 사진 자리는 [이미지 1: 무엇을 찍은 사진인지] 처럼 ${imgs}개를 글 사이사이에.
+- 키워드 "${kw}"는 첫 문단에 1번, 본문 전체에 4~6번 자연스럽게.
+- 위 글들과 같은 문장·같은 예시·같은 순서로 쓰지 말고, 우리 말로 새로 쓰기. 뻔한 말("많은 분들이", "오늘은 ~에 대해 알아볼게요") 금지.
+- 마지막 소제목은 ${name ? name + "에서 상담받을 때 알면 좋은 점" : "진료 전에 정리해 두면 좋은 것"}처럼 마무리. 없는 사실(경력, 장비, 가격, 진료시간)은 지어내지 말 것.
+- ${lawRule}
+- 말투: 쉬운 존댓말(~요, ~습니다 섞기).
+JSON 하나로만: {"body":"본문 전체(제목 빼고)","tags":["태그 8~12개, # 없이"]}`;
+    try {
+      const d = await gemAuto("text", { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000);
+      const g = gemJson(d), body = String(g.body || "").trim();
+      if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
+      return j({ ok: true, title, body, tags: (Array.isArray(g.tags) ? g.tags : []).map((x: unknown) => String(x || "").replace(/^#/, "").trim()).filter(Boolean).slice(0, 14) });
+    } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
   }
   // 업체 사진 설명 달기: 팀이 올린 사진(우리 저장소)만 보고 무엇이 찍혔는지 짧게
   if (b.action === "label") {
