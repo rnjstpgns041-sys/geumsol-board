@@ -30,15 +30,14 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .kwbox{min-height:110px;font-size:14px;line-height:1.6}
 .jobs{display:flex;flex-direction:column;gap:6px;margin-top:10px}.job{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;background:var(--card)}.job[aria-current=true]{border-color:var(--accent);background:var(--soft)}
 .job b{min-width:0}.job .s{color:var(--muted)}.job .s.e{color:var(--bad)}.job .s.d{color:var(--accent);font-weight:700}
-.form{grid-template-columns:1.8fr 100px 1fr}@media(max-width:800px){.form{grid-template-columns:1fr 1fr}.form .wide{grid-column:1/-1}}
+.form{grid-template-columns:1fr}@media(max-width:800px){.form{grid-template-columns:1fr 1fr}.form .wide{grid-column:1/-1}}
 </style></head><body><div class="wrap">
 <div class="card"><div class="row" style="justify-content:space-between"><h1>원고 여러 개 뽑기</h1><div class="row"><a class="btn small" href="blog.html">블로그 이미지</a><a class="btn small" href="video.html">영상 만들기</a></div></div>
 <div class="muted" style="margin-top:4px">키워드를 한 줄에 하나씩 넣으면(최대 50개) 키워드마다 지금 네이버 통합검색 위쪽에 뜨는 블로그 글들의 길이·소제목·사진 수를 보고, 키워드를 제목 맨 앞에 둔 새 원고를 자동으로 써요. 위쪽 글과 비슷한 짜임으로 쓰되 문장은 새로 써요 (같은 문장은 네이버가 유사문서로 묶어서 안 떠요).</div></div>
 
 <div class="card"><div class="form">
 <label class="wide">키워드 (한 줄에 하나, 최대 50개)<textarea id="kw" class="kwbox" placeholder="이수역한의원&#10;원주교통사고한의원&#10;…"></textarea></label>
-<label>키워드마다<select id="n"></select></label>
-<label>주제 (안 써도 돼요)<input id="topic" placeholder="예: 교통사고, 다이어트"></label>
+<select id="n" hidden></select>
 </div>
 <div class="row" style="margin-top:8px"><span class="muted" id="kwcount"></span></div>
 <div class="row" style="margin-top:12px"><button class="btn primary" id="go">상위 글 보고 원고 뽑기</button><button class="btn" id="stop" style="display:none">멈추기</button><span class="muted" id="st"></span></div>
@@ -89,7 +88,7 @@ function facts(){const c=client();if(!c)return {name:"",feats:[],site:""};const 
 /* ── 키워드 목록 ── */
 const norm=k=>String(k||"").trim().replace(/\s+/g," ");
 function kwList(){const seen=new Set();return $("kw").value.split(/\n|,/).map(norm).filter(k=>k&&!seen.has(k)&&seen.add(k));}
-function kwCount(){const n=kwList().length;$("kwcount").textContent=n?`키워드 ${n}개${n>50?" (50개까지만 써요)":""} · 원고 ${Math.min(n,50)*(+$("n").value)}개`:"";}
+function kwCount(){const n=kwList().length;$("kwcount").textContent=n?`키워드 ${n}개${n>50?" (50개까지만 써요)":""} · 키워드마다 원고 1개`:"";}
 $("kw").addEventListener("input",()=>{kwCount();ls.set("gs-write-kws",$("kw").value);});$("n").onchange=kwCount;
 
 /* ── 상위 글 ── */
@@ -146,7 +145,7 @@ async function runJob(J){const f=facts();J.err="";
     if(!r.ok){J.step="";J.err="상위 글을 못 읽었어요: "+(r.error||"")+fnHint(r.error);soon();return;}J.refs=topRefs(r.refs||[]);J.g=null;if(JOBS[CUR]===J)renderRefs();}
   if(STOP)return;
   if(!J.items){J.step="titles";soon();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,30);
-    const r=await fn({action:"wtitles",kw:J.kw,n:J.n,name:f.name,topic:$("topic").value.trim(),refs:J.refs.map(slim),avoid});
+    const r=await fn({action:"wtitles",kw:J.kw,n:J.n,name:f.name,refs:J.refs.map(slim),avoid});
     if(!r.ok||!(r.items||[]).length){J.step="";J.err="제목을 못 정했어요: "+(r.error||"")+fnHint(r.error);soon();return;}
     J.items=r.items.slice(0,J.n).map(x=>({title:fixTitle(x.title,J.kw),angle:x.angle,outline:x.outline,state:"wait"}));}
   J.step="";soon();
