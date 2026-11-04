@@ -52,7 +52,7 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 
 <div class="card" id="refc" style="display:none"><h2 id="refh">통합검색 위쪽 블로그 글</h2><div class="tbl"><table><thead><tr><th>통합</th><th>블로그탭</th><th>제목 · 소제목</th><th>글자</th><th>사진</th></tr></thead><tbody id="refs"></tbody></table></div><div class="sum" id="avg"></div></div>
 
-<div class="card" id="drc" style="display:none"><div class="row" style="justify-content:space-between"><h2 style="margin:0" id="drh">원고</h2><div class="row"><button class="btn small" id="zip">전체 받기 (txt 묶음)</button><button class="btn small" id="cpall">이 키워드 모두 복사</button></div></div>
+<div class="card" id="drc" style="display:none"><div class="row" style="justify-content:space-between"><h2 style="margin:0" id="drh">원고</h2><div class="row"><button class="btn small primary" id="xlsx">엑셀 받기</button><button class="btn small" id="zip">전체 받기 (txt 묶음)</button><button class="btn small" id="cpall">이 키워드 모두 복사</button></div></div>
 <div class="muted" style="margin:4px 0 10px">원고마다 통합검색 위쪽 블로그 글 하나를 골라 흐름은 살리고 문장만 바꿔 썼어요. 겹침은 그 바탕 글과 똑같은 글자 줄이 얼마나 되는지예요. 25% 넘으면 그 부분을 조금 더 고쳐 주세요. 붉은 낱말은 의료광고법에 걸릴 수 있는 말이에요. 위 목록에서 키워드를 누르면 그 키워드 원고가 보여요.</div>
 <div id="drs" style="display:flex;flex-direction:column;gap:12px"></div></div>
 
@@ -209,8 +209,9 @@ async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.l
   const q=JOBS.slice();await Promise.all([0,1,2].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
   await retryFailed();
   BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
+  if(JOBS.some(J=>(J.items||[]).some(d=>d.state==="done")))saveXlsx();
   const ok=JOBS.reduce((s,J)=>s+(J.items||[]).filter(d=>d.state==="done").length,0),bad=JOBS.filter(J=>J.err).length;
-  msg(STOP?`멈췄어요. 원고 ${ok}개는 써 두었어요.`:`원고 ${ok}/${total}개를 썼어요.`+(bad?` 키워드 ${bad}개는 못 했어요. 목록에서 "다시"를 눌러 주세요.`:"")+(ok<total&&!bad&&!STOP?` 못 쓴 원고는 그 칸의 "다시 쓰기"를 눌러 주세요.`:""),ok===total?"ok":"warn");}
+  msg(STOP?`멈췄어요. 원고 ${ok}개는 써 두었어요.`:`원고 ${ok}/${total}개를 썼어요.`+(bad?` 키워드 ${bad}개는 못 했어요. 목록에서 "다시"를 눌러 주세요.`:"")+(ok<total&&!bad&&!STOP?` 못 쓴 원고는 그 칸의 "다시 쓰기"를 눌러 주세요.`:"")+(ok?" 엑셀 파일도 받아 두었어요.":""),ok===total?"ok":"warn");}
 $("go").onclick=runAll;
 /* 제목만 뽑기: 키워드마다 제목 5개 (키워드는 맨 앞 그대로) */
 let TL=[];
@@ -256,6 +257,25 @@ const fname=s=>String(s||"").replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,50);
 
 $("zip").onclick=()=>{const files=[];JOBS.forEach((J,ji)=>(J.items||[]).filter(d=>d.state==="done").forEach((d,i)=>files.push({name:`${String(ji+1).padStart(2,"0")}_${fname(J.kw)}/${String(i+1).padStart(2,"0")}_${fname(d.title)}.txt`,text:"﻿"+full(d).replace(/\n/g,"\r\n")})));
   if(!files.length)return;const z=zip(files),a=document.createElement("a");a.href=URL.createObjectURL(z);a.download=`원고_${JOBS.length>1?"키워드"+JOBS.length+"개":fname(JOBS[0].kw)}_${new Date().toISOString().slice(0,10)}.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
+/* 엑셀: 제목 | 내용 | 키워드 | 예약일자(빈칸) — 다 쓴 원고 전부, 키워드 순서대로 */
+function xesc(t){return String(t??"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function xlsxBlob(rows){const col=i=>"ABCD"[i];
+  const cell=(r,i,v,st)=>`<c r="${col(i)}${r}" t="inlineStr" s="${st}"><is><t xml:space="preserve">${xesc(v)}</t></is></c>`;
+  const head=`<row r="1">${["제목","내용","키워드","예약일자"].map((v,i)=>cell(1,i,v,1)).join("")}</row>`;
+  const body=rows.map((x,k)=>`<row r="${k+2}">${cell(k+2,0,x[0],2)}${cell(k+2,1,x[1],2)}${cell(k+2,2,x[2],2)}<c r="D${k+2}" s="2"/></row>`).join("");
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="40" customWidth="1"/><col min="2" max="2" width="80" customWidth="1"/><col min="3" max="3" width="30" customWidth="1"/><col min="4" max="4" width="16" customWidth="1"/></cols><sheetData>${head}${body}</sheetData></worksheet>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="맑은 고딕"/></font><font><b/><sz val="11"/><name val="맑은 고딕"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="3"><xf/><xf fontId="1" applyFont="1"/><xf applyAlignment="1"><alignment vertical="top"/></xf></cellXfs></styleSheet>`;
+  return zip([
+    {name:"[Content_Types].xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`},
+    {name:"_rels/.rels",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {name:"xl/workbook.xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="원고" sheetId="1" r:id="rId1"/></sheets></workbook>`},
+    {name:"xl/_rels/workbook.xml.rels",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:"xl/worksheets/sheet1.xml",text:sheet},{name:"xl/styles.xml",text:styles}]);}
+function saveXlsx(){const rows=[];JOBS.forEach(J=>(J.items||[]).filter(d=>d.state==="done").forEach(d=>rows.push([d.title,clean(d.body).slice(0,32000),J.kw])));
+  if(!rows.length){msg("받을 원고가 아직 없어요.","warn");return false;}
+  const b=new Blob([xlsxBlob(rows)],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),a=document.createElement("a");a.href=URL.createObjectURL(b);
+  a.download=`원고_${JOBS.length>1?"키워드"+JOBS.length+"개":fname(JOBS[0].kw)}_${new Date().toISOString().slice(0,10)}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);return true;}
+$("xlsx").onclick=saveXlsx;
 $("cpall").onclick=async()=>{const J=JOBS[CUR];const ok=((J&&J.items)||[]).filter(d=>d.state==="done");if(!ok.length)return;await copy(ok.map(full).join("\n\n────────────\n\n"));$("cpall").textContent="복사했어요";setTimeout(()=>$("cpall").textContent="이 키워드 모두 복사",1500);};
 
 
