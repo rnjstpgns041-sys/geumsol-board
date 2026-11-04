@@ -35,10 +35,10 @@ td.n{text-align:right;white-space:nowrap}a{color:var(--accent)}
 .form{grid-template-columns:1fr}@media(max-width:800px){.form{grid-template-columns:1fr 1fr}.form .wide{grid-column:1/-1}}
 </style></head><body><div class="wrap">
 <div class="card"><div class="row" style="justify-content:space-between"><h1>금솔 원고공방 <small class="muted" style="font-size:14px;font-weight:500">상위 블로그 글로 새 원고를 한 번에</small></h1></div>
-<div class="muted" style="margin-top:4px">키워드를 한 줄에 하나씩 넣으면(최대 50개) 키워드마다 지금 네이버 통합검색 위쪽에 뜨는 블로그 글들의 길이·소제목·사진 수를 보고, 키워드를 제목 맨 앞에 둔 새 원고를 자동으로 써요. 위쪽 글과 비슷한 짜임으로 쓰되 문장은 새로 써요 (같은 문장은 네이버가 유사문서로 묶어서 안 떠요).</div></div>
+<div class="muted" style="margin-top:4px">키워드를 한 줄에 하나씩 넣으면(최대 200개) 키워드마다 지금 네이버 통합검색 위쪽에 뜨는 블로그 글들의 길이·소제목·사진 수를 보고, 키워드를 제목 맨 앞에 둔 새 원고를 자동으로 써요. 위쪽 글과 비슷한 짜임으로 쓰되 문장은 새로 써요 (같은 문장은 네이버가 유사문서로 묶어서 안 떠요).</div></div>
 
 <div class="card"><div class="form">
-<label class="wide">키워드 (한 줄에 하나, 최대 50개)<textarea id="kw" class="kwbox"></textarea></label>
+<label class="wide">키워드 (한 줄에 하나, 최대 200개)<textarea id="kw" class="kwbox"></textarea></label>
 <select id="n" hidden></select>
 </div>
 <div class="row" style="margin-top:8px"><span class="muted" id="kwcount"></span></div>
@@ -93,7 +93,7 @@ function facts(){const c=client();if(!c)return {name:"",feats:[],site:""};const 
 /* ── 키워드 목록 ── */
 const norm=k=>String(k||"").trim().replace(/\s+/g," ");
 function kwList(){const seen=new Set();return $("kw").value.split(/\n|,/).map(norm).filter(k=>k&&!seen.has(k)&&seen.add(k));}
-function kwCount(){const n=kwList().length;$("kwcount").textContent=n?`키워드 ${n}개${n>50?" (50개까지만 써요)":""} · 키워드마다 원고 1개`:"";}
+function kwCount(){const n=kwList().length;$("kwcount").textContent=n?`키워드 ${n}개${n>200?" (200개까지만 써요)":""} · 키워드마다 원고 1개`:"";}
 $("kw").addEventListener("input",()=>{kwCount();ls.set("gs-write-kws",$("kw").value);});$("n").onchange=kwCount;
 
 /* ── 상위 글 ── */
@@ -202,7 +202,7 @@ async function retryFailed(){for(let round=0;round<2&&!STOP;round++){
   for(const J of bad){if(STOP)return;if(J.err){if(J.items)continue;J.err="";J.refs=null;$("st").textContent=`다시 해 보는 중… ${J.kw}`;await runJob(J);soon();continue;}
     for(const d of J.items.filter(d=>d.state!=="done")){if(STOP)return;$("st").textContent=`못 쓴 원고 다시 쓰는 중… ${J.kw}`;d.state="wait";d.err="";soon();await one(J,d);soon();}
     saveJob(J);}}}
-async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
+async function runAll(){const kws=kwList().slice(0,200),n=+$("n").value;if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("go").disabled=true;$("stop").style.display="";
   const c=client(),stamp=Date.now().toString(36);JOBS=kws.map((kw,i)=>({kw,n,id:`w${stamp}${i.toString(36)}`,cid:c?c.id:"",client:c?c.name:""}));CUR=0;renderAll();
   const total=kws.length*n;let done=0;TICK=()=>{done++;prog(done/total,`원고 쓰는 중… ${done}/${total}`);};prog(.02,`원고 쓰는 중… 0/${total}`);
@@ -215,7 +215,7 @@ async function runAll(){const kws=kwList().slice(0,50),n=+$("n").value;if(!kws.l
 $("go").onclick=runAll;
 /* 제목만 뽑기: 키워드마다 제목 5개 (키워드는 맨 앞 그대로) */
 let TL=[];
-async function runTitles(){const kws=kwList().slice(0,50);if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
+async function runTitles(){const kws=kwList().slice(0,200);if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("tgo").disabled=$("go").disabled=true;
   TL=kws.map(kw=>({kw,ts:null}));drawTL();$("tc").style.display="";let done=0;prog(.02,`제목 짓는 중… 0/${kws.length}`);
   const q=TL.slice();await Promise.all([0,1,2].map(async()=>{while(q.length&&!STOP){const T=q.shift();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(T.kw)).slice(0,20);
