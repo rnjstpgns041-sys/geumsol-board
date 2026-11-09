@@ -429,13 +429,18 @@ ${refBrief(refs) || "(없음)"}
 - 말투: 쉬운 존댓말(~요, ~습니다 섞기).
 - 같은 글에 쓸 수 있는 다른 제목도 5개 더: 모두 "${kw}"로 시작, 뒤는 서로 다르게.
 JSON 하나로만: {"title":"제목","titles":["다른 제목1","다른 제목2","다른 제목3","다른 제목4","다른 제목5"],"body":"본문 전체(제목 빼고)"}`;
-    try {
-      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000, 60000, !b.slow);
-      const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
-      if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
-      const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
-      return j({ ok: true, title, body, titles });
-    } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+    // 가벼운 모델 먼저, 실패하거나 너무 짧으면 보통 모델로 한 번 더
+    const t0 = Date.now(); let err: unknown = null;
+    for (const lite of b.slow ? [false] : [true, false]) {
+      try {
+        const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, t0 + 125000, lite ? 50000 : 70000, lite);
+        const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
+        if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
+        const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
+        return j({ ok: true, title, body, titles });
+      } catch (e) { err = e; if (Date.now() - t0 > 70000) break; }
+    }
+    return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((err as Error)?.message || err).slice(0, 160) + ")" });
   }
   // 상위 글 하나를 바탕으로 비슷한 듯 다르게 바꿔 쓰기 (흐름·내용 순서·길이는 그대로, 문장은 모두 새로)
   if (b.action === "wspin") {
@@ -469,13 +474,17 @@ ${src}"""
 - ${lawRule} 바탕 글에 이런 표현이 있으면 안전한 말로 바꾸기.
 - 같은 글에 쓸 수 있는 다른 제목도 5개 더: 모두 "${kw}"로 시작, 뒤는 서로 다르게, 공백 포함 18~32자.
 JSON 하나로만: {"title":"제목","titles":["다른 제목1","다른 제목2","다른 제목3","다른 제목4","다른 제목5"],"body":"본문 전체(제목 빼고)"}`;
-    try {
-      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 130000, 85000, !b.slow);
-      const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
-      if (body.replace(/\s/g, "").length < Math.min(600, chars * 0.5)) throw new Error("원고가 너무 짧게 나왔어요");
-      const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
-      return j({ ok: true, title, body, titles });
-    } catch (e) { return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((e as Error).message || e).slice(0, 160) + ")" }); }
+    const t0 = Date.now(); let err: unknown = null;
+    for (const lite of b.slow ? [false] : [true, false]) {
+      try {
+        const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, t0 + 135000, lite ? 55000 : 75000, lite);
+        const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
+        if (body.replace(/\s/g, "").length < Math.min(600, chars * 0.5)) throw new Error("원고가 너무 짧게 나왔어요");
+        const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
+        return j({ ok: true, title, body, titles });
+      } catch (e) { err = e; if (Date.now() - t0 > 75000) break; }
+    }
+    return j({ ok: false, error: "원고를 쓰지 못했어요. (" + String((err as Error)?.message || err).slice(0, 160) + ")" });
   }
   if (b.action === "wdraft") {
     if (!gemk) return j({ ok: false, error: "제미나이 키(GEMINI_KEY)가 아직 없어요." });
