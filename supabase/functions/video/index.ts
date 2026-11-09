@@ -125,10 +125,13 @@ Deno.serve(async (req) => {
     const extra = kind === "image" ? ["gemini-2.5-flash-image"] : ["gemini-flash-latest", "gemini-flash-lite-latest", ...pro];
     return [...new Set([...list, ...pre, ...extra])];
   }
-  async function gemAuto(kind: "text" | "image", body: unknown, until = 0, cap = 45000) {
+  async function gemAuto(kind: "text" | "image", body: unknown, until = 0, cap = 45000, lite = false) {
     let last: unknown = null; const tried: string[] = [];
+    // lite: 원고 쓰기처럼 빨라야 할 때 가벼운(lite) 모델을 먼저 (2배쯤 빠름), 안 되면 보통 모델로
+    let ms = await models(kind);
+    if (lite) ms = [...ms.filter((n) => /lite/.test(n)), ...ms.filter((n) => !/lite/.test(n))];
     // 없는 모델이면 다음 모델로, 붐비면(503·429) 잠깐 쉬고 한 번 더 한 뒤 다음 모델로
-    for (const m of (await models(kind)).slice(0, 8)) {
+    for (const m of ms.slice(0, 8)) {
       if (until && Date.now() > until - 4000) break; // 시간이 다 되면 그만 (함수가 통째로 끊기지 않게)
       tried.push(m);
       for (let k = 0; k < 2; k++) {
@@ -344,7 +347,7 @@ JSON 하나로만: {"title":["제목 첫 줄","제목 둘째 줄"],"lines":["문
     if (!kw) return j({ ok: false, error: "키워드를 넣어 주세요." });
     const n = Math.max(3, Math.min(10, Number(b.n) || 6));
     const q = encodeURIComponent(kw);
-    const [bh, th] = await Promise.all([nget("https://search.naver.com/search.naver?ssc=tab.blog.all&query=" + q), nget("https://search.naver.com/search.naver?where=nexearch&query=" + q)]);
+    const [bh, th] = await Promise.all([nget("https://search.naver.com/search.naver?ssc=tab.blog.all&query=" + q, 8000), nget("https://search.naver.com/search.naver?where=nexearch&query=" + q, 8000)]);
     const links = (s: string) => [...new Set([...s.matchAll(/blog\.naver\.com\/([A-Za-z0-9_-]+)\/(\d{6,})/g)].map((m) => m[1] + "/" + m[2]))];
     const bl = links(bh), tl = links(th);
     if (!bl.length && !tl.length) return j({ ok: false, blocked: true, error: "네이버 검색 결과를 읽지 못했어요." });
@@ -352,7 +355,7 @@ JSON 하나로만: {"title":["제목 첫 줄","제목 둘째 줄"],"lines":["문
     const pick = (b.src === "total" ? [...new Set([...tl, ...bl])] : bl).slice(0, n);
     const refs = await Promise.all(pick.map(async (id) => {
       const [bid, no] = id.split("/");
-      const h = await nget(`https://m.blog.naver.com/PostView.naver?blogId=${bid}&logNo=${no}`, 12000);
+      const h = await nget(`https://m.blog.naver.com/PostView.naver?blogId=${bid}&logNo=${no}`, 7000);
       const p = h ? parsePost(h) : { title: "", heads: [], paras: [], chars: 0, imgs: 0, map: false };
       const ti = tl.indexOf(id);
       return { url: `https://blog.naver.com/${id}`, rank: bl.indexOf(id) + 1, total: ti >= 0 ? ti + 1 : 0, title: p.title, heads: p.heads, chars: p.chars, imgs: p.imgs, map: p.map, kwN: p.paras.join("").replace(/\s/g, "").split(kw.replace(/\s+/g, "")).length - 1, paras: p.paras.slice(0, 400) };
@@ -399,9 +402,9 @@ JSON 하나로만: {"items":[{"title":"...","angle":"이 글이 다루는 한 �
   }
   // 원고 한 편: 정해 둔 제목·짜임으로, 상위 글 평균 길이·사진 수에 맞춰 새로 씀
   // 빠르게: 생각 단계(thinking)를 끄고 부름. 모델이 그 설정을 모르면 끄지 않고 다시 부름
-  async function gemFast(body: any, until: number, cap = 45000) {
-    try { return await gemAuto("text", { ...body, generationConfig: { ...(body.generationConfig || {}), thinkingConfig: { thinkingBudget: 0 } } }, until, cap); }
-    catch (e) { if (/thinking|budget|Invalid JSON payload|Unknown name/i.test(String((e as Error).message || e))) return await gemAuto("text", body, until, cap); throw e; }
+  async function gemFast(body: any, until: number, cap = 45000, lite = false) {
+    try { return await gemAuto("text", { ...body, generationConfig: { ...(body.generationConfig || {}), thinkingConfig: { thinkingBudget: 0 } } }, until, cap, lite); }
+    catch (e) { if (/thinking|budget|Invalid JSON payload|Unknown name/i.test(String((e as Error).message || e))) return await gemAuto("text", body, until, cap, lite); throw e; }
   }
   // 원고 한 편을 제목까지 한 번에 (키워드 하나에 원고 하나일 때, 제미나이를 한 번만 부름)
   if (b.action === "wone") {
@@ -427,7 +430,7 @@ ${refBrief(refs) || "(없음)"}
 - 같은 글에 쓸 수 있는 다른 제목도 5개 더: 모두 "${kw}"로 시작, 뒤는 서로 다르게.
 JSON 하나로만: {"title":"제목","titles":["다른 제목1","다른 제목2","다른 제목3","다른 제목4","다른 제목5"],"body":"본문 전체(제목 빼고)"}`;
     try {
-      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000);
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.95 } }, Date.now() + 110000, 60000, !b.slow);
       const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
       if (body.replace(/\s/g, "").length < 600) throw new Error("원고가 너무 짧게 나왔어요");
       const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);
@@ -467,7 +470,7 @@ ${src}"""
 - 같은 글에 쓸 수 있는 다른 제목도 5개 더: 모두 "${kw}"로 시작, 뒤는 서로 다르게, 공백 포함 18~32자.
 JSON 하나로만: {"title":"제목","titles":["다른 제목1","다른 제목2","다른 제목3","다른 제목4","다른 제목5"],"body":"본문 전체(제목 빼고)"}`;
     try {
-      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 130000, 85000);
+      const d = await gemFast({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: strong ? 1.0 : 0.8 } }, Date.now() + 130000, 85000, !b.slow);
       const g = gemJson(d), body = String(g.body || "").trim(), title = String(g.title || "").trim().slice(0, 60);
       if (body.replace(/\s/g, "").length < Math.min(600, chars * 0.5)) throw new Error("원고가 너무 짧게 나왔어요");
       const titles = (Array.isArray(g.titles) ? g.titles : []).map((x: unknown) => String(x || "").trim().slice(0, 60)).filter(Boolean).slice(0, 6);

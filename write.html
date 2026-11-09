@@ -225,7 +225,7 @@ async function autoAlts(J,d){if(d.state!=="done"||(Array.isArray(d.alts)&&d.alts
 let NOSPIN=false;const nap=ms=>new Promise(z=>setTimeout(z,ms));
 async function spin(J,d){const r0=(d.base&&(J.refs||[]).find(x=>x.url===d.base.url))||baseFor(J,(J.items||[]).indexOf(d));if(!r0)return false;
   d.base={url:r0.url,title:r0.title,total:r0.total,chars:r0.chars};const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(J.kw)).slice(0,12);
-  for(let k=0;k<3;k++){if(STOP)return true;const r=await fn(Object.assign({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0&&d.state==="done"},ctx(J)));
+  for(let k=0;k<3;k++){if(STOP)return true;if(k>0&&d.state==="done"&&stats(d,J).ov<=35)return true;if(k>1&&d.state==="done")return true;const r=await fn(Object.assign({action:"wspin",kw:J.kw,ref:{title:r0.title,heads:r0.heads||[],paras:r0.paras||[]},avoid,strong:k>0&&d.state==="done"},ctx(J)));
     if(!r.ok&&isOld(r.error)){NOSPIN=true;delete d.base;return false;}
     if(r.ok){Object.assign(d,{state:"done",title:fixTitle(r.title||J.kw,J.kw),body:clean(r.body),tags:[],err:"",cut:[]});d.alts=altsOf(J,d,r.titles);scrub(d,J);if(stats(d,J).ov<=25)return true;}else{d.err=r.error||"원고를 쓰지 못했어요.";await nap(2500*(k+1));}}
   if(d.state!=="done")delete d.base;return d.state==="done";}
@@ -261,7 +261,7 @@ async function runAll(){const kws=kwList().slice(0,200),n=+$("n").value;if(!kws.
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("go").disabled=true;$("stop").style.display="";
   const c=client(),stamp=Date.now().toString(36);const fld=norm($("field").value),cn=norm($("cname").value),ci=norm($("cinfo").value);JOBS=kws.map((kw,i)=>({kw,n,id:`w${stamp}${i.toString(36)}`,cid:c?c.id:"",client:cn||(c?c.name:""),field:fld,cname:cn,cinfo:ci}));CUR=0;renderAll();
   const total=kws.length*n;let done=0;TICK=()=>{done++;prog(done/total,`원고 쓰는 중… ${done}/${total}`);};prog(.02,`원고 쓰는 중… 0/${total}`);
-  const q=JOBS.slice();await Promise.all([0,1,2].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
+  const q=JOBS.slice();await Promise.all([0,1,2,3,4,5].map(async()=>{while(q.length&&!STOP){await runJob(q.shift());}}));
   await retryFailed();
   BUSY=false;$("go").disabled=false;$("stop").style.display="none";prog(null);renderAll();loadHist();
   if(JOBS.some(J=>(J.items||[]).some(d=>d.state==="done")))saveXlsx();
@@ -273,7 +273,7 @@ let TL=[];
 async function runTitles(){const kws=kwList().slice(0,200);if(!kws.length){msg("키워드를 넣어 주세요.","warn");return;}
   if(BUSY||!await needPW())return;BUSY=true;STOP=false;msg("");$("tgo").disabled=$("go").disabled=true;
   TL=kws.map(kw=>({kw,ts:null}));drawTL();$("tc").style.display="";let done=0;prog(.02,`제목 짓는 중… 0/${kws.length}`);
-  const q=TL.slice();await Promise.all([0,1,2].map(async()=>{while(q.length&&!STOP){const T=q.shift();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(T.kw)).slice(0,20);
+  const q=TL.slice();await Promise.all([0,1,2,3,4,5].map(async()=>{while(q.length&&!STOP){const T=q.shift();const avoid=HIST.flatMap(h=>(h.items||[]).map(x=>x.title)).filter(t=>t&&t.startsWith(T.kw)).slice(0,20);
     for(let k=0;k<3;k++){const r=await fn({action:"wtitles",kw:T.kw,n:5,refs:[],avoid});if(r.ok&&(r.items||[]).length){T.ts=[...new Set(r.items.map(x=>fixTitle(x.title,T.kw)))];break;}T.err=r.error||"못 지었어요";await nap(2500*(k+1));}
     done++;prog(done/kws.length,`제목 짓는 중… ${done}/${kws.length}`);drawTL();}}));
   BUSY=false;$("tgo").disabled=$("go").disabled=false;prog(null);drawTL();const bad=TL.filter(T=>!T.ts).length;msg(bad?`키워드 ${bad}개는 제목을 못 지었어요. 다시 눌러 주세요.`:`제목 ${TL.reduce((s,T)=>s+T.ts.length,0)}개를 지었어요.`,bad?"warn":"ok");$("tc").scrollIntoView({behavior:"smooth"});}
