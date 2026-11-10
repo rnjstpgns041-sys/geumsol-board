@@ -3,7 +3,7 @@
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2;--red:#e03131}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017;--red:#ff6b6b}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
 .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
 h1{font-size:21px;margin:0}h2{font-size:16px;margin:0}.muted{color:var(--muted);font-size:13px}
@@ -32,7 +32,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 #frames iframe{width:1280px;height:900px;border:0;position:absolute;left:0;top:0}
 </style></head><body><div class="wrap">
 <div class="card"><h1>블로그 순위 캡처</h1>
-<div class="muted" style="margin-top:4px">블로그 아이디와 키워드를 넣으면 네이버 PC 검색에서 그 블로그 글이 몇 위인지 찾고, 글 자리에 <b style="color:var(--red)">빨간 네모</b>를 친 캡처를 만들어요. 광고·홈페이지·플레이스·뉴스·동영상은 순위에서 빼고 블로그·카페 글만 셉니다 (순위판과 같은 규칙).</div></div>
+<div class="muted" style="margin-top:4px">블로그 아이디와 키워드를 넣으면 네이버 PC 검색에서 그 블로그 글이 몇 위인지 찾고, 글 자리에 <b style="color:var(--red)">빨간 네모</b>를 친 캡처를 만들어요. 광고·홈페이지·플레이스·뉴스·동영상은 순위에서 빼고 블로그·카페 글만 셉니다.</div></div>
 
 <div class="card"><div class="form">
 <label>블로그 아이디 <small>여러 개면 쉼표나 줄바꿈으로 · 블로그 주소를 붙여 넣어도 돼요 · 카페 주소도 돼요</small><textarea id="ids" style="min-height:130px" placeholder="harfangek3&#10;https://blog.naver.com/chicoteu2n"></textarea></label>
