@@ -1,6 +1,7 @@
 // 금솔 팀 사이트 영상 만들기: 슈퍼쇼츠 키를 Supabase 비밀값(SUPERSHORTS_KEY)에 숨겨 두고 대신 불러 주는 함수.
 // 필요한 비밀값(Edge Functions > Secrets): SUPERSHORTS_KEY (ss_live_...), VIDEO_PW (영상 비밀번호)
 // 있으면 쓰는 비밀값: GOOGLE_TTS_KEY (구글 음성), PIXABAY_KEY 또는 PEXELS_KEY (대본에 맞는 무료 사진), GEMINI_KEY (홈페이지 정리·나노바나나)
+// 블로그 순위·캡처(rank.html): action npage(네이버 검색 화면 HTML) · nres(그 화면의 CSS·사진)
 // 원고 여러 개 뽑기(write.html): action serp(네이버 상위 글 모양) · wtitles(제목·짜임) · wdraft(원고 한 편), GEMINI_KEY 사용
 // 함수 설정에서 "Verify JWT"는 꺼 두세요 (사이트는 로그인 없이 부름, 대신 VIDEO_PW로 막음).
 const SS = "https://www.supershorts.co.kr/api/business";
@@ -361,6 +362,38 @@ JSON 하나로만: {"title":["제목 첫 줄","제목 둘째 줄"],"lines":["문
       return { url: `https://blog.naver.com/${id}`, rank: bl.indexOf(id) + 1, total: ti >= 0 ? ti + 1 : 0, title: p.title, heads: p.heads, chars: p.chars, imgs: p.imgs, map: p.map, kwN: p.paras.join("").replace(/\s/g, "").split(kw.replace(/\s+/g, "")).length - 1, paras: p.paras.slice(0, 400) };
     }));
     return j({ ok: true, kw, refs });
+  }
+  // 블로그 순위·캡처(rank.html): 네이버 PC 통합검색/블로그탭 화면 HTML을 그대로 돌려줌 (순위 계산·빨간 네모 캡처는 사이트에서)
+  if (b.action === "npage") {
+    const kw = String(b.kw || "").trim().slice(0, 60);
+    if (!kw) return j({ ok: false, error: "키워드를 넣어 주세요." });
+    const q = encodeURIComponent(kw);
+    const url = b.tab === "blog" ? "https://search.naver.com/search.naver?ssc=tab.blog.all&query=" + q : "https://search.naver.com/search.naver?where=nexearch&query=" + q;
+    let html = await nget(url, 12000);
+    if (!html) html = await nget(url, 12000);
+    if (!html || !/main_pack/.test(html)) return j({ ok: false, blocked: true, error: "네이버 검색 화면을 읽지 못했어요. 잠시 후 다시 해 주세요." });
+    return j({ ok: true, kw, url, html });
+  }
+  // rank.html 캡처용: 네이버 화면이 쓰는 CSS·사진을 대신 받아 줌 (네이버 주소만)
+  if (b.action === "nres") {
+    const list = (Array.isArray(b.urls) ? b.urls : []).slice(0, 40).map(String);
+    const out: Record<string, { ct: string; text?: string; b64?: string }> = {};
+    let total = 0;
+    await Promise.all(list.map(async (s) => {
+      let u: URL; try { u = new URL(s); } catch { return; }
+      if (u.protocol !== "https:" || !/(^|\.)(pstatic\.net|naver\.com|naver\.net)$/.test(u.hostname)) return;
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000);
+      try {
+        const r = await fetch(u, { headers: { ...NV_UA, Referer: "https://search.naver.com/" }, signal: ctl.signal });
+        if (!r.ok) return;
+        const ct = (r.headers.get("content-type") || "").split(";")[0];
+        const buf = new Uint8Array(await r.arrayBuffer());
+        if (buf.length > 3_000_000 || total + buf.length > 9_000_000) return;
+        total += buf.length;
+        out[s] = /css|text/.test(ct) ? { ct, text: new TextDecoder().decode(buf) } : { ct, b64: b64(buf) };
+      } catch { /* 빈칸 */ } finally { clearTimeout(tm); }
+    }));
+    return j({ ok: true, res: out });
   }
   // 상위 글 모양을 보고 제목 n개 + 글마다 다른 짜임을 정함 (키워드는 제목 맨 앞 그대로)
   const lawRule = "의료광고법: 최고, 최초, 유일, 1위, 완치, 100%, 부작용 없음, 보장, 확실, 특효, 치료 후기·체험담, 전후 비교, 가격 할인·이벤트, 다른 병원 비교·비방 금지. 효과는 '도움이 될 수 있어요'처럼 조심스럽게.";

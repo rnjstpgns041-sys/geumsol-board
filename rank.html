@@ -1,0 +1,386 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>블로그 순위 캡처</title>
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--line:#dfe5dc;--fg:#17211b;--muted:#65736a;--accent:#1d6b48;--soft:#e2efe7;--bad:#b83a2e;--badbg:#fbe3df;--warn:#9a6700;--warnbg:#fbf0d2;--red:#e03131}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1512;--card:#171f1b;--line:#26312b;--fg:#e6ede8;--muted:#9aaba1;--accent:#5fc493;--soft:#1b3428;--bad:#f28b7f;--badbg:#42221e;--warn:#e8bf5c;--warnbg:#3a3017;--red:#ff6b6b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+h1{font-size:21px;margin:0}h2{font-size:16px;margin:0}.muted{color:var(--muted);font-size:13px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600}
+input,select,textarea{font:inherit;color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:7px 10px;background:var(--card);width:100%}
+textarea{min-height:130px;resize:vertical;line-height:1.6;font-size:14.5px}
+.form{display:grid;grid-template-columns:1fr 1.4fr;gap:12px;align-items:start}@media(max-width:760px){.form{grid-template-columns:1fr}}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:9px 16px;cursor:pointer;font:inherit;font-weight:700;color:var(--fg);text-decoration:none;display:inline-block}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn:disabled{opacity:.5;cursor:default}.btn.small{padding:5px 10px;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}.seg button{border:0;background:var(--card);color:var(--fg);font:inherit;font-size:14px;padding:7px 14px;cursor:pointer}.seg button[aria-pressed=true]{background:var(--accent);color:#fff;font-weight:700}
+.msg{border-radius:10px;padding:10px 12px;font-size:14px}.msg.err{background:var(--badbg);color:var(--bad)}.msg.warn{background:var(--warnbg);color:var(--warn)}.msg.ok{background:var(--soft);color:var(--accent)}
+.bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:middle}th{color:var(--muted);font-weight:600;font-size:12.5px;white-space:nowrap}
+.tbl{overflow-x:auto}a{color:var(--accent)}
+.rk{font-weight:800;font-size:16px;color:var(--red);white-space:nowrap}.rk.no{color:var(--muted);font-weight:600;font-size:14px}
+.st{font-size:13px;color:var(--muted);white-space:nowrap}.st.e{color:var(--bad)}
+.shots{display:flex;flex-direction:column;gap:14px}
+.shot{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.shot img{max-width:100%;border:1px solid var(--line);border-radius:6px;cursor:zoom-in;display:block;background:#fff}
+.shot .hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.shot .hd b{font-size:15px}.links{font-size:13px;word-break:break-all}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px}.modal>div{background:var(--card);border-radius:14px;padding:16px;max-width:420px;width:100%}
+.big{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.75);overflow:auto;padding:20px;cursor:zoom-out}.big img{display:block;margin:0 auto;max-width:none;background:#fff}
+#frames{position:fixed;left:-20000px;top:0;width:1280px;height:900px;overflow:hidden;pointer-events:none}
+#frames iframe{width:1280px;height:900px;border:0;position:absolute;left:0;top:0}
+</style></head><body><div class="wrap">
+<div class="card"><h1>블로그 순위 캡처</h1>
+<div class="muted" style="margin-top:4px">블로그 아이디와 키워드를 넣으면 네이버 PC 검색에서 그 블로그 글이 몇 위인지 찾고, 글 자리에 <b style="color:var(--red)">빨간 네모</b>를 친 캡처를 만들어요. 광고·홈페이지·플레이스·뉴스·동영상은 순위에서 빼고 블로그·카페 글만 셉니다 (순위판과 같은 규칙).</div></div>
+
+<div class="card"><div class="form">
+<label>블로그 아이디 <small>여러 개면 쉼표나 줄바꿈으로 · 블로그 주소를 붙여 넣어도 돼요 · 카페 주소도 돼요</small><textarea id="ids" style="min-height:130px" placeholder="harfangek3&#10;https://blog.naver.com/chicoteu2n"></textarea></label>
+<label>키워드 <small>한 줄에 하나 · 최대 50개</small><textarea id="kws" placeholder="수원한방병원&#10;상봉동한의원"></textarea></label>
+</div>
+<div class="row" style="margin-top:12px;justify-content:space-between">
+<div class="row"><span class="muted" style="font-weight:600">어디서 볼까요</span><div class="seg" id="tabs"><button data-t="total" aria-pressed="true">통합검색</button><button data-t="blog" aria-pressed="false">블로그탭</button><button data-t="both" aria-pressed="false">둘 다</button></div></div>
+<div class="row"><button class="btn" id="stop" hidden>멈추기</button><button class="btn primary" id="go">순위 확인 + 캡처</button></div>
+</div>
+<div id="note"></div><div class="bar" id="bar" hidden><i></i></div>
+</div>
+
+<div class="card" id="res" hidden>
+<div class="row" style="justify-content:space-between;margin-bottom:8px"><h2>결과</h2><div class="row"><button class="btn small" id="copy">결과 글 복사</button><button class="btn small" id="zipb">캡처 전부 받기 (ZIP)</button></div></div>
+<div class="tbl"><table><thead><tr><th>키워드</th><th>어디</th><th>순위</th><th>글</th><th>상태</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+<div class="shots" id="shots"></div>
+</div>
+<div id="frames" aria-hidden="true"></div>
+<script>
+const SB="https://dvszdngnghmpilmxvefn.supabase.co",KEY="sb_publishable_t0CDzd9HWB6eVeOHkD2u2Q_Y8kiPLmi",FN=SB+"/functions/v1/video";
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ls={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let PW=ls.get("gs-video-pw"),TAB=ls.get("gs-rank-tab")||"total",JOBS=[],RUN=false,STOP=false;
+const NAMES={total:"통합검색",blog:"블로그탭"};
+
+/* ── 함수 부르기 (영상 비밀번호 = 원고공방과 같은 비밀번호) ── */
+async function fn(b,ms=60000){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),ms);let r;
+  try{r=await fetch(FN,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json","x-video-key":PW},body:JSON.stringify(b),signal:ctl.signal});}
+  catch(e){return {ok:false,error:"서버에 연결하지 못했어요."};}finally{clearTimeout(tm);}
+  let d={};try{d=await r.json();}catch(e){d={ok:false,error:"서버 응답이 이상해요 ("+r.status+")."};}
+  if(r.status===401&&d.auth===false){PW="";ls.set("gs-video-pw","");}return d;}
+function askPw(){return new Promise(res=>{const m=document.createElement("div");m.className="modal";
+  m.innerHTML=`<div><h2 style="margin-bottom:8px">비밀번호</h2><div class="muted" style="margin-bottom:10px">원고공방·영상 만들기에서 쓰는 비밀번호예요. 한 번 넣으면 이 컴퓨터에 기억해요.</div><input id="pwi" type="password" autocomplete="current-password"><div id="pwm"></div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" id="pwx">닫기</button><button class="btn primary" id="pwok">확인</button></div></div>`;
+  document.body.appendChild(m);const close=v=>{m.remove();res(v);};$("pwi").focus();
+  $("pwx").onclick=()=>close(false);$("pwi").onkeydown=e=>{if(e.key==="Enter")$("pwok").click();};
+  $("pwok").onclick=async()=>{PW=$("pwi").value.trim();if(!PW)return;const r=await fn({action:"ping"});if(r.ok){ls.set("gs-video-pw",PW);close(true);}else $("pwm").innerHTML=`<div class="msg err" style="margin-top:8px">${esc(r.error||"비밀번호가 맞지 않아요.")}</div>`;};});}
+
+/* ── 네이버 화면 판정 (순위판 rank.js 와 같은 코드) ── */
+const EXTRACT = (mode, doc, win) => {
+  const info = a => {
+    const u = a.href;
+    if (!/^https?:/.test(u)) return null;
+    if (/ader\.naver|adcr\.naver|searchad|saedu\.naver|ads\.naver|mkt\.naver/.test(u)) return { t: 'ad', key: 'ad', author: 'ad' };
+    let m = u.match(/(?:m\.)?blog\.naver\.com\/([A-Za-z0-9_-]+)\/(\d+)/) || u.match(/blogId=([A-Za-z0-9_-]+).*logNo=(\d+)/);
+    if (m) return { t: 'blog', key: 'b:' + m[1] + '/' + m[2], author: 'b:' + m[1], url: 'https://blog.naver.com/' + m[1] + '/' + m[2] };
+    m = u.match(/cafe\.naver\.com\/(?:ca-fe\/web\/cafes\/)?([A-Za-z0-9_.-]+)\/(?:articles\/)?(\d+)/);
+    if (m) return { t: 'cafe', key: 'c:' + m[1] + '/' + m[2], author: 'c:' + m[1], url: 'https://cafe.naver.com/' + m[1] + '/' + m[2] };
+    if (/kin\.naver\.com\/qna\/(detail|dirs)/.test(u)) { const k = 'k:' + u.replace(/[?#].*/, '') + (u.match(/docId=\d+/) || [''])[0]; return { t: 'kin', key: k, author: 'kin', url: u }; }
+    if (/n\.news\.naver\.com|news\.naver\.com\/.*article|m\.news\.naver/.test(u)) return { t: 'news', key: 'n:' + u.replace(/[?#].*/, ''), author: 'news', url: u };
+    if (/tv\.naver\.com\/(v|l)\/|naver\.me|clip\.naver|shortform/.test(u) && !/search\.naver/.test(u)) return { t: 'video', key: 'v:' + u.replace(/[?#].*/, ''), author: 'video', url: u };
+    if (/in\.naver\.com\/[^/]+\/contents/.test(u)) return { t: 'influencer', key: 'i:' + u.replace(/[?#].*/, ''), author: 'inf', url: u };
+    if (/m\.post\.naver\.com|post\.naver\.com\/viewer/.test(u)) return { t: 'post', key: 'p:' + u.replace(/[?#].*/, ''), author: 'post', url: u };
+    if (/place\.naver|map\.naver|booking\.naver|pcmap/.test(u)) return { t: 'place', key: 'pl', author: 'place' };
+    if (/naver\.com|naver\.net|pstatic/.test(u)) return null;
+    // YouTube card (channel, video, shorts) = one video card; not counted since 2026-10-21 (user)
+    if (/^https?:\/\/([a-z]+\.)?(youtube\.com|youtu\.be)\//.test(u)) { const yv = (u.match(/[?&]v=([\w-]+)/) || [])[1]; const k = 'y:' + u.replace(/[?#].*/, '').replace(/\/(videos|featured|shorts)?$/, '') + (yv ? '?v=' + yv : ''); return { t: 'video', key: k, author: 'video', url: u }; }
+    const U = new URL(u);
+    return { t: 'site', key: 's:' + U.host + U.pathname, author: 's:' + U.host, url: u };
+  };
+  const links = [];
+  for (const a of doc.querySelectorAll('#main_pack a[href], #content a[href]')) {
+    const r = a.getBoundingClientRect(); if (r.height === 0 || r.width === 0) continue;
+    const i = info(a); if (!i) continue;
+    if (i.t === 'ad') { const bx = a.closest('.api_subject_bx'); const h = bx && bx.querySelector('h2'); if (h && /브랜드 ?콘텐츠/.test(h.textContent)) { i.t = 'brand'; i.key = 'br:' + a.href.replace(/[?#].*/, ''); i.author = i.key; i.url = a.href; } }
+    if (i.t === 'site' && a.closest('[class*="news"]')) { i.t = 'news'; i.author = 'news'; }
+    links.push({ a, ...i });
+  }
+  const MK = '.sds-comps-profile';
+  const nMk = e => e.querySelectorAll(MK).length + (e.matches && e.matches(MK) ? 1 : 0);
+  const cardOf = l => {
+    let e = l.a, hasMk = false;
+    while (e.parentElement && e.parentElement !== doc.body) {
+      const p = e.parentElement; const n = nMk(p);
+      if (n > 1) { if (hasMk || nMk(e) >= 1) return e; break; }
+      if (n === 1) hasMk = true;
+      e = p;
+    }
+    e = l.a;
+    while (e.parentElement && e.parentElement !== doc.body) {
+      const p = e.parentElement;
+      if (links.some(o => o !== l && p.contains(o.a) && o.author !== l.author)) return e;
+      e = p;
+    }
+    return e;
+  };
+  const cards = []; const seen = new Set();
+  doc.querySelectorAll('img[data-rkth]').forEach(x => x.removeAttribute('data-rkth'));
+  for (const l of links) {
+    const c = cardOf(l); if (seen.has(c)) continue; seen.add(c);
+    const inCard = links.filter(o => c.contains(o.a)); const main = inCard[0];
+    const titleA = inCard.filter(o => o.key === main.key).map(o => o.a.textContent.trim()).sort((x, y) => y.length - x.length)[0] || '';
+    const prof = c.querySelector(MK);
+    // the card's biggest rendered image outside the author profile = its search-result thumbnail (for the 노출 판매 check)
+    let th = null, ta = 0;
+    for (const im of c.querySelectorAll('img')) { if (im.closest(MK)) continue; const r = im.getBoundingClientRect(); if (r.width < 50 || r.height < 50) continue; if (r.width * r.height > ta) { ta = r.width * r.height; th = im; } }
+    let thId = null; if (th) { thId = String(cards.length); th.setAttribute('data-rkth', thId); }
+    cards.push({ th: thId, t: main.t, key: main.key, url: main.url, top: c.getBoundingClientRect().top + win.scrollY, keys: inCard.map(o => o.key), text: c.innerText.slice(0, 800), title: titleA.slice(0, 120), author: prof ? (prof.innerText.split('\n').map(x => x.trim()).filter(x => x && !/새 창/.test(x))[0] || '').slice(0, 40) : '' });
+  }
+  cards.sort((x, y) => x.top - y.top);
+  const counted = new Set(); const out = [];
+  for (const c of cards) {
+    // user rule 2026-10-21 (수원한방병원 4, 6위; "유튜브도 빼줘"): news cards and video cards (Naver clip/tv/shortform and YouTube) are not counted
+    if (['ad', 'place', 'site', 'news', 'video'].includes(c.t)) { out.push({ ...c, skip: c.t }); continue; }
+    if (mode === 'blog' && c.t !== 'blog') { out.push({ ...c, skip: 'nonblog' }); continue; }
+    if (c.keys.some(k => counted.has(k))) { out.push({ ...c, skip: 'dup' }); continue; }
+    c.keys.forEach(k => counted.add(k)); out.push(c);
+  }
+  return out;
+};
+const LAYOUT = (sels, FAR, doc, win) => {
+        // hide banners/popups and sticky bits
+        win.scrollTo(0, 0);
+        const qEl = doc.querySelector('#nx_query') || doc.querySelector('input[name=query]');
+        for (const x of doc.querySelectorAll('*')) { const ps = win.getComputedStyle(x).position; if (ps !== 'fixed' && ps !== 'sticky') continue; if (qEl && x.contains(qEl)) { x.style.setProperty('position', 'static', 'important'); continue; } if (ps === 'fixed') x.style.setProperty('display', 'none', 'important'); else x.style.setProperty('position', 'static', 'important'); }
+        doc.querySelectorAll('[class*="whale"]:not(:has(input)), [class*="ban_"]:not(:has(input))').forEach(x => x.style.setProperty('display', 'none', 'important'));
+        const MK = '.sds-comps-profile';
+        // card = nearest .sc_new ancestor if it's not huge, else profile-based block
+        const cardOf = a => {
+          let card = a.closest('.sc_new');
+          if (!card || card.querySelectorAll(MK).length > 1 || card.getBoundingClientRect().height > 700) {
+            let e = a;
+            while (e.parentElement && e.parentElement.querySelectorAll(MK).length <= 1) e = e.parentElement;
+            card = e;
+          }
+          return card;
+        };
+        const R = el => { const r = el.getBoundingClientRect(); return { x: r.left + win.scrollX, y: r.top + win.scrollY, w: r.width, h: r.height }; };
+        const box = card => {
+          const cr = card.getBoundingClientRect();
+          const ov = doc.createElement('div');
+          const pl = parseFloat(win.getComputedStyle(card).paddingLeft) || 0, o = pl < 8 ? -12 : 4, ov2 = pl < 8 ? -8 : 2;
+          Object.assign(ov.style, { position: 'absolute', left: (cr.left + win.scrollX + o) + 'px', top: (cr.top + win.scrollY + ov2) + 'px', width: (cr.width - 2 * o) + 'px', height: (cr.height - 2 * ov2) + 'px', border: '3px solid #ff0000', boxSizing: 'border-box', zIndex: 99999, pointerEvents: 'none', borderRadius: '6px' });
+          doc.body.appendChild(ov);
+        };
+        const cards = [];
+        for (const s of sels) { const a = doc.querySelector(s); if (!a) continue; const c = cardOf(a); const r = c.getBoundingClientRect(); if (r.height > 0 && !cards.includes(c)) cards.push(c); }
+        cards.sort((x, y) => R(x).y - R(y).y);
+        const first = cards.find(c => c.contains(doc.querySelector(sels[0]))) || cards[0];
+        cards.forEach(box);
+        const hdrEl = (doc.querySelector('#nx_query') || doc.querySelector('input[name=query]')).closest('form') || doc.querySelector('#header');
+        const h = R(hdrEl);
+        const mainEl = doc.querySelector('#main_pack');
+        const root = mainEl || doc.body;
+        const mainR = R(root);
+        const tops = [...root.querySelectorAll(MK)].map(p => p.getBoundingClientRect().top + win.scrollY).sort((x, y) => x - y);
+        // single card: its section, trimmed to ~2 cards above / below (the approved single-card style)
+        const single = card => {
+          let sec = card.parentElement;
+          while (sec && sec !== doc.body && !(sec.matches('.spw_fsolid, .sp_nreview, .api_subject_bx, section') && sec.querySelectorAll(MK).length > 1)) sec = sec.parentElement;
+          if (!sec || sec === doc.body) sec = card.parentElement;
+          const s = R(sec), c = R(card);
+          const sibs = [...sec.querySelectorAll(MK)].map(p => p.getBoundingClientRect().top + win.scrollY).sort((x, y) => x - y);
+          const idx = sibs.findIndex(t => t >= c.y - 2);
+          let y0 = s.y, y1 = s.y + s.h;
+          if (idx > 2) y0 = sibs[idx - 2] - 20;
+          if (idx >= 0 && idx + 3 < sibs.length) y1 = sibs[idx + 3] - 20;
+          y0 = Math.min(y0, c.y - 20); y1 = Math.max(y1, c.y + c.h + 20);
+          if (y1 - y0 > 1600) { y0 = Math.max(y0, c.y - 500); y1 = Math.min(y1, c.y + c.h + 500); }
+          return [y0, y1];
+        };
+        // several cards: from 1 card above the first to 1 card below the last
+        const multi = (ca, cb) => {
+          const a = R(ca), b = R(cb);
+          const i0 = tops.findIndex(t => t >= a.y - 2), i1 = tops.findIndex(t => t >= b.y + b.h - 2);
+          let y0 = i0 > 0 ? tops[i0 - 1] - 20 : a.y - 20;
+          let y1 = i1 >= 0 && i1 + 1 < tops.length ? tops[i1 + 1] - 20 : b.y + b.h + 200;
+          y0 = Math.max(Math.min(y0, a.y - 20), a.y - 600); y1 = Math.min(Math.max(y1, b.y + b.h + 20), b.y + b.h + 600);
+          return [y0, y1];
+        };
+        // group cards whose span stays within FAR px; each group becomes one crop
+        const groups = [];
+        for (const c of cards) { const g = groups[groups.length - 1]; if (g && R(c).y + R(c).h - R(g[0]).y <= FAR) g.push(c); else groups.push([c]); }
+        let segs = groups.map(g => g.length === 1 ? single(g[0]) : multi(g[0], g[g.length - 1]));
+        segs.sort((x, y) => x[0] - y[0]);
+        const merged = [];
+        for (const sg of segs) { const l = merged[merged.length - 1]; if (l && sg[0] <= l[1] + 40) l[1] = Math.max(l[1], sg[1]); else merged.push(sg.slice()); }
+        const W = mainR.x + mainR.w;
+        return { boxes: cards.length, hdr: { x: 0, y: Math.max(0, h.y - 14), w: W, h: h.h + 28 }, secs: merged.map(([y0, y1]) => ({ x: 0, y: y0 - 12, w: W, h: (y1 - y0) + 24 })) };
+      };
+
+/* ── 네이버 CSS·사진 받기: 바로 받아 보고 안 되면 함수가 대신 받음 ── */
+const RES=new Map();
+const isNv=u=>/^https:\/\/([a-z0-9-]+\.)*(pstatic\.net|naver\.com|naver\.net)\//i.test(u);
+async function direct(u,kind){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),5000);
+  try{const r=await fetch(u,{mode:"cors",credentials:"omit",signal:ctl.signal});if(!r.ok)return null;
+    if(kind==="css")return {text:await r.text()};const b=await r.blob();if(!/^image\//.test(b.type))return null;return {data:await blobUrl(b)};}
+  catch(e){return null;}finally{clearTimeout(tm);}}
+const blobUrl=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r(null);f.readAsDataURL(b);});
+async function getRes(urls,kind){
+  const need=[...new Set(urls)].filter(u=>u&&!RES.has(u));
+  const viaFn=[];
+  await Promise.all(need.map(async u=>{const d=await direct(u,kind);if(d)RES.set(u,d);else if(isNv(u))viaFn.push(u);}));
+  for(let i=0;i<viaFn.length;i+=25){const part=viaFn.slice(i,i+25);const r=await fn({action:"nres",urls:part},40000);
+    if(r&&r.res)for(const u of part){const x=r.res[u];if(!x)continue;RES.set(u,x.text!=null?{text:x.text}:{data:"data:"+x.ct+";base64,"+x.b64});}}
+  const out={};for(const u of urls){const x=RES.get(u);if(x)out[u]=x;}return out;}
+
+/* ── 네이버 HTML → 스크립트 없는 화면 (CSS는 글자로 넣음) ── */
+async function buildDoc(html,url){
+  const d=new DOMParser().parseFromString(html,"text/html");
+  d.querySelectorAll("script,noscript,iframe,object,embed,link[rel=preload],link[rel=modulepreload],link[rel=prefetch],meta[http-equiv]").forEach(x=>x.remove());
+  const base=d.createElement("base");base.href=url;d.head.prepend(base);
+  const links=[...d.querySelectorAll('link[rel~="stylesheet"]')];
+  const hrefs=links.map(l=>new URL(l.getAttribute("href"),url).href);
+  const css=await getRes(hrefs,"css");
+  links.forEach((l,i)=>{const t=css[hrefs[i]];if(t&&t.text!=null){const s=d.createElement("style");
+    s.textContent=t.text.replace(/url\(\s*(['"]?)(?!data:|https?:|\/\/)([^'")]+)\1\s*\)/g,(m,q,p)=>"url("+q+new URL(p,hrefs[i]).href+q+")");l.replaceWith(s);}else l.remove();});
+  const miss=hrefs.filter(h=>!css[h]).length;
+  for(const el of d.querySelectorAll("*"))for(const a of [...el.attributes])if(/^on/i.test(a.name)||(a.name==="href"&&/^\s*javascript:/i.test(a.value)))el.removeAttribute(a.name);
+  d.querySelectorAll("img").forEach(im=>{const z=im.getAttribute("data-lazysrc")||im.getAttribute("data-src");if(z)im.setAttribute("src",z);im.removeAttribute("loading");});
+  const st=d.createElement("style");st.textContent="html{overflow:hidden!important;scroll-behavior:auto!important}*{animation:none!important;transition:none!important}";d.head.appendChild(st);
+  return {html:"<!doctype html>"+d.documentElement.outerHTML,miss};}
+function loadFrame(html){return new Promise(res=>{const f=document.createElement("iframe");f.setAttribute("sandbox","allow-same-origin");
+  let done=false;const fin=()=>{if(done)return;done=true;res(f);};f.onload=fin;setTimeout(fin,20000);f.srcdoc=html;$("frames").appendChild(f);});}
+async function settle(f){const doc=f.contentDocument;const imgs=[...doc.images].filter(i=>!i.complete);
+  await Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.onload=i.onerror=r;}))),sleep(6000)]);
+  try{await doc.fonts.ready;}catch(e){}await sleep(150);}
+
+/* ── 화면 일부를 그림으로 (SVG foreignObject: 브라우저가 그대로 그림) ── */
+const BLANK="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+async function snap(f,rects,scale){
+  const doc=f.contentDocument,win=f.contentWindow,W=1280,H=Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight);
+  const imgs=[...doc.images];const want=[];
+  imgs.forEach((im,i)=>{const r=im.getBoundingClientRect();im.setAttribute("data-sn",i);
+    if(r.width>0&&r.height>0){im.style.setProperty("width",r.width+"px","important");im.style.setProperty("height",r.height+"px","important");
+      const y=r.top+win.scrollY;if(rects.some(R=>y<R.y+R.h&&y+r.height>R.y))want.push(i);}});
+  const srcOf=i=>imgs[i].currentSrc||imgs[i].src;
+  const data=await getRes(want.map(srcOf).filter(u=>/^https?:/.test(u)),"img");
+  const clone=doc.documentElement.cloneNode(true);
+  clone.querySelectorAll("script,iframe,object,embed,video,audio,source,link").forEach(x=>x.remove());
+  clone.querySelectorAll("img").forEach(im=>{const i=+im.getAttribute("data-sn");im.removeAttribute("srcset");im.removeAttribute("sizes");
+    const u=imgs[i]?srcOf(i):"";im.setAttribute("src",u.startsWith("data:")?u:(data[u]&&data[u].data)||BLANK);});
+  clone.querySelectorAll("base").forEach(x=>x.remove());
+  clone.style.setProperty("width",W+"px");
+  const rootFs=win.getComputedStyle(doc.documentElement).fontSize||"16px";
+  const xml=new XMLSerializer().serializeToString(clone);
+  const out=[];
+  for(const R of rects){
+    const h=Math.max(1,Math.round(R.h)),y=Math.round(R.y);
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W*scale}" height="${h*scale}" viewBox="0 ${y} ${W} ${h}" style="font-size:${rootFs}"><foreignObject x="0" y="0" width="${W}" height="${H}">${xml}</foreignObject></svg>`;
+    const img=new Image();img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+    await img.decode().catch(()=>new Promise(r=>{img.onload=img.onerror=r;}));
+    const c=document.createElement("canvas");c.width=Math.round(R.w*scale);c.height=h*scale;const g=c.getContext("2d");
+    g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(img,Math.round(R.x*scale),0,c.width,c.height,0,0,c.width,c.height);
+    out.push(c);}
+  return out;}
+/* 캡처 = 검색창 + 글 자리들 (멀리 떨어지면 '⋯ 중간 생략 ⋯') */
+async function capture(f,urls){
+  const doc=f.contentDocument,win=f.contentWindow;
+  const sels=urls.map(u=>{const m=u.match(/naver\.com\/([^/]+)\/(\d+)/);return `a[href*="${m[1]}/${m[2]}"]`;});
+  const g=LAYOUT(sels,2500,doc,win);
+  const S=1.5,[hc,...sc]=await snap(f,[g.hdr,...g.secs],S);
+  const GAP=Math.round(34*S),W=hc.width;
+  const c=document.createElement("canvas");c.width=W;c.height=hc.height+S+sc.reduce((a,x)=>a+x.height,0)+GAP*(sc.length-1);
+  const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
+  let y=0;x.drawImage(hc,0,0);y+=hc.height;x.fillStyle="#e3e5e8";x.fillRect(0,y,W,S);y+=S;
+  sc.forEach((s,i)=>{if(i){x.fillStyle="#f1f3f5";x.fillRect(0,y,W,GAP);x.fillStyle="#dfe3e8";x.fillRect(0,y,W,S);x.fillRect(0,y+GAP-S,W,S);
+      x.fillStyle="#868e96";x.font=`600 ${Math.round(15*S)}px sans-serif`;x.textAlign="center";x.textBaseline="middle";x.fillText("⋯ 중간 생략 ⋯",W/2,y+GAP/2);y+=GAP;}
+    x.drawImage(s,0,y);y+=s.height;});
+  return {canvas:c,boxes:g.boxes};}
+
+/* ── 입력 정리 ── */
+function parseIds(s){const out=[];for(const t of String(s).split(/[\s,]+/)){if(!t)continue;let m;
+  if((m=t.match(/cafe\.naver\.com\/(?:ca-fe\/web\/cafes\/)?([A-Za-z0-9_.-]+)/)))out.push("c:"+m[1]);
+  else if((m=t.match(/blogId=([A-Za-z0-9_-]+)/)||t.match(/blog\.naver\.com\/([A-Za-z0-9_-]+)/)))out.push("b:"+m[1]);
+  else if(/^[A-Za-z0-9_-]{3,}$/.test(t))out.push("b:"+t);}
+  return [...new Set(out.map(x=>x.toLowerCase()))];}
+const parseKws=s=>[...new Set(String(s).split("\n").map(x=>x.trim()).filter(Boolean))].slice(0,50);
+const rkText=j=>j.pos&&j.pos.length?j.pos.join(", ")+"위":"";
+
+/* ── 한 키워드 처리 ── */
+async function runJob(j){
+  j.st="네이버 화면 읽는 중";draw();
+  let r=await fn({action:"npage",kw:j.kw,tab:j.tab},40000);
+  if(!r.ok&&/모르는|unknown|action/i.test(r.error||"")){j.st="";j.err="사이트 함수가 아직 옛날 버전이에요 (npage 없음). 함수를 새로 붙여 넣어 주세요.";return;}
+  if(!r.ok){await sleep(2500);r=await fn({action:"npage",kw:j.kw,tab:j.tab},40000);}
+  if(!r.ok){j.err=r.error||"네이버 화면을 읽지 못했어요.";return;}
+  j.st="순위 세는 중";draw();
+  const b=await buildDoc(r.html,r.url);const f=await loadFrame(b.html);
+  try{
+    await settle(f);
+    const doc=f.contentDocument,win=f.contentWindow;
+    const cards=EXTRACT(j.tab,doc,win).filter(c=>!c.skip);
+    j.count=cards.length;
+    const hits=[];cards.forEach((c,i)=>{const a=String(c.key||"").toLowerCase();if(j.ids.some(id=>a.startsWith(id+"/")))hits.push({pos:i+1,url:c.url,title:c.title,author:c.author});});
+    j.pos=hits.map(h=>h.pos);j.hits=hits;
+    if(!cards.length){j.err="네이버 화면에서 글 목록을 찾지 못했어요. 잠시 후 다시 해 주세요.";return;}
+    if(!hits.length){j.st="";return;}
+    j.st="캡처 만드는 중";draw();
+    const cap=await capture(f,hits.map(h=>h.url));
+    j.png=await new Promise(r=>cap.canvas.toBlob(r,"image/png"));
+    if(j.url)URL.revokeObjectURL(j.url);j.url=URL.createObjectURL(j.png);j.st="";
+    if(b.miss)j.warn="네이버 꾸밈 파일 일부를 못 받아서 캡처 모양이 조금 다를 수 있어요.";
+  }catch(e){j.err="캡처를 만들지 못했어요: "+(e&&e.message||e);}
+  finally{f.remove();}}
+
+/* ── 화면 그리기 ── */
+function draw(){
+  $("res").hidden=!JOBS.length;
+  $("rows").innerHTML=JOBS.map((j,i)=>`<tr><td><b>${esc(j.kw)}</b></td><td class="st">${NAMES[j.tab]}</td>
+    <td>${j.pos&&j.pos.length?`<span class="rk">${rkText(j)}</span>`:j.done&&!j.err?`<span class="rk no">${j.count?j.count+"개 중 없음":"없음"}</span>`:""}</td>
+    <td class="links">${(j.hits||[]).map(h=>`<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.url.replace(/^https:\/\/(blog|cafe)\.naver\.com\//,""))}</a>`).join("<br>")}</td>
+    <td class="st ${j.err?"e":""}">${esc(j.err||j.st||(j.done?(j.png?"캡처 완료":"끝"):"기다리는 중"))}</td></tr>`).join("");
+  $("shots").innerHTML=JOBS.filter(j=>j.url).map(j=>{const i=JOBS.indexOf(j);return `<div class="shot"><div class="hd"><div><b>${esc(j.kw)}</b> <span class="muted">${NAMES[j.tab]}</span> <span class="rk">${rkText(j)}</span></div>
+    <div class="row"><button class="btn small" data-cp="${i}">그림 복사</button><a class="btn small" href="${j.url}" download="${esc(fname(j))}">캡처 받기</a></div></div>
+    ${j.warn?`<div class="msg warn">${esc(j.warn)}</div>`:""}<img src="${j.url}" alt="${esc(j.kw)} 캡처" data-big="${i}"></div>`;}).join("");
+  const done=JOBS.filter(j=>j.done).length;$("bar").hidden=!RUN;$("bar").firstElementChild.style.width=(JOBS.length?done/JOBS.length*100:0)+"%";
+  $("zipb").disabled=!JOBS.some(j=>j.png);$("copy").disabled=!JOBS.some(j=>j.done);}
+const fname=j=>`${j.kw}_${j.tab==="blog"?"블로그탭":"통합"}_${(j.pos||[]).join("-")}위.png`.replace(/[\\/:*?"<>|\s]+/g,"_");
+$("shots").onclick=async e=>{const b=e.target.closest("[data-big]");if(b){const m=document.createElement("div");m.className="big";m.innerHTML=`<img src="${b.src}" style="width:${Math.round(b.naturalWidth/1.5)}px">`;m.onclick=()=>m.remove();document.body.appendChild(m);return;}
+  const c=e.target.closest("[data-cp]");if(c){const j=JOBS[+c.dataset.cp];try{await navigator.clipboard.write([new ClipboardItem({"image/png":j.png})]);c.textContent="복사했어요";}catch(er){c.textContent="복사 안 됨 (받기를 써 주세요)";}setTimeout(()=>{c.textContent="그림 복사";},2000);}};
+
+/* ── 실행 ── */
+$("tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;TAB=b.dataset.t;ls.set("gs-rank-tab",TAB);[...$("tabs").children].forEach(x=>x.setAttribute("aria-pressed",x===b));};
+[...$("tabs").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.t===TAB));
+$("ids").value=ls.get("gs-rank-ids");$("kws").value=ls.get("gs-rank-kws");
+$("stop").onclick=()=>{STOP=true;$("stop").disabled=true;$("note").innerHTML='<div class="msg warn" style="margin-top:10px">지금 하는 키워드까지만 하고 멈춰요.</div>';};
+$("go").onclick=async()=>{if(RUN)return;
+  const ids=parseIds($("ids").value),kws=parseKws($("kws").value);
+  if(!ids.length||!kws.length){$("note").innerHTML='<div class="msg err" style="margin-top:10px">블로그 아이디와 키워드를 하나 이상 넣어 주세요.</div>';return;}
+  ls.set("gs-rank-ids",$("ids").value);ls.set("gs-rank-kws",$("kws").value);
+  if(!PW&&!(await askPw()))return;
+  const tabs=TAB==="both"?["total","blog"]:[TAB];
+  JOBS.forEach(j=>j.url&&URL.revokeObjectURL(j.url));
+  JOBS=[];for(const kw of kws)for(const t of tabs)JOBS.push({kw,tab:t,ids});
+  RUN=true;STOP=false;$("go").disabled=true;$("stop").hidden=false;$("stop").disabled=false;
+  $("note").innerHTML=`<div class="msg ok" style="margin-top:10px">아이디 ${ids.map(x=>x.slice(2)).join(", ")} · 키워드 ${kws.length}개 확인 중이에요. 키워드 하나에 10초쯤 걸려요.</div>`;draw();
+  let k=0;const worker=async()=>{while(k<JOBS.length&&!STOP){const j=JOBS[k++];
+    try{await runJob(j);}catch(e){j.err=String(e&&e.message||e);}
+    if(!PW){j.err="비밀번호가 맞지 않아요.";STOP=true;}
+    j.done=true;j.st="";draw();}};
+  await Promise.all([worker(),worker()]);
+  RUN=false;$("go").disabled=false;$("stop").hidden=true;
+  const n=JOBS.filter(j=>j.pos&&j.pos.length).length,e=JOBS.filter(j=>j.err).length;
+  $("note").innerHTML=`<div class="msg ${e?"warn":"ok"}" style="margin-top:10px">끝났어요. ${JOBS.filter(j=>j.done).length}개 중 ${n}개에서 찾았어요${e?` · ${e}개는 못 했어요 (다시 눌러 보세요)`:""}.</div>`;
+  if(!PW)askPw();draw();};
+$("copy").onclick=async()=>{const t=JOBS.filter(j=>j.done&&!j.err).map(j=>`${j.kw}${TAB==="both"?" ("+NAMES[j.tab]+")":""} ${j.pos&&j.pos.length?rkText(j):"미노출"}${(j.hits||[]).length?"\n"+j.hits.map(h=>h.url).join("\n"):""}`).join("\n\n");
+  try{await navigator.clipboard.writeText(t);$("copy").textContent="복사했어요";}catch(e){$("copy").textContent="복사 안 됨";}setTimeout(()=>{$("copy").textContent="결과 글 복사";},2000);};
+/* ZIP (압축 없이 담기) */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){let c=0xffffffff;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xffffffff)>>>0;}
+function zip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  for(const f of files){const data=f.data,name=enc.encode(f.name),crc=crc32(data);
+    const lh=new DataView(new ArrayBuffer(30));lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x800,true);lh.setUint32(14,crc,true);lh.setUint32(18,data.length,true);lh.setUint32(22,data.length,true);lh.setUint16(26,name.length,true);parts.push(lh.buffer,name,data);
+    const ch=new DataView(new ArrayBuffer(46));ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x800,true);ch.setUint32(16,crc,true);ch.setUint32(20,data.length,true);ch.setUint32(24,data.length,true);ch.setUint16(28,name.length,true);ch.setUint32(42,off,true);cen.push(ch.buffer,name);off+=30+name.length+data.length;}
+  const cs=cen.reduce((a,b)=>a+(b.byteLength||b.length),0),end=new DataView(new ArrayBuffer(22));end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cs,true);end.setUint32(16,off,true);
+  return new Blob([...parts,...cen,end.buffer],{type:"application/zip"});}
+$("zipb").onclick=async()=>{const files=[];for(const j of JOBS)if(j.png)files.push({name:fname(j),data:new Uint8Array(await j.png.arrayBuffer())});
+  const a=document.createElement("a");a.href=URL.createObjectURL(zip(files));a.download="블로그순위_캡처_"+new Date().toISOString().slice(0,10)+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);};
+</script></body></html>
