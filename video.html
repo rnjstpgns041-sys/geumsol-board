@@ -56,12 +56,14 @@ details.more{margin-top:12px;border:1px solid var(--line);border-radius:10px;pad
   <div class="row" style="margin-top:8px"><button class="btn small" id="sample">대본 자동으로 쓰기</button><span class="muted">마음에 안 들면 누르세요. 누를 때마다 다른 버전이 나와요 · 같은 사진은 다시 안 나와요 · '최고·완치·후기' 같은 표현은 넣지 마세요</span></div>
   <details id="scbox" style="margin-top:8px"><summary class="muted" style="cursor:pointer">장면별 사진 보기·바꾸기</summary><div class="muted" style="margin:6px 0">검색어를 고치면 그 문장 사진이 바뀌어요(한글로 써도 돼요). 비우면 업체 사진이 들어가요.</div><div id="sclist"></div></details>
   <div class="step"><i>3</i>영상 만들기 <span class="muted" id="setnote"></span></div>
+  <label id="englabel">만드는 곳</label><div class="lay" id="eng" style="margin:4px 0 4px"><button type="button" data-eng="ss">슈퍼쇼츠로 만들기</button><button type="button" data-eng="here">이 화면에서 바로 만들기</button></div>
+  <div class="muted" id="engnote" style="margin:0 0 10px"></div>
   <div id="layrow"><label>영상 모양</label><div class="lay" id="lay" style="margin:4px 0 10px"></div></div><div class="muted" id="laylock" style="display:none;margin:0 0 10px">이 업체는 지금 쓰는 업체 템플릿 그대로 만들어요.</div><label id="logorow" style="display:none;flex-direction:row;align-items:center;gap:6px;margin:-4px 0 10px;font-size:14px;color:var(--fg)"><input type="checkbox" id="logoon" style="width:auto" checked> 로고 넣기 <span class="muted" style="font-weight:400">(빼면 아래 칸과 끝 화면에 업체 이름·전화번호만 나와요)</span></label><div id="genedit" style="display:none;margin:-4px 0 10px"><button class="btn small" id="genopen" type="button">이 업체 템플릿·로고·전화번호 바꾸기</button></div>
   <div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end">
-    <label>목소리<select id="voice">
+    <label id="voicerow">목소리<select id="voice">
       <option value="ko-KR-Neural2-C">남자 (차분)</option><option value="ko-KR-Wavenet-D">남자 (또렷)</option><option value="ko-KR-Neural2-A">여자 (밝게)</option><option value="ko-KR-Neural2-B">여자 (차분)</option><option value="none">목소리 없이</option>
     </select></label>
-    <label>말 빠르기<select id="rate"><option value="1.0">보통</option><option value="1.1" selected>조금 빠르게</option><option value="1.2">빠르게</option></select></label>
+    <label id="raterow">말 빠르기<select id="rate"><option value="1.0">보통</option><option value="1.1" selected>조금 빠르게</option><option value="1.2">빠르게</option></select></label>
     <button class="btn primary" id="go" style="height:40px;padding:0 26px">영상 만들기</button>
   </div>
   <details class="more" id="more"><summary>설정 더 보기 <span class="muted" style="font-weight:400">배경음악 · 사진 · 홈페이지 · 업체 사진 · 업체 특징</span></summary>
@@ -255,8 +257,8 @@ $("ffind").onclick=async()=>{$("fmsg").textContent="슈퍼쇼츠에 디자인 �
   catch(e){$("fmsg").textContent="연결하지 못했어요.";}finally{$("ffind").disabled=false;}};
 /* 영상 만들기: 구글 음성으로 문장마다 목소리를 받고, 이 화면에서 바로 영상 파일을 만든다 */
 let TTS=null,PH=null,EXTRA=null,BGMF=null,SEEDV=Date.now()%1000,PVT=0;
-let GEM=null;
-async function caps(){if(TTS===null||PH===null){const p=await fn({action:"ping"});TTS=!!p.tts;PH=!!p.photos;GEM=!!p.gemini;}}
+let GEM=null,SS=null,SSV=0;
+async function caps(){if(TTS===null||PH===null){const p=await fn({action:"ping"});TTS=!!p.tts;PH=!!p.photos;GEM=!!p.gemini;SS=!!p.ss;SSV=+p.ssv||0;renderEng();}}
 /* 대본에 맞는 사진: 문장마다 검색어를 만들어 무료 사진(Pixabay)을 하나씩 받아 둠. 업체 소개·위치·상담 문장은 업체 사진.
    CACHE[문장]={q,src,id}, OVQ[문장]=직접 고친 검색어("" 이면 업체 사진), COPH[업체 폴더]=팀이 올린 업체 사진 주소 */
 const CACHE={},OVQ={},COPH={};
@@ -366,7 +368,7 @@ function renderLay(){if(!window.ShortsMaker)return;const L=ShortsMaker.LAYOUTS,c
 $("lay").onclick=e=>{const b=e.target.closest("[data-lay]");if(!b)return;LAY=b.dataset.lay;setSave();renderLay();preview();};
 SETK.forEach(k=>$(k).addEventListener("change",setSave));$("logoon").onchange=()=>{setSave();preview();};
 /* 영상 하나 만들기: 성공하면 true. 여러 개 만들기(batch)에서는 끝난 뒤 다음 대본을 미리 쓰지 않는다 */
-async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("\n");
+async function makeOne(batch){if(ENG==="ss")return makeSS(batch);if(busy)return false;const L=lines(),text=L.join("\n");
   if(!L.length){msg("대본을 넣어 주세요.","err");return false;}
   if(!ShortsMaker.brandOf(cname())){msg("업체를 골라 주세요.","err");return false;}
   busy=true;$("go").disabled=true;ls.set("gs-video-voice",$("voice").value);
@@ -396,6 +398,49 @@ async function makeOne(batch){if(busy)return false;const L=lines(),text=L.join("
   catch(e){msg(esc(e.message||"영상을 만들지 못했어요."),"err");}
   busy=false;$("go").disabled=false;return false;}
 $("go").onclick=()=>makeOne(false);
+/* 슈퍼쇼츠로 만들기: 대본 + 문장마다 고른 사진(주소)을 슈퍼쇼츠에 보내고, 완성되면 아래 목록에 뜬다.
+   제목 띠·자막·목소리·배경음악·움직임은 슈퍼쇼츠의 업체 템플릿과 자동화 기본설정을 씀. 세 업체는 마지막 장면이 세로 로고 화면(vbrand/<폴더>/end.jpg) */
+/* 영상 함수가 슈퍼쇼츠 사진 보내기를 아는 새 버전(ssv 2)일 때만 고를 수 있음. 아니면 예전처럼 이 화면에서 만듦 */
+let ENGP=ls.get("gs-video-engine")||"ss",ENG="here";
+function renderEng(){ENG=SSV>=2?ENGP:"here";$("eng").style.display=$("englabel").style.display=SSV>=2?"":"none";$("eng").querySelectorAll("[data-eng]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.eng===ENG)));const ss=ENG==="ss";
+  $("voicerow").style.display=$("raterow").style.display=ss?"none":"";
+  $("engnote").textContent=ss?"업체 템플릿·목소리·배경음악은 슈퍼쇼츠에 저장해 둔 설정으로 만들어요. 보내고 나면 몇 분 뒤 아래 '만든 영상' 목록에 완성 영상이 떠요. 창을 닫아도 돼요.":"이 화면에서 바로 그려서 내 컴퓨터에 내려받아요. 영상 길이만큼 걸리니 창을 앞에 띄워 두세요.";
+  $("go").textContent=ss?"슈퍼쇼츠로 영상 만들기":"영상 만들기";}
+$("eng").onclick=e=>{const b=e.target.closest("[data-eng]");if(!b)return;ENGP=b.dataset.eng;ls.set("gs-video-engine",ENGP);renderEng();};
+renderEng();
+const absU=u=>{try{return new URL(u,location.href).href}catch(e){return ""}};
+/* data: 사진(무료 사진은 함수가 data로 줌)은 팀 보관함에 올려 https 주소로 바꿈 */
+async function pubImg(src,name){if(/^https:\/\//.test(src))return src;if(!/^data:image\//.test(src))return "";
+  const b=await (await fetch(src)).blob(),r=await fetch(`${SB}/storage/v1/object/files/vphotos/ss/${name}`,{method:"POST",headers:{apikey:KEY,"x-team-key":"","Content-Type":b.type||"image/jpeg"},body:b});
+  if(!r.ok)throw new Error("사진 올리기 "+r.status);return `${SB}/storage/v1/object/public/files/vphotos/ss/${name}`;}
+async function ssImages(L,B,ex,stamp){const own=[];for(let i=1;i<=(B.photos||0);i++)own.push(absU(`vbrand/${B.dir}/p${String(i).padStart(2,"0")}.jpg`));
+  const co=coPhotos().map(absU).filter(Boolean),pool=$("phmode").value==="brand"?[...co,...own]:[...own,...co];let k=SEEDV;
+  const out=await Promise.all(L.map(async(l,i)=>{const e=ex&&ex[i];if(e){try{const u=await pubImg(e,`${stamp}_${i}.jpg`);if(u)return u;}catch(_){}}return pool.length?pool[(k+i)%pool.length]:"";}));
+  if(!B.gen&&L.length>1)out[L.length-1]=absU(`vbrand/${B.dir}/end.jpg`);
+  return out.filter(Boolean);}
+async function makeSS(batch){if(busy)return false;const L=lines(),text=L.join("\n");
+  if(!L.length){msg("대본을 넣어 주세요.","err");return false;}
+  const B=ShortsMaker.brandOf(cname());if(!B){msg("업체를 골라 주세요.","err");return false;}
+  busy=true;$("go").disabled=true;
+  try{TTS=PH=null;await caps();
+    if(!SSV)throw new Error("영상 함수(video)를 새 버전으로 바꿔야 슈퍼쇼츠로 만들 수 있어요. 지금은 [이 화면에서 바로 만들기]로 만들어 주세요.");
+    if(!SS)throw new Error("Supabase 비밀값에 슈퍼쇼츠 키(SUPERSHORTS_KEY)가 아직 없어요.");
+    msg("대본에 맞는 사진을 고르는 중이에요…","warn");
+    let ex=null;try{ex=await findPhotos(true);}catch(e){}
+    const d=new Date(),pd=n=>String(n).padStart(2,"0"),stamp=`${d.getFullYear()}${pd(d.getMonth()+1)}${pd(d.getDate())}_${pd(d.getHours())}${pd(d.getMinutes())}${pd(d.getSeconds())}_${Math.random().toString(36).slice(2,6)}`;
+    msg("사진을 올리고 슈퍼쇼츠에 보내는 중이에요…","warn");
+    const imgs=await ssImages(L,B,ex,stamp),title=titleNow();
+    const r=await fn({action:"make",text,client:cname(),images:imgs,length:"longform",opts:{title:title.filter(Boolean).join(" ")}});
+    if(!r.ok)throw new Error(r.error||"슈퍼쇼츠에 보내지 못했어요.");
+    {const Lq=qsNow(L),C=coNow(L);saveUsed(L.map((l,i)=>C[i]<0&&Lq[i]&&CACHE[l]&&CACHE[l].q===Lq[i]?CACHE[l].id:null));}
+    const rec={id:r.id,cid:$("client").value,client:cname(),kw:$("kw").value.trim(),text,title,length:"longform",status:"queued",files:[],at:`${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())} ${pd(d.getHours())}:${pd(d.getMinutes())}`,credits:null,error:"",engine:"ss"};
+    LIST.unshift(rec);render();try{await save(rec);}catch(e){}
+    const done=`슈퍼쇼츠로 보냈어요${r.tpl?` (템플릿: ${esc(r.tpl)})`:""}. 몇 분 뒤 아래 '만든 영상' 목록에 완성 영상이 떠요.`;
+    RECENT.unshift(title.join(" "),L[0]);busy=false;
+    if(batch)msg(done,"ok");else if($("kw").value.trim()||$("client").value){await auto(true);msg(done+" 다음 영상에 쓸 새 제목과 대본을 미리 써 뒀어요.","ok");}else msg(done,"ok");
+    $("go").disabled=false;return true;}
+  catch(e){msg(esc(e.message||"슈퍼쇼츠에 보내지 못했어요."),"err");}
+  busy=false;$("go").disabled=false;return false;}
 /* 한 번에 여러 개: 키워드마다 새 제목·대본을 쓰고 영상을 차례로 만들어 내려받는다 */
 let BSTOP=false,BRUN=false;
 function bList(){return [...new Set($("bkws").value.split(/[\n,]/).map(s=>s.trim()).filter(Boolean))];}
@@ -412,7 +457,7 @@ $("bgo").onclick=async()=>{if(BRUN||busy)return;const ks=bList(),per=+$("bn").va
     $("binfo").textContent=`${i+1} / ${jobs.length} · "${k}" 영상 만드는 중`;
     const ok=await makeOne(true);(ok?done:fail).push(k);}
   BRUN=false;$("bgo").disabled=false;$("bstop").style.display="none";
-  const s=`${done.length}개를 만들어 내려받았어요.`+(fail.length?` ${fail.length}개는 못 만들었어요 (${[...new Set(fail)].map(esc).join(", ")}).`:"")+(BSTOP?" 중간에 멈췄어요.":"");
+  const s=`${done.length}개를 ${ENG==="ss"?"슈퍼쇼츠로 보냈어요":"만들어 내려받았어요"}.`+(fail.length?` ${fail.length}개는 못 만들었어요 (${[...new Set(fail)].map(esc).join(", ")}).`:"")+(BSTOP?" 중간에 멈췄어요.":"");
   $("binfo").textContent=s;msg(s+(done.length?" 아래 만든 영상 목록에서도 볼 수 있어요.":""),fail.length&&!done.length?"err":"ok");
   if(done.length)await auto(true);};
 $("pnext").onclick=async()=>{SEEDV++;lines().forEach(l=>{delete CACHE[l];});try{await findPhotos(true);}catch(e){msg(esc(e.message),"warn");}preview();};
